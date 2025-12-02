@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Share2,
   CornerDownLeft,
-  Paperclip
+  Paperclip,
+  Home
 } from "lucide-react";
 import { ModelSelector } from "@/components/model-selector";
 import { MOCK_CHAT_HISTORY, MOCK_STORIES } from "@/lib/mockData";
@@ -39,6 +40,13 @@ export default function PlayStory() {
   const [messages, setMessages] = useState(MOCK_CHAT_HISTORY);
   const [inputValue, setInputValue] = useState("");
 
+  // 스토리 저장 함수
+  const saveStory = (msgs: typeof MOCK_CHAT_HISTORY) => {
+    if (storyId) {
+      localStorage.setItem(`story_${storyId}`, JSON.stringify(msgs));
+    }
+  };
+
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false);
@@ -48,6 +56,25 @@ export default function PlayStory() {
       setRightSidebarOpen(true);
     }
   }, [isMobile]);
+
+  // 스토리 로드 - 저장된 내용이 있으면 복구
+  useEffect(() => {
+    if (storyId) {
+      const saved = localStorage.getItem(`story_${storyId}`);
+      if (saved) {
+        try {
+          setMessages(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to load story:", e);
+        }
+      }
+    }
+  }, [storyId]);
+
+  // messages 변경 시 저장
+  useEffect(() => {
+    saveStory(messages);
+  }, [messages, storyId]);
 
   const formatContent = (content: string) => {
     // Remove timestamp header and comments
@@ -195,6 +222,11 @@ export default function PlayStory() {
             </div>
             
             <div className="flex items-center gap-4">
+               <Link href="/">
+                  <Button variant="ghost" size="icon" title="홈으로 돌아가기" data-testid="button-home">
+                     <Home className="w-5 h-5" />
+                  </Button>
+               </Link>
                <Button variant="ghost" size="icon" onClick={() => setRightSidebarOpen(!rightSidebarOpen)}>
                   <MoreHorizontal className="w-5 h-5" />
                </Button>
