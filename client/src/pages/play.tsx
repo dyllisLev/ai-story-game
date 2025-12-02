@@ -536,7 +536,8 @@ export default function PlayStory() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => {
-                     if (e.key === "Enter" && !e.shiftKey) {
+                     // 한글 조합 중이면 엔터 무시
+                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                         e.preventDefault();
                         handleSendMessage();
                      }
