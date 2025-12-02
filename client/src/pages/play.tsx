@@ -343,10 +343,10 @@ export default function PlayStory() {
       {(!isMobile || sidebarOpen) && (
         <div className={cn(
           "bg-sidebar flex flex-col flex-shrink-0 border-r transition-all duration-300 ease-in-out",
-          isMobile ? "fixed inset-y-0 left-0 z-50 w-full max-w-[320px] h-full shadow-xl animate-in slide-in-from-left duration-200" : "w-[280px]"
+          isMobile ? "fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[380px] h-full shadow-xl animate-in slide-in-from-left duration-200" : "w-[280px]"
         )}>
-          <div className="p-4 border-b flex items-center justify-between">
-            <h2 className="font-bold text-lg truncate pr-2">{story.title}</h2>
+          <div className="p-4 border-b flex items-center justify-between gap-2">
+            <h2 className="font-bold text-lg line-clamp-2">{story.title}</h2>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="flex-shrink-0">
               <Menu className="w-4 h-4" />
             </Button>
@@ -361,15 +361,15 @@ export default function PlayStory() {
                <div className="p-2 space-y-1">
                   {sessions.map((s) => (
                     <div key={s.id} className={cn(
-                      "flex items-center gap-2 p-2 rounded-lg transition-colors group",
+                      "flex items-start gap-2 p-2.5 rounded-lg transition-colors group",
                       s.id === session.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
                     )}>
-                      <Link href={`/play/${s.id}`} className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                      <Link href={`/play/${s.id}`} className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0 mt-0.5">
                           <span>{s.title.charAt(0)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{s.title}</p>
+                          <p className="font-medium text-sm line-clamp-2 leading-snug mb-0.5">{s.title}</p>
                           <p className="text-xs text-muted-foreground">{new Date(s.createdAt || '').toLocaleDateString('ko-KR')}</p>
                         </div>
                       </Link>
