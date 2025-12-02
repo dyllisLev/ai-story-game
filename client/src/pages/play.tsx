@@ -248,14 +248,6 @@ export default function PlayStory() {
          {/* Input Area */}
          <div className="p-4 bg-background border-t">
             <div className="max-w-3xl mx-auto relative">
-               <div className="absolute left-3 top-3 flex gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full">
-                     <Paperclip className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full">
-                     <ImageIcon className="w-4 h-4" />
-                  </Button>
-               </div>
                <Textarea 
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
@@ -266,7 +258,7 @@ export default function PlayStory() {
                      }
                   }}
                   placeholder="게임을 시작하지" 
-                  className="min-h-[50px] pl-24 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
+                  className="min-h-[50px] pl-4 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
                />
                <Button 
                   size="icon" 
