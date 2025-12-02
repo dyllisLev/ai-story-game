@@ -972,14 +972,19 @@ AI: {exampleAiResponse}
       let finalResponse = generatedText;
       try {
         // Remove markdown code blocks if present
-        const cleanedText = generatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        let cleanedText = generatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
         // Try to parse as JSON
         if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
           const parsed = JSON.parse(cleanedText);
           if (parsed.nextStrory) {
-            finalResponse = parsed.nextStrory;
-            console.log("Parsed JSON response, extracted nextStrory");
+            // The nextStrory field may contain escaped newlines and tags
+            // Unescape them properly
+            finalResponse = parsed.nextStrory
+              .replace(/\\n/g, '\n')  // Convert \n to actual newlines
+              .replace(/\\"/g, '"')   // Convert \" to "
+              .replace(/\\'/g, "'");  // Convert \' to '
+            console.log("Parsed JSON response, extracted and unescaped nextStrory");
           }
         }
       } catch (parseError) {
