@@ -1083,6 +1083,336 @@ nextStrory 구성:
     }
   });
 
+  // ==================== AI CHAT STREAMING API ====================
+
+  app.post("/api/ai/chat/stream", async (req, res) => {
+    try {
+      const { sessionId, userMessage, storyId } = req.body;
+
+      if (!sessionId || !userMessage || !storyId) {
+        return res.status(400).json({ error: "sessionId, userMessage, and storyId are required" });
+      }
+
+      const story = await storage.getStory(storyId);
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      // Get provider and model from session or settings
+      let selectedProvider = session.sessionProvider || "gemini";
+      let selectedModel = session.sessionModel || "";
+
+      // Get API key
+      const apiKeySetting = await storage.getSetting(`apiKey_${selectedProvider}`);
+      if (!apiKeySetting || !apiKeySetting.value) {
+        return res.status(400).json({ error: `API key for ${selectedProvider} not configured` });
+      }
+      const apiKey = apiKeySetting.value;
+
+      // Get default model if not set
+      if (!selectedModel) {
+        const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
+        const defaultModels: Record<string, string> = {
+          gemini: "gemini-2.0-flash",
+          chatgpt: "gpt-4o",
+          claude: "claude-3-5-sonnet-20241022",
+          grok: "grok-beta"
+        };
+        selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+      }
+
+      // Get messages for context
+      const messages = await storage.getMessagesBySession(sessionId);
+
+      // Get common prompt template
+      const commonPromptSetting = await storage.getSetting("commonPrompt");
+      let systemPrompt = commonPromptSetting?.value || `당신은 경험 많은 스토리텔러입니다. 다음 스토리를 이어서 작성해주세요.`;
+
+      // Build recent messages string
+      const recentMessages = messages.slice(-5).map(m => 
+        `${m.role === 'user' ? '유저' : 'AI'}: ${m.content}`
+      ).join('\n\n');
+
+      // Replace all variables
+      systemPrompt = systemPrompt
+        .replace(/\{title\}/g, story.title || "")
+        .replace(/\{description\}/g, story.description || "")
+        .replace(/\{genre\}/g, story.genre || "")
+        .replace(/\{storySettings\}/g, story.storySettings || "")
+        .replace(/\{startingSituation\}/g, story.startingSituation || "")
+        .replace(/\{promptTemplate\}/g, story.promptTemplate || "")
+        .replace(/\{exampleUserInput\}/g, story.exampleUserInput || "")
+        .replace(/\{exampleAiResponse\}/g, story.exampleAiResponse || "")
+        .replace(/\{conversationProfile\}/g, session.conversationProfile || "")
+        .replace(/\{userNote\}/g, session.userNote || "")
+        .replace(/\{summaryMemory\}/g, session.summaryMemory || "")
+        .replace(/\{userMessage\}/g, userMessage || "")
+        .replace(/\{recentMessages\}/g, recentMessages || "");
+
+      // Build conversation history
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role === "assistant" ? "assistant" : "user",
+        content: msg.content
+      }));
+      conversationHistory.push({ role: "user", content: userMessage });
+
+      // Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
+      console.log("\n========== AI 스트리밍 시작 ==========");
+      console.log("Provider:", selectedProvider);
+      console.log("Model:", selectedModel);
+
+      if (selectedProvider === "gemini") {
+        const geminiContents = [
+          { role: "user", parts: [{ text: systemPrompt }] },
+          { role: "model", parts: [{ text: "알겠습니다. 해당 스토리 세계관에 맞게 응답하겠습니다." }] },
+          ...conversationHistory.map(msg => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }]
+          }))
+        ];
+
+        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
+        const generationConfig: Record<string, any> = { 
+          temperature: 0.9, 
+          maxOutputTokens: 65536
+        };
+        
+        if (!isThinkingOnlyModel) {
+          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        }
+
+        // Use streaming endpoint
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?alt=sse&key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: geminiContents,
+              generationConfig
+            })
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Gemini Stream Error:", errorData);
+          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || "Streaming failed" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          res.write(`data: ${JSON.stringify({ error: "Failed to get stream reader" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let buffer = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr && jsonStr !== '[DONE]') {
+                  try {
+                    const data = JSON.parse(jsonStr);
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                    if (text) {
+                      fullText += text;
+                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                    }
+                  } catch (parseErr) {
+                    // Skip malformed JSON
+                  }
+                }
+              }
+            }
+          }
+        } catch (streamErr) {
+          console.error("Stream reading error:", streamErr);
+        }
+
+        // Send final message with full text
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        res.end();
+
+      } else if (selectedProvider === "chatgpt") {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...conversationHistory
+            ],
+            temperature: 0.9,
+            max_tokens: 8192,
+            stream: true
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || "Streaming failed" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          res.write(`data: ${JSON.stringify({ error: "Failed to get stream reader" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let buffer = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr && jsonStr !== '[DONE]') {
+                  try {
+                    const data = JSON.parse(jsonStr);
+                    const text = data.choices?.[0]?.delta?.content || "";
+                    if (text) {
+                      fullText += text;
+                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                    }
+                  } catch (parseErr) {
+                    // Skip malformed JSON
+                  }
+                }
+              }
+            }
+          }
+        } catch (streamErr) {
+          console.error("Stream reading error:", streamErr);
+        }
+
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        res.end();
+
+      } else if (selectedProvider === "claude") {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: 8192,
+            system: systemPrompt,
+            messages: conversationHistory,
+            stream: true
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || "Streaming failed" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          res.write(`data: ${JSON.stringify({ error: "Failed to get stream reader" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let buffer = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr) {
+                  try {
+                    const data = JSON.parse(jsonStr);
+                    if (data.type === 'content_block_delta' && data.delta?.text) {
+                      const text = data.delta.text;
+                      fullText += text;
+                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                    }
+                  } catch (parseErr) {
+                    // Skip malformed JSON
+                  }
+                }
+              }
+            }
+          }
+        } catch (streamErr) {
+          console.error("Stream reading error:", streamErr);
+        }
+
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        res.end();
+
+      } else {
+        // Fallback for unsupported providers (grok etc) - use non-streaming
+        res.write(`data: ${JSON.stringify({ error: "이 프로바이더는 스트리밍을 지원하지 않습니다." })}\n\n`);
+        res.end();
+      }
+
+      console.log("========== AI 스트리밍 완료 ==========\n");
+
+    } catch (error: any) {
+      console.error("AI streaming error:", error);
+      res.write(`data: ${JSON.stringify({ error: error.message || "Streaming failed" })}\n\n`);
+      res.end();
+    }
+  });
+
   // ==================== MESSAGES API ====================
 
   app.get("/api/sessions/:sessionId/messages", async (req, res) => {
