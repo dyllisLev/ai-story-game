@@ -301,7 +301,28 @@ export default function PlayStory() {
 
   // Render AI response with special styling
   const renderAIContent = (content: string) => {
-    const parts = parseAIResponse(content);
+    // First try to parse JSON if the content looks like JSON
+    let processedContent = content;
+    try {
+      // Remove markdown code blocks if present
+      let cleanedText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // Try to parse as JSON
+      if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
+        const parsed = JSON.parse(cleanedText);
+        if (parsed.nextStrory) {
+          // Unescape the content
+          processedContent = parsed.nextStrory
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\'/g, "'");
+        }
+      }
+    } catch (parseError) {
+      // If parsing fails, use the original content
+    }
+    
+    const parts = parseAIResponse(processedContent);
     
     return parts.map((part, index) => {
       switch (part.type) {
