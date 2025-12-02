@@ -61,18 +61,6 @@ export default function CreateStory() {
                 <TabsTrigger value="start" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent">
                   시작 설정 <span className="text-red-500 ml-1">*</span>
                 </TabsTrigger>
-                <TabsTrigger value="stats" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent">
-                  스탯 설정
-                </TabsTrigger>
-                <TabsTrigger value="media" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent">
-                  미디어
-                </TabsTrigger>
-                <TabsTrigger value="keywords" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent">
-                  키워드북
-                </TabsTrigger>
-                <TabsTrigger value="endings" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent">
-                  엔딩 설정
-                </TabsTrigger>
                 <TabsTrigger value="register" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent text-primary font-bold ml-auto">
                   등록 <span className="text-red-500 ml-1">*</span>
                 </TabsTrigger>
@@ -236,13 +224,6 @@ export default function CreateStory() {
             </div>
           )}
 
-           {/* Placeholder for other tabs */}
-           {["stats", "media", "keywords", "endings"].includes(activeTab) && (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-in fade-in">
-              <Settings2 className="w-12 h-12 mb-4 opacity-20" />
-              <p>이 설정 항목은 아직 준비 중입니다.</p>
-            </div>
-          )}
 
           {activeTab === "register" && (
              <div className="flex flex-col items-center justify-center py-20 animate-in zoom-in-95 duration-300">
@@ -270,7 +251,7 @@ export default function CreateStory() {
                 <ChevronLeft className="w-4 h-4 mr-2" /> 이전
               </Button>
               <Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => {
-                  const tabs = ["profile", "story", "start", "stats", "media", "keywords", "endings", "register"];
+                  const tabs = ["profile", "story", "start", "register"];
                   const currIdx = tabs.indexOf(activeTab);
                   if (currIdx < tabs.length - 1) setActiveTab(tabs[currIdx + 1]);
               }}>
