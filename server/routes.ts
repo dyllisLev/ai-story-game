@@ -777,51 +777,50 @@ export async function registerRoutes(
         selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
       }
       
-      // Build system prompt from AI persona settings (commonPrompt)
+      // Build system prompt from AI persona settings (commonPrompt) with variable substitution
       const commonPromptSetting = await storage.getSetting("commonPrompt");
-      let systemPrompt = commonPromptSetting?.value || "당신은 스토리텔링 AI입니다.";
-      
-      // Add story basic info
-      systemPrompt += `\n\n## 스토리 기본 정보
-제목: ${story.title}
-장르: ${story.genre || "일반"}
-${story.description ? `소개: ${story.description}` : ""}
+      let systemPrompt = commonPromptSetting?.value || `당신은 스토리텔링 AI입니다.
 
-## 스토리 설정 및 정보
-${story.storySettings || ""}
+## 스토리 기본 정보
+제목: {title}
+장르: {genre}
+소개: {description}
+
+## 스토리 설정
+{storySettings}
 
 ## 시작 상황
-${story.startingSituation || ""}
-`;
+{startingSituation}
 
-      // Add example dialogue (전개 예시)
-      if (story.exampleUserInput && story.exampleAiResponse) {
-        systemPrompt += `\n## 전개 예시
-사용자: ${story.exampleUserInput}
-AI: ${story.exampleAiResponse}
-`;
-      }
+## 전개 예시
+사용자: {exampleUserInput}
+AI: {exampleAiResponse}
 
-      // Add session-specific info (대화 프로필, 유저 노트, 요약 메모리)
-      if (session.conversationProfile) {
-        systemPrompt += `\n## 대화 프로필
-${session.conversationProfile}
-`;
-      }
-      
-      if (session.userNote) {
-        systemPrompt += `\n## 유저 노트
-${session.userNote}
-`;
-      }
-      
-      if (session.summaryMemory) {
-        systemPrompt += `\n## 요약 메모리
-${session.summaryMemory}
-`;
-      }
+## 대화 프로필
+{conversationProfile}
 
-      systemPrompt += `\n\n당신은 위 스토리 세계관의 등장인물로서 사용자와 상호작용합니다. 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`;
+## 유저 노트
+{userNote}
+
+## 요약 메모리
+{summaryMemory}
+
+당신은 위 스토리 세계관의 등장인물로서 사용자와 상호작용합니다. 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`;
+
+      // Replace all variables with actual values
+      systemPrompt = systemPrompt
+        .replace(/\{title\}/g, story.title || "")
+        .replace(/\{description\}/g, story.description || "")
+        .replace(/\{genre\}/g, story.genre || "")
+        .replace(/\{storySettings\}/g, story.storySettings || "")
+        .replace(/\{startingSituation\}/g, story.startingSituation || "")
+        .replace(/\{promptTemplate\}/g, story.promptTemplate || "")
+        .replace(/\{exampleUserInput\}/g, story.exampleUserInput || "")
+        .replace(/\{exampleAiResponse\}/g, story.exampleAiResponse || "")
+        .replace(/\{conversationProfile\}/g, session.conversationProfile || "")
+        .replace(/\{userNote\}/g, session.userNote || "")
+        .replace(/\{summaryMemory\}/g, session.summaryMemory || "")
+        .replace(/\{userMessage\}/g, userMessage || "");
 
       let generatedText = "";
 

@@ -314,24 +314,53 @@ export default function Settings() {
           {/* System Prompt Section */}
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-semibold mb-2">AI 페르소나 설정</h2>
-              <p className="text-sm text-muted-foreground">스토리를 작성할 AI의 성격, 역할, 톤을 정의하는 시스템 프롬프트입니다.</p>
+              <h2 className="text-lg font-semibold mb-2">AI 페르소나 설정 (채팅용 시스템 프롬프트)</h2>
+              <p className="text-sm text-muted-foreground">대화창에서 사용자와 AI가 대화할 때 사용되는 시스템 프롬프트입니다. 변수를 사용하여 동적으로 정보를 포함할 수 있습니다.</p>
             </div>
             <Textarea
-              placeholder="예: 당신은 경험 많은 판타지 소설가입니다. 묘사는 생생하고 대사는 자연스러워야 합니다. 항상 한국어로 답변하세요."
+              placeholder={`예:
+당신은 경험 많은 판타지 소설가입니다.
+
+## 스토리 정보
+제목: {title}
+장르: {genre}
+소개: {description}
+
+## 세계관 설정
+{storySettings}
+
+## 현재 상황
+{startingSituation}
+
+## 대화 프로필
+{conversationProfile}
+
+## 유저 노트
+{userNote}
+
+생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`}
               value={commonPrompt}
               onChange={(e) => setCommonPrompt(e.target.value)}
-              className="min-h-[200px] font-mono text-sm"
+              className="min-h-[300px] font-mono text-sm"
               data-testid="textarea-system-prompt"
             />
             <div className="bg-muted/40 border border-muted/80 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium text-foreground">📝 팁:</p>
-              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-                <li>AI의 성격과 역할을 구체적으로 명시하세요</li>
-                <li>선호하는 톤과 스타일을 지정하세요</li>
-                <li>글쓰기 스타일이나 제약사항을 포함하세요</li>
-                <li>모든 스토리 플레이에 이 프롬프트가 적용됩니다</li>
-              </ul>
+              <p className="text-xs font-medium text-foreground">📝 사용 가능한 변수:</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <div><code className="bg-muted px-1 rounded">{"{title}"}</code> - 스토리 제목</div>
+                <div><code className="bg-muted px-1 rounded">{"{description}"}</code> - 한 줄 소개</div>
+                <div><code className="bg-muted px-1 rounded">{"{genre}"}</code> - 장르</div>
+                <div><code className="bg-muted px-1 rounded">{"{storySettings}"}</code> - 스토리 설정</div>
+                <div><code className="bg-muted px-1 rounded">{"{startingSituation}"}</code> - 시작 상황</div>
+                <div><code className="bg-muted px-1 rounded">{"{promptTemplate}"}</code> - 프롬프트 템플릿</div>
+                <div><code className="bg-muted px-1 rounded">{"{exampleUserInput}"}</code> - 예시 유저 입력</div>
+                <div><code className="bg-muted px-1 rounded">{"{exampleAiResponse}"}</code> - 예시 AI 응답</div>
+                <div><code className="bg-muted px-1 rounded">{"{conversationProfile}"}</code> - 대화 프로필 (세션)</div>
+                <div><code className="bg-muted px-1 rounded">{"{userNote}"}</code> - 유저 노트 (세션)</div>
+                <div><code className="bg-muted px-1 rounded">{"{summaryMemory}"}</code> - 요약 메모리 (세션)</div>
+                <div><code className="bg-muted px-1 rounded">{"{userMessage}"}</code> - 현재 유저 메시지</div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">💡 이 프롬프트는 대화창에서 AI와 채팅할 때마다 사용됩니다. 스토리와 세션 정보가 자동으로 주입됩니다.</p>
             </div>
           </div>
 
