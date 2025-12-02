@@ -1,38 +1,60 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { sql } from "drizzle-orm";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { settings } from "@shared/schema";
+import { type InsertSetting, type Setting } from "@shared/schema";
 
-// modify the interface with any CRUD methods
-// you might need
+let db: ReturnType<typeof drizzle>;
+
+function getDb() {
+  if (!db) {
+    const sqlite = new Database("app.db");
+    sqlite.pragma("journal_mode = WAL");
+    db = drizzle(sqlite);
+  }
+  return db;
+}
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getSetting(key: string): Promise<Setting | undefined>;
+  setSetting(key: string, value: string): Promise<Setting>;
+  updateSetting(key: string, value: string): Promise<Setting>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class SqliteStorage implements IStorage {
+  async getSetting(key: string): Promise<Setting | undefined> {
+    const db = getDb();
+    const result = await db
+      .select()
+      .from(settings)
+      .where(sql`${settings.key} = ${key}`)
+      .limit(1);
+    return result[0];
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async setSetting(key: string, value: string): Promise<Setting> {
+    const db = getDb();
+    const existing = await this.getSetting(key);
+    
+    if (existing) {
+      const result = await db
+        .update(settings)
+        .set({ value })
+        .where(sql`${settings.key} = ${key}`)
+        .returning();
+      return result[0];
+    }
+    
+    const result = await db
+      .insert(settings)
+      .values({ key, value })
+      .returning();
+    return result[0];
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateSetting(key: string, value: string): Promise<Setting> {
+    return this.setSetting(key, value);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new SqliteStorage();

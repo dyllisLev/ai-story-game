@@ -206,23 +206,6 @@ export default function PlayStory() {
          <ScrollArea className="flex-1 h-full">
             <div className="max-w-3xl mx-auto space-y-8 px-4 py-6 w-full">
                {messages.map((msg, index) => {
-                  if (msg.type === "context") {
-                     return (
-                        <div key={msg.id} className="space-y-4">
-                           <div className="bg-muted/20 rounded-lg p-6 border border-muted/50 text-sm space-y-4">
-                               <h3 className="font-bold text-base border-b pb-2 mb-2">초차원 존재의 정체</h3>
-                               <div className="leading-loose text-muted-foreground prose prose-sm max-w-none dark:prose-invert prose-p:mb-4 break-words">
-                                  <ReactMarkdown components={markdownComponents}>{formatContent(msg.content)}</ReactMarkdown>
-                               </div>
-                           </div>
-                           {/* Separator */}
-                           {index < messages.length - 1 && (
-                             <div className="w-full h-px bg-border/50 mt-8" />
-                           )}
-                        </div>
-                     )
-                  }
-
                   if (msg.role === "assistant") {
                      return (
                         <div key={msg.id} className="group">
