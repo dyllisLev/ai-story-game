@@ -22,7 +22,14 @@ export const stories = sqliteTable("stories", {
   exampleUserInput: text("example_user_input"),
   exampleAiResponse: text("example_ai_response"),
   startingSituation: text("starting_situation"),
-  // Session-specific settings
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const sessions = sqliteTable("sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  storyId: integer("story_id").notNull().references(() => stories.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
   conversationProfile: text("conversation_profile"),
   userNote: text("user_note"),
   summaryMemory: text("summary_memory"),
@@ -34,7 +41,7 @@ export const stories = sqliteTable("stories", {
 
 export const messages = sqliteTable("messages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  storyId: integer("story_id").notNull().references(() => stories.id),
+  sessionId: integer("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   content: text("content").notNull(),
   character: text("character"),
@@ -51,6 +58,12 @@ export const insertStorySchema = createInsertSchema(stories).omit({
   updatedAt: true,
 });
 
+export const insertSessionSchema = createInsertSchema(sessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
   createdAt: true,
@@ -61,6 +74,9 @@ export type Setting = typeof settings.$inferSelect;
 
 export type InsertStory = z.infer<typeof insertStorySchema>;
 export type Story = typeof stories.$inferSelect;
+
+export type InsertSession = z.infer<typeof insertSessionSchema>;
+export type Session = typeof sessions.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;

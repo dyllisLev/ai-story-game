@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Plus, Play, Edit, Settings as SettingsIcon, Loader2, Trash2 } from "lucide-react";
 
@@ -17,6 +17,7 @@ interface Story {
 export default function Home() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     loadStories();
@@ -46,6 +47,46 @@ export default function Home() {
     if (days === 1) return "어제";
     if (days < 7) return `${days}일 전`;
     return date.toLocaleDateString("ko-KR");
+  };
+
+  const createNewSession = async (storyId: number, title: string) => {
+    try {
+      // Create a new session (prologue is automatically added by the server)
+      const sessionResponse = await fetch(`/api/stories/${storyId}/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: `${title} - ${new Date().toLocaleString('ko-KR')}` }),
+      });
+      
+      if (sessionResponse.ok) {
+        const session = await sessionResponse.json();
+        setLocation(`/play/${session.id}`);
+      }
+    } catch (error) {
+      console.error("Failed to create session:", error);
+      alert("세션 생성에 실패했습니다.");
+    }
+  };
+
+  const continuePlay = async (story: Story) => {
+    try {
+      // Get sessions for this story
+      const response = await fetch(`/api/stories/${story.id}/sessions`);
+      if (response.ok) {
+        const sessions = await response.json();
+        if (sessions.length > 0) {
+          // Navigate to the most recent session
+          const latestSession = sessions[sessions.length - 1];
+          setLocation(`/play/${latestSession.id}`);
+        } else {
+          // No sessions exist, create a new one
+          await createNewSession(story.id, story.title);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load sessions:", error);
+      alert("세션 로드에 실패했습니다.");
+    }
   };
 
   return (
@@ -94,16 +135,23 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-4">
                     <div className="flex gap-2">
-                      <Link href={`/play/${story.id}?new=true`}>
-                        <Button size="sm" variant="secondary" className="gap-2">
-                          <Plus className="w-3 h-3" /> 새로 시작
-                        </Button>
-                      </Link>
-                      <Link href={`/play/${story.id}`}>
-                        <Button size="sm" className="bg-white text-black hover:bg-white/90 gap-2">
-                          <Play className="w-3 h-3" /> 이어서 플레이
-                        </Button>
-                      </Link>
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="gap-2"
+                        onClick={() => createNewSession(story.id, story.title)}
+                        data-testid={`button-new-session-${story.id}`}
+                      >
+                        <Plus className="w-3 h-3" /> 새로 시작
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="bg-white text-black hover:bg-white/90 gap-2"
+                        onClick={() => continuePlay(story)}
+                        data-testid={`button-continue-${story.id}`}
+                      >
+                        <Play className="w-3 h-3" /> 이어서 플레이
+                      </Button>
                     </div>
                   </div>
                 </div>

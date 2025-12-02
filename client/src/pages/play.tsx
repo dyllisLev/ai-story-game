@@ -56,9 +56,22 @@ interface Story {
   startingSituation?: string | null;
 }
 
-interface Message {
+interface Session {
   id: number;
   storyId: number;
+  title: string;
+  conversationProfile?: string | null;
+  userNote?: string | null;
+  summaryMemory?: string | null;
+  sessionModel?: string | null;
+  sessionProvider?: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+interface Message {
+  id: number;
+  sessionId: number;
   role: string;
   content: string;
   character?: string | null;
@@ -66,23 +79,20 @@ interface Message {
 }
 
 export default function PlayStory() {
-  const [match, params] = useRoute("/play/:id");
+  const [match, params] = useRoute("/play/:sessionId");
   const [location, setLocation] = useLocation();
-  const storyId = params?.id ? parseInt(params.id) : null;
-  
-  // Check for new=true query parameter
-  const isNewSession = new URLSearchParams(window.location.search).get('new') === 'true';
+  const sessionId = params?.sessionId ? parseInt(params.sessionId) : null;
   
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(!isMobile);
+  const [session, setSession] = useState<Session | null>(null);
   const [story, setStory] = useState<Story | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
-  const [storyLoading, setStoryLoading] = useState(true);
-  const [allStories, setAllStories] = useState<Story[]>([]);
-  const [newSessionProcessed, setNewSessionProcessed] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Session settings
   const [conversationProfile, setConversationProfile] = useState("");
@@ -93,40 +103,55 @@ export default function PlayStory() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  const loadStory = useCallback(async () => {
-    if (!storyId) {
-      setStoryLoading(false);
+  const loadSession = useCallback(async () => {
+    if (!sessionId) {
+      setLoading(false);
       return;
     }
     try {
-      const response = await fetch(`/api/stories/${storyId}`);
+      const response = await fetch(`/api/sessions/${sessionId}`);
       if (response.ok) {
-        const data = await response.json();
-        setStory(data);
+        const sessionData = await response.json();
+        setSession(sessionData);
+        
         // Load session settings
-        setConversationProfile(data.conversationProfile || "");
-        setUserNote(data.userNote || "");
-        setSummaryMemory(data.summaryMemory || "");
-        setSessionProvider(data.sessionProvider || "");
-        setSessionModel(data.sessionModel || "");
+        setConversationProfile(sessionData.conversationProfile || "");
+        setUserNote(sessionData.userNote || "");
+        setSummaryMemory(sessionData.summaryMemory || "");
+        setSessionProvider(sessionData.sessionProvider || "");
+        setSessionModel(sessionData.sessionModel || "");
+        
+        // Load story
+        const storyResponse = await fetch(`/api/stories/${sessionData.storyId}`);
+        if (storyResponse.ok) {
+          const storyData = await storyResponse.json();
+          setStory(storyData);
+          
+          // Load sessions for this story
+          const sessionsResponse = await fetch(`/api/stories/${sessionData.storyId}/sessions`);
+          if (sessionsResponse.ok) {
+            const sessionsData = await sessionsResponse.json();
+            setSessions(sessionsData);
+          }
+        }
       } else {
         setLocation("/");
       }
     } catch (error) {
-      console.error("Failed to load story:", error);
+      console.error("Failed to load session:", error);
       setLocation("/");
     } finally {
-      setStoryLoading(false);
+      setLoading(false);
     }
-  }, [storyId, setLocation]);
+  }, [sessionId, setLocation]);
 
   const saveSessionSettings = async (field: string, value: string) => {
-    if (!storyId) return;
+    if (!sessionId) return;
     setIsSavingSettings(true);
     try {
       const updateData: Record<string, string> = { [field]: value };
-      await fetch(`/api/stories/${storyId}`, {
-        method: "PATCH",
+      await fetch(`/api/sessions/${sessionId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updateData),
       });
@@ -138,21 +163,11 @@ export default function PlayStory() {
     }
   };
 
-  const loadAllStories = useCallback(async () => {
-    try {
-      const response = await fetch("/api/stories");
-      if (response.ok) {
-        setAllStories(await response.json());
-      }
-    } catch (error) {
-      console.error("Failed to load stories:", error);
-    }
-  }, []);
-
   const loadMessages = useCallback(async () => {
-    if (!storyId) return;
+    if (!sessionId) return;
+    setLoading(true);
     try {
-      const response = await fetch(`/api/stories/${storyId}/messages`);
+      const response = await fetch(`/api/sessions/${sessionId}/messages`);
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
@@ -162,12 +177,12 @@ export default function PlayStory() {
     } finally {
       setLoading(false);
     }
-  }, [storyId]);
+  }, [sessionId]);
 
   const saveMessage = async (role: string, content: string, character?: string) => {
-    if (!storyId) return null;
+    if (!sessionId) return null;
     try {
-      const response = await fetch(`/api/stories/${storyId}/messages`, {
+      const response = await fetch(`/api/sessions/${sessionId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role, content, character }),
@@ -192,50 +207,15 @@ export default function PlayStory() {
   }, [isMobile]);
 
   useEffect(() => {
-    loadStory();
-    loadAllStories();
-  }, [loadStory, loadAllStories]);
+    loadSession();
+  }, [loadSession]);
 
   useEffect(() => {
-    if (story) {
+    if (session) {
       loadMessages();
     }
-  }, [story, loadMessages]);
+  }, [session, loadMessages]);
 
-  // Handle new session - clear messages and add prologue
-  useEffect(() => {
-    const processNewSession = async () => {
-      if (!isNewSession || !story || !storyId || newSessionProcessed) return;
-      
-      setNewSessionProcessed(true);
-      
-      // Clear existing messages for this story
-      try {
-        await fetch(`/api/stories/${storyId}/messages`, {
-          method: "DELETE"
-        });
-        
-        // Add prologue as first message if available
-        if (story.prologue) {
-          const prologueMsg = await saveMessage("assistant", story.prologue, "Narrator");
-          if (prologueMsg) {
-            setMessages([prologueMsg]);
-          } else {
-            setMessages([]);
-          }
-        } else {
-          setMessages([]);
-        }
-        
-        // Remove the new=true from URL without reload
-        window.history.replaceState({}, '', `/play/${storyId}`);
-      } catch (error) {
-        console.error("Failed to start new session:", error);
-      }
-    };
-    
-    processNewSession();
-  }, [isNewSession, story, storyId, newSessionProcessed]);
 
   const formatContent = (content: string) => {
     let processed = content
@@ -280,8 +260,6 @@ export default function PlayStory() {
     }
   };
 
-  const [isGenerating, setIsGenerating] = useState(false);
-
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isGenerating) return;
     
@@ -301,7 +279,7 @@ export default function PlayStory() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          storyId: storyId,
+          sessionId: sessionId,
           userMessage: userInput
         }),
       });
@@ -330,7 +308,7 @@ export default function PlayStory() {
     }
   };
 
-  if (storyLoading) {
+  if (loading && !session) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -338,10 +316,10 @@ export default function PlayStory() {
     );
   }
 
-  if (!story) {
+  if (!session || !story) {
     return (
       <div className="flex h-screen items-center justify-center bg-background flex-col gap-4">
-        <p className="text-muted-foreground">스토리를 찾을 수 없습니다.</p>
+        <p className="text-muted-foreground">세션을 찾을 수 없습니다.</p>
         <Link href="/">
           <Button>홈으로 돌아가기</Button>
         </Link>
@@ -372,29 +350,25 @@ export default function PlayStory() {
           
           <div className="flex-1 overflow-hidden flex flex-col">
              <div className="flex gap-4 px-4 py-2 border-b text-sm font-medium text-muted-foreground">
-               <span className="text-foreground border-b-2 border-primary pb-2">스토리 목록</span>
+               <span className="text-foreground border-b-2 border-primary pb-2">세션 목록</span>
              </div>
              
              <ScrollArea className="flex-1">
                <div className="p-2 space-y-1">
-                  {allStories.map((s) => (
+                  {sessions.map((s) => (
                     <div key={s.id} className={cn(
                       "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors group",
-                      s.id === story.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
+                      s.id === session.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
                     )}>
                       <Link href={`/play/${s.id}`} className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary overflow-hidden flex-shrink-0">
-                          {s.image ? (
-                            <img src={s.image} className="w-full h-full object-cover" />
-                          ) : (
-                            <span>{s.title.charAt(0)}</span>
-                          )}
+                          <span>{s.title.charAt(0)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-baseline">
                             <span className="font-medium text-sm truncate">{s.title}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{s.genre || "일반"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{new Date(s.createdAt || '').toLocaleDateString('ko-KR')}</p>
                         </div>
                       </Link>
                       <Button
@@ -404,19 +378,24 @@ export default function PlayStory() {
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (confirm("정말로 이 스토리를 삭제하시겠습니까?")) {
+                          if (confirm("정말로 이 세션을 삭제하시겠습니까?")) {
                             try {
-                              await fetch(`/api/stories/${s.id}`, { method: "DELETE" });
-                              loadAllStories();
-                              if (s.id === story.id) {
-                                setLocation("/");
+                              await fetch(`/api/sessions/${s.id}`, { method: "DELETE" });
+                              // Reload sessions
+                              const sessionsResponse = await fetch(`/api/stories/${story.id}/sessions`);
+                              if (sessionsResponse.ok) {
+                                const sessionsData = await sessionsResponse.json();
+                                setSessions(sessionsData);
+                                if (s.id === session.id) {
+                                  setLocation("/");
+                                }
                               }
                             } catch (error) {
-                              console.error("Failed to delete story:", error);
+                              console.error("Failed to delete session:", error);
                             }
                           }
                         }}
-                        data-testid={`button-delete-story-${s.id}`}
+                        data-testid={`button-delete-session-${s.id}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -559,7 +538,6 @@ export default function PlayStory() {
                   <div className="space-y-2">
                      <label className="text-xs font-bold text-muted-foreground">모델 설정</label>
                      <ModelSelector 
-                       storyId={storyId || undefined}
                        sessionProvider={sessionProvider}
                        sessionModel={sessionModel}
                        onProviderChange={(provider) => {

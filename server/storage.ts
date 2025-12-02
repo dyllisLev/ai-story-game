@@ -1,10 +1,11 @@
 import { sql, eq } from "drizzle-orm";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { settings, stories, messages } from "@shared/schema";
+import { settings, stories, sessions, messages } from "@shared/schema";
 import { 
   type InsertSetting, type Setting,
   type InsertStory, type Story,
+  type InsertSession, type Session,
   type InsertMessage, type Message
 } from "@shared/schema";
 
@@ -38,32 +39,41 @@ function getDb() {
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
       
-      CREATE TABLE IF NOT EXISTS messages (
+      CREATE TABLE IF NOT EXISTS sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         story_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        conversation_profile TEXT,
+        user_note TEXT,
+        summary_memory TEXT,
+        session_model TEXT,
+        session_provider TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+      );
+      
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
         role TEXT NOT NULL,
         content TEXT NOT NULL,
         character TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
       );
     `);
     
-    // Migration: Add new columns if they don't exist
-    const columnsToAdd = [
+    // Migration: Add new columns to stories if they don't exist
+    const storyColumnsToAdd = [
       'story_settings TEXT',
       'prologue TEXT',
       'prompt_template TEXT',
       'example_user_input TEXT',
       'example_ai_response TEXT',
-      'starting_situation TEXT',
-      'conversation_profile TEXT',
-      'user_note TEXT',
-      'summary_memory TEXT',
-      'session_model TEXT',
-      'session_provider TEXT'
+      'starting_situation TEXT'
     ];
-    for (const col of columnsToAdd) {
+    for (const col of storyColumnsToAdd) {
       try {
         sqliteDb.exec(`ALTER TABLE stories ADD COLUMN ${col};`);
       } catch (e) { /* column already exists */ }
@@ -85,11 +95,18 @@ export interface IStorage {
   updateStory(id: number, story: Partial<InsertStory>): Promise<Story | undefined>;
   deleteStory(id: number): Promise<boolean>;
   
+  // Sessions
+  getSession(id: number): Promise<Session | undefined>;
+  getSessionsByStory(storyId: number): Promise<Session[]>;
+  createSession(session: InsertSession): Promise<Session>;
+  updateSession(id: number, session: Partial<InsertSession>): Promise<Session | undefined>;
+  deleteSession(id: number): Promise<boolean>;
+  
   // Messages
   getMessage(id: number): Promise<Message | undefined>;
-  getMessagesByStory(storyId: number): Promise<Message[]>;
+  getMessagesBySession(sessionId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
-  deleteMessagesByStory(storyId: number): Promise<boolean>;
+  deleteMessagesBySession(sessionId: number): Promise<boolean>;
 }
 
 export class SqliteStorage implements IStorage {
@@ -172,10 +189,61 @@ export class SqliteStorage implements IStorage {
 
   async deleteStory(id: number): Promise<boolean> {
     const db = getDb();
-    await this.deleteMessagesByStory(id);
     const result = db
       .delete(stories)
       .where(eq(stories.id, id))
+      .returning()
+      .all();
+    return result.length > 0;
+  }
+
+  // Sessions
+  async getSession(id: number): Promise<Session | undefined> {
+    const db = getDb();
+    const result = db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.id, id))
+      .limit(1)
+      .all();
+    return result[0];
+  }
+
+  async getSessionsByStory(storyId: number): Promise<Session[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.storyId, storyId))
+      .all();
+  }
+
+  async createSession(session: InsertSession): Promise<Session> {
+    const db = getDb();
+    const result = db
+      .insert(sessions)
+      .values(session)
+      .returning()
+      .all();
+    return result[0];
+  }
+
+  async updateSession(id: number, session: Partial<InsertSession>): Promise<Session | undefined> {
+    const db = getDb();
+    const result = db
+      .update(sessions)
+      .set({ ...session, updatedAt: new Date().toISOString() })
+      .where(eq(sessions.id, id))
+      .returning()
+      .all();
+    return result[0];
+  }
+
+  async deleteSession(id: number): Promise<boolean> {
+    const db = getDb();
+    const result = db
+      .delete(sessions)
+      .where(eq(sessions.id, id))
       .returning()
       .all();
     return result.length > 0;
@@ -193,12 +261,12 @@ export class SqliteStorage implements IStorage {
     return result[0];
   }
 
-  async getMessagesByStory(storyId: number): Promise<Message[]> {
+  async getMessagesBySession(sessionId: number): Promise<Message[]> {
     const db = getDb();
     return db
       .select()
       .from(messages)
-      .where(eq(messages.storyId, storyId))
+      .where(eq(messages.sessionId, sessionId))
       .all();
   }
 
@@ -212,11 +280,11 @@ export class SqliteStorage implements IStorage {
     return result[0];
   }
 
-  async deleteMessagesByStory(storyId: number): Promise<boolean> {
+  async deleteMessagesBySession(sessionId: number): Promise<boolean> {
     const db = getDb();
     db
       .delete(messages)
-      .where(eq(messages.storyId, storyId))
+      .where(eq(messages.sessionId, sessionId))
       .run();
     return true;
   }

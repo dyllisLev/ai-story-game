@@ -16,7 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/create" component={CreateStory} />
       <Route path="/edit/:id" component={EditStory} />
-      <Route path="/play/:id" component={PlayStory} />
+      <Route path="/play/:sessionId" component={PlayStory} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

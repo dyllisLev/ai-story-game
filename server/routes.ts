@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertMessageSchema } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -190,6 +190,111 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete story" });
+    }
+  });
+
+  // ==================== SESSIONS API ====================
+
+  app.get("/api/stories/:storyId/sessions", async (req, res) => {
+    try {
+      const storyId = parseInt(req.params.storyId);
+      if (isNaN(storyId)) {
+        return res.status(400).json({ error: "Invalid story ID" });
+      }
+
+      const sessions = await storage.getSessionsByStory(storyId);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
+  });
+
+  app.post("/api/stories/:storyId/sessions", async (req, res) => {
+    try {
+      const storyId = parseInt(req.params.storyId);
+      if (isNaN(storyId)) {
+        return res.status(400).json({ error: "Invalid story ID" });
+      }
+
+      const story = await storage.getStory(storyId);
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      const parsed = insertSessionSchema.safeParse({
+        ...req.body,
+        storyId
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid session data", details: parsed.error });
+      }
+
+      const session = await storage.createSession(parsed.data);
+      
+      // Automatically add prologue as first message if it exists
+      if (story.prologue) {
+        await storage.createMessage({
+          sessionId: session.id,
+          role: "assistant",
+          content: story.prologue,
+          character: "Narrator"
+        });
+      }
+      
+      res.status(201).json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create session" });
+    }
+  });
+
+  app.get("/api/sessions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid session ID" });
+      }
+
+      const session = await storage.getSession(id);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
+  app.put("/api/sessions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid session ID" });
+      }
+
+      const session = await storage.updateSession(id, req.body);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update session" });
+    }
+  });
+
+  app.delete("/api/sessions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid session ID" });
+      }
+
+      const deleted = await storage.deleteSession(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete session" });
     }
   });
 
@@ -613,21 +718,27 @@ export async function registerRoutes(
 
   app.post("/api/ai/chat", async (req, res) => {
     try {
-      const { storyId, userMessage } = req.body;
+      const { sessionId, userMessage } = req.body;
       
+      // Get session data
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
       // Get story data
-      const story = await storage.getStory(storyId);
+      const story = await storage.getStory(session.storyId);
       if (!story) {
         return res.status(404).json({ error: "Story not found" });
       }
 
       // Get conversation history
-      const messages = await storage.getMessagesByStory(storyId);
+      const messages = await storage.getMessagesBySession(sessionId);
       
       // Use session-specific provider/model if set, otherwise use global settings
       const providers = ["gemini", "chatgpt", "claude", "grok"];
-      let selectedProvider = story.sessionProvider || "";
-      let selectedModel = story.sessionModel || "";
+      let selectedProvider = session.sessionProvider || "";
+      let selectedModel = session.sessionModel || "";
       let apiKey = "";
       
       if (selectedProvider) {
@@ -691,21 +802,21 @@ AI: ${story.exampleAiResponse}
       }
 
       // Add session-specific info (대화 프로필, 유저 노트, 요약 메모리)
-      if (story.conversationProfile) {
+      if (session.conversationProfile) {
         systemPrompt += `\n## 대화 프로필
-${story.conversationProfile}
+${session.conversationProfile}
 `;
       }
       
-      if (story.userNote) {
+      if (session.userNote) {
         systemPrompt += `\n## 유저 노트
-${story.userNote}
+${session.userNote}
 `;
       }
       
-      if (story.summaryMemory) {
+      if (session.summaryMemory) {
         systemPrompt += `\n## 요약 메모리
-${story.summaryMemory}
+${session.summaryMemory}
 `;
       }
 
@@ -821,42 +932,28 @@ ${story.summaryMemory}
 
   // ==================== MESSAGES API ====================
 
-  app.get("/api/stories/:storyId/messages", async (req, res) => {
+  app.get("/api/sessions/:sessionId/messages", async (req, res) => {
     try {
-      const storyId = parseInt(req.params.storyId);
-      if (isNaN(storyId)) {
-        return res.status(400).json({ error: "Invalid story ID" });
+      const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: "Invalid session ID" });
       }
 
-      const msgs = await storage.getMessagesByStory(storyId);
+      const msgs = await storage.getMessagesBySession(sessionId);
       res.json(msgs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch messages" });
     }
   });
 
-  app.delete("/api/stories/:storyId/messages", async (req, res) => {
+  app.post("/api/sessions/:sessionId/messages", async (req, res) => {
     try {
-      const storyId = parseInt(req.params.storyId);
-      if (isNaN(storyId)) {
-        return res.status(400).json({ error: "Invalid story ID" });
+      const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: "Invalid session ID" });
       }
 
-      await storage.deleteMessagesByStory(storyId);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete messages" });
-    }
-  });
-
-  app.post("/api/stories/:storyId/messages", async (req, res) => {
-    try {
-      const storyId = parseInt(req.params.storyId);
-      if (isNaN(storyId)) {
-        return res.status(400).json({ error: "Invalid story ID" });
-      }
-
-      const messageData = { ...req.body, storyId };
+      const messageData = { ...req.body, sessionId };
       const parsed = insertMessageSchema.safeParse(messageData);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid message data", details: parsed.error });
@@ -869,14 +966,14 @@ ${story.summaryMemory}
     }
   });
 
-  app.delete("/api/stories/:storyId/messages", async (req, res) => {
+  app.delete("/api/sessions/:sessionId/messages", async (req, res) => {
     try {
-      const storyId = parseInt(req.params.storyId);
-      if (isNaN(storyId)) {
-        return res.status(400).json({ error: "Invalid story ID" });
+      const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: "Invalid session ID" });
       }
 
-      await storage.deleteMessagesByStory(storyId);
+      await storage.deleteMessagesBySession(sessionId);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete messages" });
