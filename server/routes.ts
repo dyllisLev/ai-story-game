@@ -480,7 +480,7 @@ export async function registerRoutes(
 
       if (selectedProvider === "gemini") {
         // Gemini 3 Pro requires thinking mode, other models can disable it
-        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro");
+        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
         const generationConfig: Record<string, any> = { 
           temperature: 0.8, 
           maxOutputTokens: 8192
@@ -640,7 +640,7 @@ export async function registerRoutes(
 
       if (selectedProvider === "gemini") {
         // Gemini 3 Pro requires thinking mode, other models can disable it
-        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro");
+        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
         const generationConfig: Record<string, any> = { 
           temperature: 0.8, 
           maxOutputTokens: 8192
@@ -918,7 +918,7 @@ nextStrory 구성:
         ];
 
         // Gemini 3 Pro requires thinking mode, other models can disable it
-        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro");
+        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
         const generationConfig: Record<string, any> = { 
           temperature: 0.9, 
           maxOutputTokens: 65536
