@@ -400,7 +400,7 @@ export default function PlayStory() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity flex-shrink-0"
+                        className="h-6 w-6 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors flex-shrink-0"
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
