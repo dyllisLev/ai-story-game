@@ -113,21 +113,28 @@ export default function Settings() {
 
           <Separator />
 
-          {/* Common Prompt Section */}
+          {/* System Prompt Section */}
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-semibold mb-2">기본 공통 프롬프트</h2>
-              <p className="text-sm text-muted-foreground">모든 스토리에 적용될 기본 프롬프트를 설정하세요.</p>
+              <h2 className="text-lg font-semibold mb-2">AI 페르소나 설정</h2>
+              <p className="text-sm text-muted-foreground">스토리를 작성할 AI의 성격, 역할, 톤을 정의하는 시스템 프롬프트입니다.</p>
             </div>
             <Textarea
-              placeholder="기본 프롬프트를 입력하세요. 예: 당신은 판타지 세계의 모험가입니다..."
+              placeholder="예: 당신은 경험 많은 판타지 소설가입니다. 묘사는 생생하고 대사는 자연스러워야 합니다. 항상 한국어로 답변하세요."
               value={commonPrompt}
               onChange={(e) => setCommonPrompt(e.target.value)}
               className="min-h-[200px] font-mono text-sm"
+              data-testid="textarea-system-prompt"
             />
-            <p className="text-xs text-muted-foreground">
-              💡 여기에 입력한 내용이 스토리 플레이 시 AI에 자동으로 전달됩니다.
-            </p>
+            <div className="bg-muted/40 border border-muted/80 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-foreground">📝 팁:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                <li>AI의 성격과 역할을 구체적으로 명시하세요</li>
+                <li>선호하는 톤과 스타일을 지정하세요</li>
+                <li>글쓰기 스타일이나 제약사항을 포함하세요</li>
+                <li>모든 스토리 플레이에 이 프롬프트가 적용됩니다</li>
+              </ul>
+            </div>
           </div>
 
           <Separator />
