@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,16 +25,29 @@ import {
 import { ModelSelector } from "@/components/model-selector";
 import { MOCK_CHAT_HISTORY, MOCK_STORIES } from "@/lib/mockData";
 import ReactMarkdown from 'react-markdown';
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 export default function PlayStory() {
   const [match, params] = useRoute("/play/:id");
   const storyId = params?.id;
   const story = MOCK_STORIES.find(s => s.id === storyId) || MOCK_STORIES[0];
   
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(!isMobile);
   const [messages, setMessages] = useState(MOCK_CHAT_HISTORY);
   const [inputValue, setInputValue] = useState("");
+
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+      setRightSidebarOpen(false);
+    } else {
+      setSidebarOpen(true);
+      setRightSidebarOpen(true);
+    }
+  }, [isMobile]);
 
   const formatContent = (content: string) => {
     return content.split('\n\n').map(part => part.replace(/\n/g, '  \n')).join('\n\n');
@@ -83,10 +96,21 @@ export default function PlayStory() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden relative">
+      {/* Mobile Backdrop for Left Sidebar */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Left Sidebar - Episodes & Chat Rooms */}
       {sidebarOpen && (
-        <div className="w-[280px] border-r bg-sidebar flex flex-col flex-shrink-0">
+        <div className={cn(
+          "bg-sidebar flex flex-col flex-shrink-0 border-r transition-all duration-300 ease-in-out",
+          isMobile ? "fixed inset-y-0 left-0 z-50 w-[280px] h-full shadow-xl animate-in slide-in-from-left duration-200" : "w-[280px]"
+        )}>
           <div className="p-4 border-b flex items-center justify-between">
             <h2 className="font-bold text-lg truncate">{story.title}</h2>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
@@ -256,9 +280,20 @@ export default function PlayStory() {
          </div>
       </div>
 
+      {/* Mobile Backdrop for Right Sidebar */}
+      {isMobile && rightSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200"
+          onClick={() => setRightSidebarOpen(false)}
+        />
+      )}
+
       {/* Right Sidebar - Settings */}
       {rightSidebarOpen && (
-         <div className="w-[300px] bg-background border-l flex flex-col flex-shrink-0 animate-in slide-in-from-right-10 duration-300">
+         <div className={cn(
+            "bg-background border-l flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out",
+            isMobile ? "fixed inset-y-0 right-0 z-50 w-[300px] h-full shadow-xl animate-in slide-in-from-right duration-200" : "w-[300px]"
+         )}>
             <div className="p-4 border-b font-medium text-sm flex items-center justify-between">
                채팅방 설정
                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRightSidebarOpen(false)}>
