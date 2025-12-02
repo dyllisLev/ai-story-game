@@ -28,6 +28,7 @@ export default function Settings() {
     gemini: "",
   });
   const [commonPrompt, setCommonPrompt] = useState("");
+  const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,6 +58,8 @@ export default function Settings() {
           }
         } else if (setting.key === "commonPrompt") {
           loadedPrompt = setting.value;
+        } else if (setting.key === "storyGeneratePrompt") {
+          setStoryGeneratePrompt(setting.value);
         }
       }
       
@@ -85,6 +88,7 @@ export default function Settings() {
           value: key,
         })),
         { key: "commonPrompt", value: commonPrompt },
+        { key: "storyGeneratePrompt", value: storyGeneratePrompt },
       ];
 
       await fetch("/api/settings/batch", {
@@ -184,6 +188,43 @@ export default function Settings() {
                 <li>선호하는 톤과 스타일을 지정하세요</li>
                 <li>글쓰기 스타일이나 제약사항을 포함하세요</li>
                 <li>모든 스토리 플레이에 이 프롬프트가 적용됩니다</li>
+              </ul>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Story Generate Prompt Section */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-2">스토리 자동 생성 프롬프트</h2>
+              <p className="text-sm text-muted-foreground">스토리 설정 및 정보를 자동으로 생성할 때 사용되는 프롬프트입니다.</p>
+            </div>
+            <Textarea
+              placeholder={`예: 다음 정보를 바탕으로 상세한 스토리 설정을 작성해주세요.
+
+제목: {title}
+한 줄 소개: {description}
+장르: {genre}
+프롬프트 템플릿: {promptTemplate}
+
+기존 설정:
+{storySettings}
+
+위 정보를 바탕으로 세계관, 주요 등장인물, 배경 설정 등을 포함한 상세한 스토리 설정을 한국어로 작성해주세요.`}
+              value={storyGeneratePrompt}
+              onChange={(e) => setStoryGeneratePrompt(e.target.value)}
+              className="min-h-[200px] font-mono text-sm"
+              data-testid="textarea-story-generate-prompt"
+            />
+            <div className="bg-muted/40 border border-muted/80 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-foreground">📝 사용 가능한 변수:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                <li><code className="bg-muted px-1 rounded">{"{title}"}</code> - 스토리 제목</li>
+                <li><code className="bg-muted px-1 rounded">{"{description}"}</code> - 한 줄 소개</li>
+                <li><code className="bg-muted px-1 rounded">{"{genre}"}</code> - 장르</li>
+                <li><code className="bg-muted px-1 rounded">{"{promptTemplate}"}</code> - 프롬프트 템플릿</li>
+                <li><code className="bg-muted px-1 rounded">{"{storySettings}"}</code> - 기존 스토리 설정</li>
               </ul>
             </div>
           </div>
