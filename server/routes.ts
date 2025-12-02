@@ -832,6 +832,16 @@ AI: {exampleAiResponse}
         .replace(/\{userMessage\}/g, userMessage || "")
         .replace(/\{recentMessages\}/g, recentMessages || "");
 
+      // Log the prompt for debugging
+      console.log("\n========== AI 채팅 프롬프트 ==========");
+      console.log("Provider:", selectedProvider);
+      console.log("Model:", selectedModel);
+      console.log("\n----- 시스템 프롬프트 -----");
+      console.log(systemPrompt);
+      console.log("\n----- 사용자 메시지 -----");
+      console.log(userMessage);
+      console.log("=====================================\n");
+
       let generatedText = "";
 
       // Build conversation history for API
@@ -863,8 +873,14 @@ AI: {exampleAiResponse}
           }
         );
         const data = await response.json();
+        console.log("Gemini API Response:", JSON.stringify(data, null, 2));
         if (data.error) {
+          console.error("Gemini API Error:", data.error);
           return res.status(400).json({ error: data.error.message });
+        }
+        if (!response.ok) {
+          console.error("Gemini API HTTP Error:", response.status, data);
+          return res.status(400).json({ error: `Gemini API error: ${response.status}` });
         }
         generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       } else if (selectedProvider === "chatgpt") {
