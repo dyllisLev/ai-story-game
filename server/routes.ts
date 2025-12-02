@@ -976,31 +976,31 @@ AI: {exampleAiResponse}
         
         // Try to parse as JSON
         if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
-          // Try to fix incomplete JSON by adding missing closing quotes and braces
-          if (!cleanedText.endsWith('}')) {
-            // Count quotes to see if we need to close a string
-            const quoteCount = (cleanedText.match(/"/g) || []).length;
-            if (quoteCount % 2 === 1) {
-              cleanedText += '"'; // Close the unclosed string
-            }
-            // Try to close the JSON object
-            if (!cleanedText.includes('"aiAnswer"')) {
-              cleanedText += ',\n  "aiAnswer": ""';
-            }
-            cleanedText += '\n}';
-          }
+          // Extract only the nextStrory field value using regex
+          // This is more robust than trying to fix the entire JSON
+          const nextStroryMatch = cleanedText.match(/"nextStrory"\s*:\s*"((?:[^"\\]|\\.)*)"/);
           
-          const parsed = JSON.parse(cleanedText);
-          if (parsed.nextStrory) {
-            // The nextStrory field may contain escaped newlines and tags
-            // Unescape them properly
-            finalResponse = parsed.nextStrory
+          if (nextStroryMatch && nextStroryMatch[1]) {
+            // Extract the nextStrory value and unescape it
+            finalResponse = nextStroryMatch[1]
               .replace(/\\n/g, '\n')  // Convert \n to actual newlines
               .replace(/\\"/g, '"')   // Convert \" to "
               .replace(/\\'/g, "'")   // Convert \' to '
               .replace(/&lt;/g, '<')  // Convert &lt; to <
               .replace(/&gt;/g, '>'); // Convert &gt; to >
-            console.log("Parsed JSON response, extracted and unescaped nextStrory");
+            console.log("Extracted nextStrory field using regex");
+          } else {
+            // Fallback: Try to parse the entire JSON
+            const parsed = JSON.parse(cleanedText);
+            if (parsed.nextStrory) {
+              finalResponse = parsed.nextStrory
+                .replace(/\\n/g, '\n')
+                .replace(/\\"/g, '"')
+                .replace(/\\'/g, "'")
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>');
+              console.log("Parsed JSON response successfully");
+            }
           }
         }
       } catch (parseError) {
