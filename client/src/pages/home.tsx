@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, Play, MoreHorizontal, Settings as SettingsIcon, Loader2 } from "lucide-react";
+import { Plus, Play, Edit, Settings as SettingsIcon, Loader2, Trash2 } from "lucide-react";
 
 interface Story {
   id: number;
@@ -112,9 +112,33 @@ export default function Home() {
                     <div className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
                       {story.genre || "일반"}
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 text-muted-foreground">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Link href={`/edit/${story.id}`}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" title="수정" data-testid={`button-edit-${story.id}`}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-muted-foreground hover:text-red-500" 
+                        title="삭제"
+                        data-testid={`button-delete-${story.id}`}
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          if (confirm("정말로 이 스토리를 삭제하시겠습니까?")) {
+                            try {
+                              await fetch(`/api/stories/${story.id}`, { method: "DELETE" });
+                              loadStories();
+                            } catch (error) {
+                              console.error("Failed to delete story:", error);
+                            }
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">{story.title}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{story.description}</p>
