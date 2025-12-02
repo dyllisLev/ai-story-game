@@ -171,6 +171,7 @@ export default function PlayStory() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
+  const [streamingContent, setStreamingContent] = useState<string>("");
   
   // Session settings
   const [conversationProfile, setConversationProfile] = useState("");
@@ -447,9 +448,10 @@ export default function PlayStory() {
       setInputValue("");
     }
     
-    // Clear previous error
+    // Clear previous error and streaming content
     setLastError(null);
     setLastUserMessage(userInput);
+    setStreamingContent("");
     
     // Save and display user message (only if not retrying)
     if (!retryMessage) {
@@ -459,34 +461,114 @@ export default function PlayStory() {
       }
     }
     
-    // Call AI API
+    // Call AI Streaming API
     setIsGenerating(true);
     try {
-      const response = await fetch("/api/ai/chat", {
+      const response = await fetch("/api/ai/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: sessionId,
-          userMessage: userInput
+          userMessage: userInput,
+          storyId: story?.id
         }),
       });
 
-      const data = await response.json();
-      if (response.ok && data.response) {
-        const aiMsg = await saveMessage("assistant", data.response, "AI");
-        if (aiMsg) {
-          setMessages(prev => [...prev, aiMsg]);
-        }
-        setLastError(null);
-      } else {
-        // Set error state instead of saving to DB
+      if (!response.ok) {
+        const data = await response.json();
         setLastError(data.error || "AI 응답을 생성할 수 없습니다. 설정에서 API 키를 확인해주세요.");
+        setIsGenerating(false);
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        setLastError("스트리밍을 시작할 수 없습니다.");
+        setIsGenerating(false);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let fullText = "";
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr) {
+              try {
+                const data = JSON.parse(jsonStr);
+                
+                if (data.error) {
+                  setLastError(data.error);
+                  setIsGenerating(false);
+                  return;
+                }
+                
+                if (data.text) {
+                  fullText += data.text;
+                  setStreamingContent(fullText);
+                }
+                
+                if (data.done && data.fullText) {
+                  // Parse JSON response if needed
+                  let finalResponse = data.fullText;
+                  try {
+                    let cleanedText = data.fullText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
+                      const nextStroryMatch = cleanedText.match(/"nextStrory"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                      if (nextStroryMatch && nextStroryMatch[1]) {
+                        finalResponse = nextStroryMatch[1]
+                          .replace(/\\n/g, '\n')
+                          .replace(/\\"/g, '"')
+                          .replace(/\\'/g, "'")
+                          .replace(/&lt;/g, '<')
+                          .replace(/&gt;/g, '>');
+                      } else {
+                        const parsed = JSON.parse(cleanedText);
+                        if (parsed.nextStrory) {
+                          finalResponse = parsed.nextStrory
+                            .replace(/\\n/g, '\n')
+                            .replace(/\\"/g, '"')
+                            .replace(/\\'/g, "'")
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>');
+                        }
+                      }
+                    }
+                  } catch (parseError) {
+                    // Use raw text if parsing fails
+                  }
+                  
+                  // Save the final message
+                  const aiMsg = await saveMessage("assistant", finalResponse, "AI");
+                  if (aiMsg) {
+                    setMessages(prev => [...prev, aiMsg]);
+                  }
+                  setStreamingContent("");
+                  setLastError(null);
+                }
+              } catch (parseErr) {
+                // Skip malformed JSON
+              }
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to get AI response:", error);
       setLastError("AI 서버에 연결할 수 없습니다.");
     } finally {
       setIsGenerating(false);
+      setStreamingContent("");
     }
   };
 
@@ -667,6 +749,28 @@ export default function PlayStory() {
                      </div>
                   )
                  })
+               )}
+               
+               {/* Streaming AI Response */}
+               {isGenerating && streamingContent && (
+                 <div className="group">
+                   <div className="flex gap-4">
+                     <div className="flex-1 space-y-2">
+                       <div className="text-sm leading-loose max-w-none break-words">
+                         {renderAIContent(streamingContent)}
+                         <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               )}
+               
+               {/* Loading indicator when streaming hasn't started yet */}
+               {isGenerating && !streamingContent && (
+                 <div className="flex items-center gap-3 text-muted-foreground">
+                   <Loader2 className="w-5 h-5 animate-spin" />
+                   <span className="text-sm">AI가 응답을 생성하고 있습니다...</span>
+                 </div>
                )}
                
                {/* Error Message with Retry Button */}
