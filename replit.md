@@ -85,12 +85,19 @@ The application uses four main tables:
 
 **AI Service Integrations:**
 The application supports multiple AI language model providers through API keys stored in the settings table:
-- Google Gemini (gemini-3.0-pro, 1.5-pro, 1.5-flash)
+- Google Gemini (gemini-3.0-pro, gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash)
 - OpenAI GPT-4o
 - Anthropic Claude 3.5 Sonnet
 - Grok (xAI)
 
-**Note:** API integration code for calling these services is not present in the repository snapshot but would need to be implemented in the backend routes.
+**AI API Implementation:**
+- **Streaming Responses:** Real-time text streaming using Server-Sent Events (SSE)
+  - Endpoint: `/api/ai/chat/stream` - Streams AI responses in real-time
+  - All 4 providers (Gemini, ChatGPT, Claude, Grok) support streaming
+  - Frontend displays text progressively as it's generated with animated cursor
+- **Non-streaming Fallback:** `/api/ai/chat` endpoint for standard request/response
+- **Gemini Thinking Mode:** Gemini 2.5 Pro and 3 Pro require thinking mode enabled; Flash models can disable it for faster responses
+- **JSON Response Parsing:** AI responses in `{"nextStrory": "..."}` format are automatically parsed
 
 **Database:**
 - SQLite (better-sqlite3) for local storage

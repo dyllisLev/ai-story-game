@@ -518,43 +518,52 @@ export default function PlayStory() {
                   setStreamingContent(fullText);
                 }
                 
-                if (data.done && data.fullText) {
-                  // Parse JSON response if needed
-                  let finalResponse = data.fullText;
-                  try {
-                    let cleanedText = data.fullText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-                    if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
-                      const nextStroryMatch = cleanedText.match(/"nextStrory"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-                      if (nextStroryMatch && nextStroryMatch[1]) {
-                        finalResponse = nextStroryMatch[1]
-                          .replace(/\\n/g, '\n')
-                          .replace(/\\"/g, '"')
-                          .replace(/\\'/g, "'")
-                          .replace(/&lt;/g, '<')
-                          .replace(/&gt;/g, '>');
-                      } else {
-                        const parsed = JSON.parse(cleanedText);
-                        if (parsed.nextStrory) {
-                          finalResponse = parsed.nextStrory
+                if (data.done) {
+                  // Use fullText from server or accumulated content
+                  const textToSave = data.fullText || fullText;
+                  
+                  if (textToSave) {
+                    // Parse JSON response if needed
+                    let finalResponse = textToSave;
+                    try {
+                      let cleanedText = textToSave.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                      if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
+                        const nextStroryMatch = cleanedText.match(/"nextStrory"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                        if (nextStroryMatch && nextStroryMatch[1]) {
+                          finalResponse = nextStroryMatch[1]
                             .replace(/\\n/g, '\n')
                             .replace(/\\"/g, '"')
                             .replace(/\\'/g, "'")
                             .replace(/&lt;/g, '<')
                             .replace(/&gt;/g, '>');
+                        } else {
+                          const parsed = JSON.parse(cleanedText);
+                          if (parsed.nextStrory) {
+                            finalResponse = parsed.nextStrory
+                              .replace(/\\n/g, '\n')
+                              .replace(/\\"/g, '"')
+                              .replace(/\\'/g, "'")
+                              .replace(/&lt;/g, '<')
+                              .replace(/&gt;/g, '>');
+                          }
                         }
                       }
+                    } catch (parseError) {
+                      // Use raw text if parsing fails
                     }
-                  } catch (parseError) {
-                    // Use raw text if parsing fails
+                    
+                    // Save the final message
+                    const aiMsg = await saveMessage("assistant", finalResponse, "AI");
+                    if (aiMsg) {
+                      setMessages(prev => [...prev, aiMsg]);
+                    }
+                    setLastError(null);
                   }
                   
-                  // Save the final message
-                  const aiMsg = await saveMessage("assistant", finalResponse, "AI");
-                  if (aiMsg) {
-                    setMessages(prev => [...prev, aiMsg]);
-                  }
+                  // Always clear streaming content when done
                   setStreamingContent("");
-                  setLastError(null);
+                  setIsGenerating(false);
+                  return;
                 }
               } catch (parseErr) {
                 // Skip malformed JSON

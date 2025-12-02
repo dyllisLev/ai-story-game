@@ -1398,9 +1398,80 @@ nextStrory 구성:
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
         res.end();
 
+      } else if (selectedProvider === "grok") {
+        const response = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...conversationHistory
+            ],
+            temperature: 0.9,
+            max_tokens: 8192,
+            stream: true
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || "Streaming failed" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          res.write(`data: ${JSON.stringify({ error: "Failed to get stream reader" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let buffer = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr && jsonStr !== '[DONE]') {
+                  try {
+                    const data = JSON.parse(jsonStr);
+                    const text = data.choices?.[0]?.delta?.content || "";
+                    if (text) {
+                      fullText += text;
+                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                    }
+                  } catch (parseErr) {
+                    // Skip malformed JSON
+                  }
+                }
+              }
+            }
+          }
+        } catch (streamErr) {
+          console.error("Stream reading error:", streamErr);
+        }
+
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        res.end();
+
       } else {
-        // Fallback for unsupported providers (grok etc) - use non-streaming
-        res.write(`data: ${JSON.stringify({ error: "이 프로바이더는 스트리밍을 지원하지 않습니다." })}\n\n`);
+        // Fallback for unknown providers
+        res.write(`data: ${JSON.stringify({ error: "지원하지 않는 AI 프로바이더입니다." })}\n\n`);
         res.end();
       }
 
