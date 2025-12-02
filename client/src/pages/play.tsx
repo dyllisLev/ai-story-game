@@ -108,12 +108,6 @@ export default function PlayStory() {
              </ScrollArea>
           </div>
           
-          <div className="p-4 border-t text-xs text-muted-foreground flex justify-between items-center">
-             <span>나의 크래커</span>
-             <span className="font-bold text-amber-500 flex items-center gap-1">
-               <div className="w-2 h-2 bg-amber-500 rounded-full" /> 124,481
-             </span>
-          </div>
         </div>
       )}
 
