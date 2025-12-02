@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 
 interface ApiKeys {
   chatgpt: string;
@@ -29,19 +29,45 @@ export default function Settings() {
   });
   const [commonPrompt, setCommonPrompt] = useState("");
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Load settings from localStorage
-    const savedApiKeys: ApiKeys = {
-      chatgpt: localStorage.getItem("apiKey_chatgpt") || "",
-      grok: localStorage.getItem("apiKey_grok") || "",
-      claude: localStorage.getItem("apiKey_claude") || "",
-      gemini: localStorage.getItem("apiKey_gemini") || "",
-    };
-    const savedPrompt = localStorage.getItem("commonPrompt") || "";
-    setApiKeys(savedApiKeys);
-    setCommonPrompt(savedPrompt);
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch("/api/settings");
+      const settings = await response.json();
+      
+      const loadedKeys: ApiKeys = {
+        chatgpt: "",
+        grok: "",
+        claude: "",
+        gemini: "",
+      };
+      let loadedPrompt = "";
+      
+      for (const setting of settings) {
+        if (setting.key.startsWith("apiKey_")) {
+          const provider = setting.key.replace("apiKey_", "") as keyof ApiKeys;
+          if (provider in loadedKeys) {
+            loadedKeys[provider] = setting.value;
+          }
+        } else if (setting.key === "commonPrompt") {
+          loadedPrompt = setting.value;
+        }
+      }
+      
+      setApiKeys(loadedKeys);
+      setCommonPrompt(loadedPrompt);
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleApiKeyChange = (provider: keyof ApiKeys, value: string) => {
     setApiKeys((prev) => ({
@@ -50,14 +76,39 @@ export default function Settings() {
     }));
   };
 
-  const handleSave = () => {
-    Object.entries(apiKeys).forEach(([provider, key]) => {
-      localStorage.setItem(`apiKey_${provider}`, key);
-    });
-    localStorage.setItem("commonPrompt", commonPrompt);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const settingsData = [
+        ...Object.entries(apiKeys).map(([provider, key]) => ({
+          key: `apiKey_${provider}`,
+          value: key,
+        })),
+        { key: "commonPrompt", value: commonPrompt },
+      ];
+
+      await fetch("/api/settings/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: settingsData }),
+      });
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,7 +158,7 @@ export default function Settings() {
             </div>
             
             <p className="text-xs text-muted-foreground">
-              💡 API 키는 로컬 스토리지에만 저장되며, 서버로 전송되지 않습니다.
+              🔒 API 키는 서버의 SQLite 데이터베이스에 안전하게 저장됩니다.
             </p>
           </div>
 
@@ -146,10 +197,15 @@ export default function Settings() {
             </Link>
             <Button 
               onClick={handleSave}
+              disabled={saving}
               className="bg-primary hover:bg-primary/90 text-white gap-2"
               data-testid="button-save-settings"
             >
-              <Save className="w-4 h-4" />
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               저장
             </Button>
           </div>

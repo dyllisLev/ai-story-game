@@ -1,50 +1,125 @@
-import { useState, useEffect } from "react";
-import { useRoute, Link } from "wouter";
+import { useState, useEffect, useCallback } from "react";
+import { useRoute, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { 
   Menu, 
-  Send, 
   MoreHorizontal, 
   Settings, 
   Users, 
   BookOpen, 
-  Keyboard, 
   Volume2,
-  Image as ImageIcon,
   History,
   ChevronRight,
   Share2,
   CornerDownLeft,
-  Paperclip,
-  Home
+  Home,
+  Loader2
 } from "lucide-react";
 import { ModelSelector } from "@/components/model-selector";
-import { MOCK_CHAT_HISTORY, MOCK_STORIES } from "@/lib/mockData";
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
+interface Story {
+  id: number;
+  title: string;
+  description: string | null;
+  image: string | null;
+  genre: string | null;
+  author: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+interface Message {
+  id: number;
+  storyId: number;
+  role: string;
+  content: string;
+  character?: string | null;
+  createdAt?: string | null;
+}
+
 export default function PlayStory() {
   const [match, params] = useRoute("/play/:id");
-  const storyId = params?.id;
-  const story = MOCK_STORIES.find(s => s.id === storyId) || MOCK_STORIES[0];
+  const [, setLocation] = useLocation();
+  const storyId = params?.id ? parseInt(params.id) : null;
   
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(!isMobile);
-  const [messages, setMessages] = useState(MOCK_CHAT_HISTORY);
+  const [story, setStory] = useState<Story | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [storyLoading, setStoryLoading] = useState(true);
+  const [allStories, setAllStories] = useState<Story[]>([]);
 
-  // 스토리 저장 함수
-  const saveStory = (msgs: typeof MOCK_CHAT_HISTORY) => {
-    if (storyId) {
-      localStorage.setItem(`story_${storyId}`, JSON.stringify(msgs));
+  const loadStory = useCallback(async () => {
+    if (!storyId) {
+      setStoryLoading(false);
+      return;
     }
+    try {
+      const response = await fetch(`/api/stories/${storyId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStory(data);
+      } else {
+        setLocation("/");
+      }
+    } catch (error) {
+      console.error("Failed to load story:", error);
+      setLocation("/");
+    } finally {
+      setStoryLoading(false);
+    }
+  }, [storyId, setLocation]);
+
+  const loadAllStories = useCallback(async () => {
+    try {
+      const response = await fetch("/api/stories");
+      if (response.ok) {
+        setAllStories(await response.json());
+      }
+    } catch (error) {
+      console.error("Failed to load stories:", error);
+    }
+  }, []);
+
+  const loadMessages = useCallback(async () => {
+    if (!storyId) return;
+    try {
+      const response = await fetch(`/api/stories/${storyId}/messages`);
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data);
+      }
+    } catch (error) {
+      console.error("Failed to load messages:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [storyId]);
+
+  const saveMessage = async (role: string, content: string, character?: string) => {
+    if (!storyId) return null;
+    try {
+      const response = await fetch(`/api/stories/${storyId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, content, character }),
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error("Failed to save message:", error);
+    }
+    return null;
   };
 
   useEffect(() => {
@@ -57,32 +132,22 @@ export default function PlayStory() {
     }
   }, [isMobile]);
 
-  // 스토리 로드 - 저장된 내용이 있으면 복구
   useEffect(() => {
-    if (storyId) {
-      const saved = localStorage.getItem(`story_${storyId}`);
-      if (saved) {
-        try {
-          setMessages(JSON.parse(saved));
-        } catch (e) {
-          console.error("Failed to load story:", e);
-        }
-      }
-    }
-  }, [storyId]);
+    loadStory();
+    loadAllStories();
+  }, [loadStory, loadAllStories]);
 
-  // messages 변경 시 저장
   useEffect(() => {
-    saveStory(messages);
-  }, [messages, storyId]);
+    if (story) {
+      loadMessages();
+    }
+  }, [story, loadMessages]);
 
   const formatContent = (content: string) => {
-    // Remove timestamp header and comments
     let processed = content
-      .replace(/^\[\/\/\]: #.*?\n/g, '') // Remove comments
-      .replace(/^\[.*?\]\n?/g, '');      // Remove timestamp
+      .replace(/^\[\/\/\]: #.*?\n/g, '')
+      .replace(/^\[.*?\]\n?/g, '');
 
-    // Transform Dialogue: Name | "Text" -> > **Name** "Text"
     processed = processed.replace(/^(.+?) \| "(.*?)"$/gm, '> **$1**\n\n> "$2"');
 
     return processed.split('\n\n').map(part => part.replace(/\n/g, '  \n')).join('\n\n');
@@ -121,32 +186,45 @@ export default function PlayStory() {
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
     
-    const newMessage = {
-      id: messages.length + 1,
-      role: "user",
-      content: inputValue,
-    };
-    
-    setMessages([...messages, newMessage]);
+    const userMsg = await saveMessage("user", inputValue);
+    if (userMsg) {
+      setMessages(prev => [...prev, userMsg]);
+    }
     setInputValue("");
     
-    // Simulate AI response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: prev.length + 1,
-        role: "assistant",
-        character: "AI",
-        content: "*잠시 침묵하던 AI가 당신을 바라보며 입을 엽니다.* \"흥미로운 제안이군요. 하지만 그 대가는 준비되어 있습니까?\""
-      }]);
+    setTimeout(async () => {
+      const aiContent = "*잠시 침묵하던 AI가 당신을 바라보며 입을 엽니다.* \"흥미로운 제안이군요. 하지만 그 대가는 준비되어 있습니까?\"";
+      const aiMsg = await saveMessage("assistant", aiContent, "AI");
+      if (aiMsg) {
+        setMessages(prev => [...prev, aiMsg]);
+      }
     }, 1000);
   };
 
+  if (storyLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!story) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background flex-col gap-4">
+        <p className="text-muted-foreground">스토리를 찾을 수 없습니다.</p>
+        <Link href="/">
+          <Button>홈으로 돌아가기</Button>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-background overflow-hidden relative">
-      {/* Mobile Backdrop for Left Sidebar */}
       {isMobile && sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200"
@@ -154,7 +232,6 @@ export default function PlayStory() {
         />
       )}
 
-      {/* Left Sidebar - Episodes & Chat Rooms */}
       {sidebarOpen && (
         <div className={cn(
           "bg-sidebar flex flex-col flex-shrink-0 border-r transition-all duration-300 ease-in-out",
@@ -169,37 +246,32 @@ export default function PlayStory() {
           
           <div className="flex-1 overflow-hidden flex flex-col">
              <div className="flex gap-4 px-4 py-2 border-b text-sm font-medium text-muted-foreground">
-               <span className="text-foreground border-b-2 border-primary pb-2">에피소드</span>
+               <span className="text-foreground border-b-2 border-primary pb-2">스토리 목록</span>
              </div>
              
              <ScrollArea className="flex-1">
                <div className="p-2 space-y-1">
-                  <div className="flex items-center gap-3 p-3 bg-sidebar-accent rounded-lg cursor-pointer">
-                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
-                        <img src={story.image} className="w-full h-full object-cover" />
-                     </div>
-                     <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                           <span className="font-medium text-sm truncate">국가의 시대</span>
-                           <span className="text-[10px] text-muted-foreground">방금</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">삼태창: 인구수 847개...</p>
-                     </div>
-                  </div>
-                  
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 hover:bg-sidebar-accent/50 rounded-lg cursor-pointer transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                           CH.{i}
+                  {allStories.map((s) => (
+                    <Link key={s.id} href={`/play/${s.id}`}>
+                      <div className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
+                        s.id === story.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
+                      )}>
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
+                          {s.image ? (
+                            <img src={s.image} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{s.title.charAt(0)}</span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
-                           <div className="flex justify-between items-baseline">
-                              <span className="font-medium text-sm truncate">무림영웅전 {i}</span>
-                              <span className="text-[10px] text-muted-foreground">어제</span>
-                           </div>
-                           <p className="text-xs text-muted-foreground truncate">천하제일검이 되기 위해...</p>
+                          <div className="flex justify-between items-baseline">
+                            <span className="font-medium text-sm truncate">{s.title}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{s.genre || "일반"}</p>
                         </div>
-                     </div>
+                      </div>
+                    </Link>
                   ))}
                </div>
              </ScrollArea>
@@ -208,9 +280,7 @@ export default function PlayStory() {
         </div>
       )}
 
-      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-neutral-900 relative">
-         {/* Header */}
          <header className="h-14 border-b flex items-center justify-between px-4 bg-background/80 backdrop-blur z-10">
             <div className="flex items-center gap-3">
                {!sidebarOpen && (
@@ -233,11 +303,18 @@ export default function PlayStory() {
             </div>
          </header>
 
-
-         {/* Chat Messages */}
          <ScrollArea className="flex-1 h-full">
             <div className="max-w-3xl mx-auto space-y-8 px-4 py-6 w-full">
-               {messages.map((msg, index) => {
+               {loading ? (
+                 <div className="flex items-center justify-center py-12">
+                   <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                 </div>
+               ) : messages.length === 0 ? (
+                 <div className="text-center py-12 text-muted-foreground">
+                   <p>아직 대화가 없습니다. 메시지를 입력하여 스토리를 시작하세요!</p>
+                 </div>
+               ) : (
+                 messages.map((msg, index) => {
                   if (msg.role === "assistant") {
                      return (
                         <div key={msg.id} className="group">
@@ -252,7 +329,6 @@ export default function PlayStory() {
                                   </div>
                                </div>
                             </div>
-                            {/* Separator */}
                             {index < messages.length - 1 && (
                                 <div className="w-full h-px bg-border/50 mt-8" />
                             )}
@@ -270,17 +346,16 @@ export default function PlayStory() {
                                 <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"><Settings className="w-3 h-3" /></Button>
                             </div>
                         </div>
-                        {/* Separator */}
                         {index < messages.length - 1 && (
                             <div className="w-full h-px bg-border/50 mt-8" />
                         )}
                      </div>
                   )
-               })}
+                 })
+               )}
             </div>
          </ScrollArea>
 
-         {/* Input Area */}
          <div className="p-4 bg-background border-t">
             <div className="max-w-3xl mx-auto relative">
                <Textarea 
@@ -306,7 +381,6 @@ export default function PlayStory() {
          </div>
       </div>
 
-      {/* Mobile Backdrop for Right Sidebar */}
       {isMobile && rightSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200"
@@ -314,7 +388,6 @@ export default function PlayStory() {
         />
       )}
 
-      {/* Right Sidebar - Settings */}
       {rightSidebarOpen && (
          <div className={cn(
             "bg-background border-l flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out",
@@ -335,7 +408,6 @@ export default function PlayStory() {
 
                   <Separator />
 
-                  {/* Menu Items */}
                   <div className="space-y-1">
                      <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
                         <BookOpen className="w-4 h-4 text-muted-foreground" /> 플레이 가이드
@@ -350,8 +422,6 @@ export default function PlayStory() {
                         <History className="w-4 h-4 text-muted-foreground" /> 요약 메모리 <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded ml-auto">N</span>
                      </Button>
                   </div>
-
-
                </div>
             </ScrollArea>
          </div>
