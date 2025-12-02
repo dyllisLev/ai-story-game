@@ -181,8 +181,8 @@ export default function PlayStory() {
 
 
          {/* Chat Messages */}
-         <ScrollArea className="relative overflow-hidden flex-1 px-4 py-6 pl-[18px] pr-[18px]">
-            <div className="max-w-3xl mx-auto space-y-8">
+         <ScrollArea className="flex-1 relative overflow-hidden">
+            <div className="max-w-3xl mx-auto space-y-8 px-4 py-6 pl-[18px] pr-[18px]">
                {messages.map((msg, index) => {
                   if (msg.type === "context") {
                      return (
