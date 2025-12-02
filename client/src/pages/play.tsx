@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { ModelSelector } from "@/components/model-selector";
 import { MOCK_CHAT_HISTORY, MOCK_STORIES } from "@/lib/mockData";
+import ReactMarkdown from 'react-markdown';
 
 export default function PlayStory() {
   const [match, params] = useRoute("/play/:id");
@@ -147,49 +148,67 @@ export default function PlayStory() {
          {/* Chat Messages */}
          <ScrollArea className="flex-1 px-4 py-6">
             <div className="max-w-3xl mx-auto space-y-8">
-               {messages.map((msg) => {
+               {messages.map((msg, index) => {
                   if (msg.type === "context") {
                      return (
-                        <div key={msg.id} className="bg-muted/20 rounded-lg p-6 border border-muted/50 text-sm space-y-4">
-                           <h3 className="font-bold text-base border-b pb-2 mb-2">초차원 존재의 정체</h3>
-                           <div className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
-                              {msg.content}
+                        <div key={msg.id} className="space-y-4">
+                           <div className="bg-muted/20 rounded-lg p-6 border border-muted/50 text-sm space-y-4">
+                               <h3 className="font-bold text-base border-b pb-2 mb-2">초차원 존재의 정체</h3>
+                               <div className="leading-relaxed text-muted-foreground prose prose-sm max-w-none dark:prose-invert">
+                                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                               </div>
                            </div>
+                           {/* Separator */}
+                           {index < messages.length - 1 && (
+                             <div className="w-full h-px bg-border/50 mt-8" />
+                           )}
                         </div>
                      )
                   }
 
                   if (msg.role === "assistant") {
                      return (
-                        <div key={msg.id} className="flex gap-4 group">
-                           <div className="w-10 h-10 rounded-full bg-primary/10 flex-shrink-0 overflow-hidden border">
-                              <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${msg.id}`} alt="AI" className="w-full h-full" />
-                           </div>
-                           <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-2">
-                                 <span className="font-bold text-sm">{msg.character}</span>
-                                 <span className="text-[10px] text-muted-foreground border px-1 rounded">AI</span>
-                              </div>
-                              <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                                 {msg.content}
-                              </div>
-                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
-                                 <Button variant="ghost" size="icon" className="h-6 w-6"><Share2 className="w-3 h-3" /></Button>
-                              </div>
-                           </div>
+                        <div key={msg.id} className="group">
+                            <div className="flex gap-4">
+                               <div className="w-10 h-10 rounded-full bg-primary/10 flex-shrink-0 overflow-hidden border">
+                                  <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${msg.id}`} alt="AI" className="w-full h-full" />
+                               </div>
+                               <div className="flex-1 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                     <span className="font-bold text-sm">{msg.character}</span>
+                                     <span className="text-[10px] text-muted-foreground border px-1 rounded">AI</span>
+                                  </div>
+                                  <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert">
+                                     <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                  </div>
+                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
+                                     <Button variant="ghost" size="icon" className="h-6 w-6"><Share2 className="w-3 h-3" /></Button>
+                                  </div>
+                               </div>
+                            </div>
+                            {/* Separator */}
+                            {index < messages.length - 1 && (
+                                <div className="w-full h-px bg-border/50 mt-8" />
+                            )}
                         </div>
                      )
                   }
 
                   return (
-                     <div key={msg.id} className="flex flex-col items-end gap-2 group">
-                        <div className="bg-primary/5 border border-primary/10 rounded-2xl rounded-tr-none px-5 py-3 max-w-[80%] text-sm">
-                           {msg.content}
+                     <div key={msg.id} className="group">
+                        <div className="flex flex-col items-end gap-2">
+                            <div className="max-w-[90%] text-sm prose prose-sm max-w-none dark:prose-invert text-right">
+                               <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"><Settings className="w-3 h-3" /></Button>
+                            </div>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"><Settings className="w-3 h-3" /></Button>
-                        </div>
+                        {/* Separator */}
+                        {index < messages.length - 1 && (
+                            <div className="w-full h-px bg-border/50 mt-8" />
+                        )}
                      </div>
                   )
                })}
