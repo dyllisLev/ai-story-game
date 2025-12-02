@@ -968,7 +968,26 @@ AI: {exampleAiResponse}
         generatedText = data.choices?.[0]?.message?.content || "";
       }
 
-      res.json({ response: generatedText, provider: selectedProvider, model: selectedModel });
+      // Try to parse JSON response if it looks like JSON
+      let finalResponse = generatedText;
+      try {
+        // Remove markdown code blocks if present
+        const cleanedText = generatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Try to parse as JSON
+        if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
+          const parsed = JSON.parse(cleanedText);
+          if (parsed.nextStrory) {
+            finalResponse = parsed.nextStrory;
+            console.log("Parsed JSON response, extracted nextStrory");
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use the original text
+        console.log("Response is not JSON, using raw text");
+      }
+
+      res.json({ response: finalResponse, provider: selectedProvider, model: selectedModel });
     } catch (error: any) {
       console.error("AI chat error:", error);
       res.status(500).json({ error: error.message || "Failed to generate AI response" });

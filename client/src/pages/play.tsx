@@ -39,6 +39,82 @@ import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
+// Parse and style special AI response tags
+function parseAIResponse(content: string) {
+  const parts: Array<{ type: 'narration' | 'dialogue' | 'summary' | 'text', content: string, character?: string }> = [];
+  
+  // Split by tags
+  const narrationRegex = /<Narration>([\s\S]*?)<\/Narration>/gi;
+  const dialogueRegex = /<Character\s+Dialogue>([\s\S]*?)<\/Character\s+Dialogue>/gi;
+  const summaryRegex = /<Summary>([\s\S]*?)<\/Summary>/gi;
+  
+  let lastIndex = 0;
+  const matches: Array<{ type: string, start: number, end: number, content: string, character?: string }> = [];
+  
+  // Find all matches
+  let match;
+  while ((match = narrationRegex.exec(content)) !== null) {
+    matches.push({ type: 'narration', start: match.index, end: narrationRegex.lastIndex, content: match[1].trim() });
+  }
+  
+  while ((match = dialogueRegex.exec(content)) !== null) {
+    const dialogueContent = match[1].trim();
+    // Extract character name if present (format: "CharacterName | dialogue")
+    const charMatch = dialogueContent.match(/^([^|]+)\s*\|\s*([\s\S]+)$/);
+    if (charMatch) {
+      matches.push({ 
+        type: 'dialogue', 
+        start: match.index, 
+        end: dialogueRegex.lastIndex, 
+        content: charMatch[2].trim(),
+        character: charMatch[1].trim()
+      });
+    } else {
+      matches.push({ type: 'dialogue', start: match.index, end: dialogueRegex.lastIndex, content: dialogueContent });
+    }
+  }
+  
+  while ((match = summaryRegex.exec(content)) !== null) {
+    matches.push({ type: 'summary', start: match.index, end: summaryRegex.lastIndex, content: match[1].trim() });
+  }
+  
+  // Sort by position
+  matches.sort((a, b) => a.start - b.start);
+  
+  // Build parts array
+  matches.forEach((m, i) => {
+    // Add text before this match
+    if (m.start > lastIndex) {
+      const textBefore = content.substring(lastIndex, m.start).trim();
+      if (textBefore) {
+        parts.push({ type: 'text', content: textBefore });
+      }
+    }
+    
+    parts.push({ 
+      type: m.type as any, 
+      content: m.content,
+      character: m.character
+    });
+    lastIndex = m.end;
+  });
+  
+  // Add remaining text
+  if (lastIndex < content.length) {
+    const remaining = content.substring(lastIndex).trim();
+    if (remaining) {
+      parts.push({ type: 'text', content: remaining });
+    }
+  }
+  
+  // If no special tags found, return the whole content as text
+  if (parts.length === 0) {
+    parts.push({ type: 'text', content });
+  }
+  
+  return parts;
+}
+
 interface Story {
   id: number;
   title: string;
@@ -223,14 +299,75 @@ export default function PlayStory() {
   }, [session, loadMessages]);
 
 
-  const formatContent = (content: string) => {
-    let processed = content
-      .replace(/^\[\/\/\]: #.*?\n/g, '')
-      .replace(/^\[.*?\]\n?/g, '');
-
-    processed = processed.replace(/^(.+?) \| "(.*?)"$/gm, '> **$1**\n\n> "$2"');
-
-    return processed.split('\n\n').map(part => part.replace(/\n/g, '  \n')).join('\n\n');
+  // Render AI response with special styling
+  const renderAIContent = (content: string) => {
+    const parts = parseAIResponse(content);
+    
+    return parts.map((part, index) => {
+      switch (part.type) {
+        case 'narration':
+          return (
+            <div key={index} className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border-l-4 border-amber-400 rounded-r-lg">
+              <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2 uppercase tracking-wide">
+                🎭 서술
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed text-amber-900 dark:text-amber-100">
+                <ReactMarkdown>
+                  {part.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          );
+          
+        case 'dialogue':
+          return (
+            <div key={index} className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/20 border-l-4 border-blue-400 rounded-r-lg">
+              {part.character && (
+                <div className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-[10px]">
+                    {part.character.charAt(0)}
+                  </span>
+                  {part.character}
+                </div>
+              )}
+              {!part.character && (
+                <div className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wide">
+                  💬 대화
+                </div>
+              )}
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed text-blue-900 dark:text-blue-100">
+                <ReactMarkdown>
+                  {part.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          );
+          
+        case 'summary':
+          return (
+            <div key={index} className="mb-4 p-4 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-lg">
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-400 mb-2 uppercase tracking-wide">
+                📋 요약
+              </div>
+              <pre className="text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap overflow-x-auto">
+                {part.content}
+              </pre>
+            </div>
+          );
+          
+        case 'text':
+        default:
+          return (
+            <div key={index} className="mb-4">
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+                <ReactMarkdown>
+                  {part.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          );
+      }
+    });
   };
 
   const markdownComponents = {
@@ -465,8 +602,8 @@ export default function PlayStory() {
                         <div key={msg.id} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2">
-                                  <div className="text-sm leading-loose prose prose-sm max-w-none dark:prose-invert prose-p:mb-4 break-words">
-                                     <ReactMarkdown components={markdownComponents}>{formatContent(msg.content)}</ReactMarkdown>
+                                  <div className="text-sm leading-loose max-w-none break-words">
+                                     {renderAIContent(msg.content)}
                                   </div>
                                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                      <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
@@ -484,11 +621,8 @@ export default function PlayStory() {
                   return (
                      <div key={msg.id} className="group">
                         <div className="flex flex-col items-start gap-2">
-                            <div className="max-w-[90%] text-sm leading-loose prose prose-sm max-w-none dark:prose-invert text-left prose-p:mb-4 break-words">
-                               <ReactMarkdown components={markdownComponents}>{formatContent(msg.content)}</ReactMarkdown>
-                            </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"><Settings className="w-3 h-3" /></Button>
+                            <div className="max-w-[90%] bg-primary/10 rounded-lg p-3 text-sm whitespace-pre-wrap break-words">
+                               {msg.content}
                             </div>
                         </div>
                         {index < messages.length - 1 && (
