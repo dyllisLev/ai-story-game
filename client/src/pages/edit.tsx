@@ -247,6 +247,7 @@ export default function EditStory() {
                           {isUploading ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Upload className="w-3 h-3 mr-2" />}
                           업로드
                         </Button>
+                        <Button variant="outline" size="sm"><Wand2 className="w-3 h-3 mr-2" /> 생성</Button>
                       </div>
                     </div>
                   </div>
@@ -302,6 +303,9 @@ export default function EditStory() {
                  <h2 className="text-lg font-bold flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-primary" /> 스토리 설정
                 </h2>
+                <Button variant="outline" size="sm" className="text-primary border-primary/20 hover:bg-primary/5">
+                  <Wand2 className="w-4 h-4 mr-2" /> 자동 생성
+                </Button>
               </div>
 
               <Card>
@@ -340,6 +344,7 @@ export default function EditStory() {
                     <CardContent className="p-6 space-y-4">
                       <div className="flex justify-between items-center mb-2">
                         <Label>전개 예시</Label>
+                        <Button variant="ghost" size="sm" className="h-8"><Plus className="w-3 h-3 mr-1" /> 예시 추가</Button>
                       </div>
                       <div className="bg-muted/50 p-4 rounded-lg border border-dashed space-y-3">
                          <div className="space-y-1">

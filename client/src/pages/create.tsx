@@ -165,9 +165,6 @@ export default function CreateStory() {
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   <User className="w-5 h-5 text-primary" /> 프로필 설정
                 </h2>
-                <Button variant="outline" size="sm" className="text-primary border-primary/20 hover:bg-primary/5">
-                  <Wand2 className="w-4 h-4 mr-2" /> 랜덤 생성
-                </Button>
               </div>
               
               <Card>
