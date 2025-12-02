@@ -50,9 +50,15 @@ export default function PlayStory() {
   }, [isMobile]);
 
   const formatContent = (content: string) => {
-    // Remove timestamp header (text in square brackets at the start)
-    const withoutTimestamp = content.replace(/^\[.*?\]\n?/, '');
-    return withoutTimestamp.split('\n\n').map(part => part.replace(/\n/g, '  \n')).join('\n\n');
+    // Remove timestamp header and comments
+    let processed = content
+      .replace(/^\[\/\/\]: #.*?\n/g, '') // Remove comments
+      .replace(/^\[.*?\]\n?/g, '');      // Remove timestamp
+
+    // Transform Dialogue: Name | "Text" -> > **Name** "Text"
+    processed = processed.replace(/^(.+?) \| "(.*?)"$/gm, '> **$1**\n\n> "$2"');
+
+    return processed.split('\n\n').map(part => part.replace(/\n/g, '  \n')).join('\n\n');
   };
 
   const markdownComponents = {
@@ -70,6 +76,20 @@ export default function PlayStory() {
             {children}
           </code>
         </div>
+      );
+    },
+    blockquote({ node, children, ...props }: any) {
+      return (
+        <div className="border-l-2 border-primary pl-4 py-2 my-4 bg-muted/30 rounded-r-md" {...props}>
+          {children}
+        </div>
+      );
+    },
+    em({ node, children, ...props }: any) {
+      return (
+        <span className="text-muted-foreground not-italic" {...props}>
+          {children}
+        </span>
       );
     }
   };
