@@ -609,6 +609,196 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== AI CHAT API ====================
+
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { storyId, userMessage, provider: requestedProvider } = req.body;
+      
+      // Get story data
+      const story = await storage.getStory(storyId);
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      // Get conversation history
+      const messages = await storage.getMessagesByStory(storyId);
+      
+      // Try to find an available provider with API key
+      const providers = ["gemini", "chatgpt", "claude", "grok"];
+      let selectedProvider = requestedProvider;
+      let apiKey = "";
+      
+      if (requestedProvider && requestedProvider !== "auto") {
+        const apiKeySetting = await storage.getSetting(`apiKey_${requestedProvider}`);
+        if (!apiKeySetting || !apiKeySetting.value) {
+          return res.status(400).json({ error: `API key for ${requestedProvider} not configured.` });
+        }
+        apiKey = apiKeySetting.value;
+        selectedProvider = requestedProvider;
+      } else {
+        for (const p of providers) {
+          const apiKeySetting = await storage.getSetting(`apiKey_${p}`);
+          if (apiKeySetting && apiKeySetting.value) {
+            apiKey = apiKeySetting.value;
+            selectedProvider = p;
+            break;
+          }
+        }
+        
+        if (!apiKey) {
+          return res.status(400).json({ error: "No AI API key configured." });
+        }
+      }
+      
+      // Build system prompt from story settings
+      const commonPromptSetting = await storage.getSetting("commonPrompt");
+      let systemPrompt = commonPromptSetting?.value || "";
+      
+      // Add story context
+      systemPrompt += `\n\n## 스토리 정보
+제목: ${story.title}
+장르: ${story.genre || "일반"}
+${story.description ? `소개: ${story.description}` : ""}
+
+## 스토리 설정
+${story.storySettings || "기본 판타지 세계관"}
+
+## 시작 상황
+${story.startingSituation || "사용자가 모험을 시작합니다."}
+
+## 프롬프트 템플릿
+${story.promptTemplate || "기본 프롬프트"}
+`;
+
+      // Add example dialogue if exists
+      if (story.exampleUserInput && story.exampleAiResponse) {
+        systemPrompt += `\n## 대화 예시
+사용자: ${story.exampleUserInput}
+AI: ${story.exampleAiResponse}
+`;
+      }
+
+      systemPrompt += `\n\n당신은 위 스토리 세계관의 등장인물로서 사용자와 상호작용합니다. 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`;
+
+      // Get selected model
+      const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
+      const defaultModels: Record<string, string> = {
+        gemini: "gemini-2.0-flash",
+        chatgpt: "gpt-4o",
+        claude: "claude-3-5-sonnet-20241022",
+        grok: "grok-beta"
+      };
+      const selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+
+      let generatedText = "";
+
+      // Build conversation history for API
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role === "assistant" ? "assistant" : "user",
+        content: msg.content
+      }));
+      conversationHistory.push({ role: "user", content: userMessage });
+
+      if (selectedProvider === "gemini") {
+        const geminiContents = [
+          { role: "user", parts: [{ text: systemPrompt }] },
+          { role: "model", parts: [{ text: "알겠습니다. 해당 스토리 세계관에 맞게 응답하겠습니다." }] },
+          ...conversationHistory.map(msg => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }]
+          }))
+        ];
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: geminiContents,
+              generationConfig: { temperature: 0.9, maxOutputTokens: 2048 }
+            })
+          }
+        );
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else if (selectedProvider === "chatgpt") {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...conversationHistory
+            ],
+            temperature: 0.9,
+            max_tokens: 2048
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.choices?.[0]?.message?.content || "";
+      } else if (selectedProvider === "claude") {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: 2048,
+            system: systemPrompt,
+            messages: conversationHistory
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.content?.[0]?.text || "";
+      } else if (selectedProvider === "grok") {
+        const response = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...conversationHistory
+            ],
+            temperature: 0.9,
+            max_tokens: 2048
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.choices?.[0]?.message?.content || "";
+      }
+
+      res.json({ response: generatedText, provider: selectedProvider, model: selectedModel });
+    } catch (error: any) {
+      console.error("AI chat error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate AI response" });
+    }
+  });
+
   // ==================== MESSAGES API ====================
 
   app.get("/api/stories/:storyId/messages", async (req, res) => {
