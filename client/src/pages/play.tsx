@@ -342,8 +342,8 @@ export default function PlayStory() {
       switch (part.type) {
         case 'narration':
           return (
-            <div key={index} className="mb-4">
-              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.8] text-foreground/90">
+            <div key={index} className="mb-6">
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] text-foreground/90">
                 <ReactMarkdown>
                   {part.content}
                 </ReactMarkdown>
@@ -353,15 +353,15 @@ export default function PlayStory() {
           
         case 'dialogue':
           return (
-            <div key={index} className="mb-3 pl-4">
+            <div key={index} className="mb-5 pl-6">
               {part.character ? (
-                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.8]">
+                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.9]">
                   <span className="font-bold text-foreground">{part.character}</span>
                   <span className="text-foreground/90"> | </span>
                   <span className="font-semibold text-foreground">"{part.content}"</span>
                 </p>
               ) : (
-                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.8]">
+                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.9]">
                   <span className="font-semibold text-foreground">"{part.content}"</span>
                 </p>
               )}
@@ -370,8 +370,8 @@ export default function PlayStory() {
           
         case 'summary':
           return (
-            <div key={index} className="mb-4 mt-6 p-3 bg-muted/30 border-l-2 border-muted-foreground/30 rounded-r">
-              <div className="text-xs font-medium text-muted-foreground mb-1.5">상태 정보</div>
+            <div key={index} className="mb-6 mt-8 p-4 bg-muted/30 border-l-2 border-muted-foreground/30 rounded-r">
+              <div className="text-xs font-medium text-muted-foreground mb-2">상태 정보</div>
               <pre className="text-xs font-mono text-muted-foreground/80 whitespace-pre-wrap overflow-x-auto leading-relaxed">
                 {part.content}
               </pre>
@@ -381,8 +381,8 @@ export default function PlayStory() {
         case 'text':
         default:
           return (
-            <div key={index} className="mb-4">
-              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.8] text-foreground/90">
+            <div key={index} className="mb-6">
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] text-foreground/90">
                 <ReactMarkdown>
                   {part.content}
                 </ReactMarkdown>
