@@ -441,6 +441,174 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/ai/generate-prologue", async (req, res) => {
+    try {
+      const { title, description, genre, storySettings, provider: requestedProvider } = req.body;
+      
+      // Try to find an available provider with API key
+      const providers = ["gemini", "chatgpt", "claude", "grok"];
+      let selectedProvider = requestedProvider;
+      let apiKey = "";
+      
+      if (requestedProvider && requestedProvider !== "auto") {
+        const apiKeySetting = await storage.getSetting(`apiKey_${requestedProvider}`);
+        if (!apiKeySetting || !apiKeySetting.value) {
+          return res.status(400).json({ error: `API key for ${requestedProvider} not configured.` });
+        }
+        apiKey = apiKeySetting.value;
+        selectedProvider = requestedProvider;
+      } else {
+        for (const p of providers) {
+          const apiKeySetting = await storage.getSetting(`apiKey_${p}`);
+          if (apiKeySetting && apiKeySetting.value) {
+            apiKey = apiKeySetting.value;
+            selectedProvider = p;
+            break;
+          }
+        }
+        
+        if (!apiKey) {
+          return res.status(400).json({ error: "No AI API key configured." });
+        }
+      }
+      
+      // Get custom prompt template
+      const customPromptSetting = await storage.getSetting("prologueGeneratePrompt");
+      
+      let prompt = customPromptSetting?.value || `다음 정보를 바탕으로 프롤로그와 시작 상황을 작성해주세요.
+
+제목: {title}
+한 줄 소개: {description}
+장르: {genre}
+스토리 설정: {storySettings}
+
+반드시 다음 JSON 형식으로만 응답해주세요 (다른 텍스트 없이):
+{
+  "prologue": "스토리의 시작을 알리는 몰입감 있고 생생한 프롤로그를 한국어로 작성. 200자 이상.",
+  "startingSituation": "사용자의 역할, 등장인물과의 관계, 현재 상황을 한국어로 상세히 설명. 100자 이상."
+}`;
+
+      prompt = prompt
+        .replace(/\{title\}/g, title || "")
+        .replace(/\{description\}/g, description || "")
+        .replace(/\{genre\}/g, genre || "")
+        .replace(/\{storySettings\}/g, storySettings || "");
+
+      // Get selected model
+      const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
+      const defaultModels: Record<string, string> = {
+        gemini: "gemini-2.0-flash",
+        chatgpt: "gpt-4o",
+        claude: "claude-3-5-sonnet-20241022",
+        grok: "grok-beta"
+      };
+      const selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+
+      let generatedText = "";
+
+      if (selectedProvider === "gemini") {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.8, maxOutputTokens: 2048 }
+            })
+          }
+        );
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else if (selectedProvider === "chatgpt") {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.8,
+            max_tokens: 2048
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.choices?.[0]?.message?.content || "";
+      } else if (selectedProvider === "claude") {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: 2048,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.content?.[0]?.text || "";
+      } else if (selectedProvider === "grok") {
+        const response = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.8,
+            max_tokens: 2048
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.choices?.[0]?.message?.content || "";
+      }
+
+      // Parse JSON from response
+      try {
+        // Extract JSON from the response (handle markdown code blocks)
+        let jsonStr = generatedText;
+        const jsonMatch = generatedText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1].trim();
+        }
+        
+        const parsed = JSON.parse(jsonStr);
+        res.json({ 
+          prologue: parsed.prologue || "",
+          startingSituation: parsed.startingSituation || ""
+        });
+      } catch (parseError) {
+        // If JSON parsing fails, try to extract content another way
+        res.json({ 
+          prologue: generatedText,
+          startingSituation: ""
+        });
+      }
+    } catch (error: any) {
+      console.error("AI prologue generation error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate prologue" });
+    }
+  });
+
   // ==================== MESSAGES API ====================
 
   app.get("/api/stories/:storyId/messages", async (req, res) => {

@@ -55,6 +55,7 @@ export default function EditStory() {
   const [image, setImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingPrologue, setIsGeneratingPrologue] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,6 +118,45 @@ export default function EditStory() {
       alert("스토리 설정 생성 중 오류가 발생했습니다.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGeneratePrologue = async () => {
+    if (!title.trim()) {
+      alert("먼저 프로필 탭에서 제목을 입력해주세요.");
+      return;
+    }
+
+    setIsGeneratingPrologue(true);
+    try {
+      const response = await fetch("/api/ai/generate-prologue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          genre: genre,
+          storySettings: storySettings.trim(),
+          provider: "auto"
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        if (data.prologue) {
+          setPrologue(data.prologue);
+        }
+        if (data.startingSituation) {
+          setStartingSituation(data.startingSituation);
+        }
+      } else {
+        alert(data.error || "프롤로그 생성에 실패했습니다. 설정에서 API 키를 확인해주세요.");
+      }
+    } catch (error) {
+      console.error("Failed to generate prologue:", error);
+      alert("프롤로그 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsGeneratingPrologue(false);
     }
   };
 
@@ -437,9 +477,27 @@ export default function EditStory() {
                 <CardContent className="p-6 space-y-6">
                   <div className="space-y-2">
                      <div className="flex justify-between">
-                       <Label>프롤로그</Label>
-                       <Button variant="ghost" size="sm" className="h-6 text-xs text-primary"><Wand2 className="w-3 h-3 mr-1" /> 자동 생성</Button>
+                       <Label>프롤로그 & 시작 상황</Label>
+                       <Button 
+                         variant="ghost" 
+                         size="sm" 
+                         className="h-6 text-xs text-primary"
+                         onClick={handleGeneratePrologue}
+                         disabled={isGeneratingPrologue}
+                         data-testid="button-auto-generate-prologue"
+                       >
+                         {isGeneratingPrologue ? (
+                           <>
+                             <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 생성 중...
+                           </>
+                         ) : (
+                           <>
+                             <Wand2 className="w-3 h-3 mr-1" /> 자동 생성
+                           </>
+                         )}
+                       </Button>
                      </div>
+                     <Label className="text-xs text-muted-foreground">프롤로그</Label>
                      <Textarea 
                         className="min-h-[150px] bg-background leading-relaxed"
                         placeholder="스토리가 시작될 때 AI가 먼저 보여줄 프롤로그를 작성해주세요..."
@@ -451,7 +509,7 @@ export default function EditStory() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>시작 상황</Label>
+                    <Label className="text-xs text-muted-foreground">시작 상황</Label>
                     <Textarea 
                       placeholder="사용자의 역할, 등장인물과의 관계, 이야기가 시작되는 세계관 등" 
                       className="bg-background min-h-[100px]"

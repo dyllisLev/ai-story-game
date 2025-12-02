@@ -73,6 +73,7 @@ export default function Settings() {
   });
   const [commonPrompt, setCommonPrompt] = useState("");
   const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
+  const [prologueGeneratePrompt, setPrologueGeneratePrompt] = useState("");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,6 +105,8 @@ export default function Settings() {
           loadedPrompt = setting.value;
         } else if (setting.key === "storyGeneratePrompt") {
           setStoryGeneratePrompt(setting.value);
+        } else if (setting.key === "prologueGeneratePrompt") {
+          setPrologueGeneratePrompt(setting.value);
         } else if (setting.key.startsWith("aiModel_")) {
           const provider = setting.key.replace("aiModel_", "") as keyof AiModels;
           setAiModels(prev => ({
@@ -182,6 +185,7 @@ export default function Settings() {
         })),
         { key: "commonPrompt", value: commonPrompt },
         { key: "storyGeneratePrompt", value: storyGeneratePrompt },
+        { key: "prologueGeneratePrompt", value: prologueGeneratePrompt },
       ];
 
       await fetch("/api/settings/batch", {
@@ -365,6 +369,44 @@ export default function Settings() {
                 <li><code className="bg-muted px-1 rounded">{"{promptTemplate}"}</code> - 프롬프트 템플릿</li>
                 <li><code className="bg-muted px-1 rounded">{"{storySettings}"}</code> - 기존 스토리 설정</li>
               </ul>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Prologue Generate Prompt Section */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-2">프롤로그/시작 상황 자동 생성 프롬프트</h2>
+              <p className="text-sm text-muted-foreground">프롤로그와 시작 상황을 자동으로 생성할 때 사용되는 프롬프트입니다.</p>
+            </div>
+            <Textarea
+              placeholder={`예: 다음 정보를 바탕으로 프롤로그와 시작 상황을 작성해주세요.
+
+제목: {title}
+한 줄 소개: {description}
+장르: {genre}
+스토리 설정: {storySettings}
+
+다음 형식으로 JSON을 반환해주세요:
+{
+  "prologue": "스토리의 시작을 알리는 몰입감 있는 프롤로그...",
+  "startingSituation": "사용자의 역할, 등장인물과의 관계, 현재 상황..."
+}`}
+              value={prologueGeneratePrompt}
+              onChange={(e) => setPrologueGeneratePrompt(e.target.value)}
+              className="min-h-[200px] font-mono text-sm"
+              data-testid="textarea-prologue-generate-prompt"
+            />
+            <div className="bg-muted/40 border border-muted/80 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-foreground">📝 사용 가능한 변수:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                <li><code className="bg-muted px-1 rounded">{"{title}"}</code> - 스토리 제목</li>
+                <li><code className="bg-muted px-1 rounded">{"{description}"}</code> - 한 줄 소개</li>
+                <li><code className="bg-muted px-1 rounded">{"{genre}"}</code> - 장르</li>
+                <li><code className="bg-muted px-1 rounded">{"{storySettings}"}</code> - 스토리 설정</li>
+              </ul>
+              <p className="text-xs text-muted-foreground mt-2">⚠️ 반드시 JSON 형식으로 prologue와 startingSituation을 반환하도록 작성하세요.</p>
             </div>
           </div>
 
