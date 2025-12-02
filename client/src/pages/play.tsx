@@ -337,15 +337,6 @@ export default function PlayStory() {
                   </div>
 
 
-                  <Separator />
-
-                  <div className="bg-muted/30 p-4 rounded-xl border">
-                     <h4 className="text-xs font-bold text-muted-foreground mb-3">시작 설정</h4>
-                     <div className="flex justify-between items-center bg-background p-3 rounded-lg border shadow-sm cursor-pointer hover:border-primary/50 transition-colors">
-                        <span className="text-sm font-medium">기본 설정</span>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                     </div>
-                  </div>
                </div>
             </ScrollArea>
          </div>
