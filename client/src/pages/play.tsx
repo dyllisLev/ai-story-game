@@ -131,7 +131,11 @@ export default function PlayStory() {
           const sessionsResponse = await fetch(`/api/stories/${sessionData.storyId}/sessions`);
           if (sessionsResponse.ok) {
             const sessionsData = await sessionsResponse.json();
-            setSessions(sessionsData);
+            // Sort sessions by createdAt descending (newest first)
+            const sortedSessions = sessionsData.sort((a: Session, b: Session) => {
+              return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+            });
+            setSessions(sortedSessions);
           }
         }
       } else {
@@ -357,24 +361,22 @@ export default function PlayStory() {
                <div className="p-2 space-y-1">
                   {sessions.map((s) => (
                     <div key={s.id} className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors group",
+                      "flex items-center gap-2 p-2 rounded-lg transition-colors group",
                       s.id === session.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
                     )}>
-                      <Link href={`/play/${s.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary overflow-hidden flex-shrink-0">
+                      <Link href={`/play/${s.id}`} className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
                           <span>{s.title.charAt(0)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-baseline">
-                            <span className="font-medium text-sm truncate">{s.title}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{new Date(s.createdAt || '').toLocaleDateString('ko-KR')}</p>
+                          <p className="font-medium text-sm truncate">{s.title}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(s.createdAt || '').toLocaleDateString('ko-KR')}</p>
                         </div>
                       </Link>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors flex-shrink-0"
+                        className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors flex-shrink-0"
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -385,7 +387,11 @@ export default function PlayStory() {
                               const sessionsResponse = await fetch(`/api/stories/${story.id}/sessions`);
                               if (sessionsResponse.ok) {
                                 const sessionsData = await sessionsResponse.json();
-                                setSessions(sessionsData);
+                                // Sort sessions by createdAt descending (newest first)
+                                const sortedSessions = sessionsData.sort((a: Session, b: Session) => {
+                                  return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+                                });
+                                setSessions(sortedSessions);
                                 if (s.id === session.id) {
                                   setLocation("/");
                                 }
@@ -397,7 +403,7 @@ export default function PlayStory() {
                         }}
                         data-testid={`button-delete-session-${s.id}`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   ))}
