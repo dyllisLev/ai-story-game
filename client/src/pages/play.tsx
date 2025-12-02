@@ -181,8 +181,8 @@ export default function PlayStory() {
 
                   return (
                      <div key={msg.id} className="group">
-                        <div className="flex flex-col items-end gap-2">
-                            <div className="max-w-[90%] text-sm prose prose-sm max-w-none dark:prose-invert text-right">
+                        <div className="flex flex-col items-start gap-2">
+                            <div className="max-w-[90%] text-sm prose prose-sm max-w-none dark:prose-invert text-left">
                                <ReactMarkdown>{msg.content}</ReactMarkdown>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
