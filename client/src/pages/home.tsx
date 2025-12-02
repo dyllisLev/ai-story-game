@@ -14,23 +14,6 @@ interface Story {
   updatedAt: string | null;
 }
 
-const DEFAULT_STORIES = [
-  {
-    title: "어쩌다보니 페틀린 대륙",
-    description: "이세계에 떨어진 당신, 개성 넘치는 동료들과 함께 모험을 떠나보세요!",
-    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1000",
-    genre: "이세계 판타지",
-    author: "ReplitUser",
-  },
-  {
-    title: "서울 2077",
-    description: "사이버펑크 서울에서 살아남는 용병의 이야기.",
-    image: "https://images.unsplash.com/photo-1535295972055-1c762f4483e5?auto=format&fit=crop&q=80&w=1000",
-    genre: "사이버펑크",
-    author: "ReplitUser",
-  },
-];
-
 export default function Home() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,38 +27,10 @@ export default function Home() {
       const response = await fetch("/api/stories");
       if (response.ok) {
         const data = await response.json();
-        if (data.length > 0) {
-          setStories(data);
-          setLoading(false);
-        } else {
-          await seedDefaultStories();
-        }
-      } else {
-        setLoading(false);
+        setStories(data);
       }
     } catch (error) {
       console.error("Failed to load stories:", error);
-      setLoading(false);
-    }
-  };
-
-  const seedDefaultStories = async () => {
-    try {
-      const createdStories: Story[] = [];
-      for (const storyData of DEFAULT_STORIES) {
-        const response = await fetch("/api/stories", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(storyData),
-        });
-        if (response.ok) {
-          const newStory = await response.json();
-          createdStories.push(newStory);
-        }
-      }
-      setStories(createdStories);
-    } catch (error) {
-      console.error("Failed to seed stories:", error);
     } finally {
       setLoading(false);
     }
