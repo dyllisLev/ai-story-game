@@ -50,12 +50,19 @@ function getDb() {
     `);
     
     // Migration: Add new columns if they don't exist
-    try {
-      sqliteDb.exec(`ALTER TABLE stories ADD COLUMN story_settings TEXT;`);
-    } catch (e) { /* column already exists */ }
-    try {
-      sqliteDb.exec(`ALTER TABLE stories ADD COLUMN prologue TEXT;`);
-    } catch (e) { /* column already exists */ }
+    const columnsToAdd = [
+      'story_settings TEXT',
+      'prologue TEXT',
+      'prompt_template TEXT',
+      'example_user_input TEXT',
+      'example_ai_response TEXT',
+      'starting_situation TEXT'
+    ];
+    for (const col of columnsToAdd) {
+      try {
+        sqliteDb.exec(`ALTER TABLE stories ADD COLUMN ${col};`);
+      } catch (e) { /* column already exists */ }
+    }
   }
   return db;
 }

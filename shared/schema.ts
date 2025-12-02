@@ -18,6 +18,10 @@ export const stories = sqliteTable("stories", {
   author: text("author"),
   storySettings: text("story_settings"),
   prologue: text("prologue"),
+  promptTemplate: text("prompt_template"),
+  exampleUserInput: text("example_user_input"),
+  exampleAiResponse: text("example_ai_response"),
+  startingSituation: text("starting_situation"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
