@@ -73,7 +73,6 @@ export default function PlayStory() {
           <div className="flex-1 overflow-hidden flex flex-col">
              <div className="flex gap-4 px-4 py-2 border-b text-sm font-medium text-muted-foreground">
                <span className="text-foreground border-b-2 border-primary pb-2">에피소드</span>
-               <span className="hover:text-foreground cursor-pointer pb-2">파티챗</span>
              </div>
              
              <ScrollArea className="flex-1">
