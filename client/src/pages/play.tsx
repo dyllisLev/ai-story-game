@@ -125,10 +125,6 @@ export default function PlayStory() {
             </div>
             
             <div className="flex items-center gap-4">
-               <ModelSelector />
-               <Button variant="ghost" size="sm" className="text-primary bg-primary/10 hover:bg-primary/20 text-xs font-bold px-3 h-8">
-                 슈퍼챗 1.5
-               </Button>
                <Button variant="ghost" size="icon" onClick={() => setRightSidebarOpen(!rightSidebarOpen)}>
                   <MoreHorizontal className="w-5 h-5" />
                </Button>
@@ -248,6 +244,13 @@ export default function PlayStory() {
             </div>
             <ScrollArea className="flex-1 p-4">
                <div className="space-y-6">
+                  <div className="space-y-2">
+                     <label className="text-xs font-bold text-muted-foreground">모델 설정</label>
+                     <ModelSelector />
+                  </div>
+
+                  <Separator />
+
                   {/* Menu Items */}
                   <div className="space-y-1">
                      <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
