@@ -345,8 +345,8 @@ export default function PlayStory() {
       switch (part.type) {
         case 'narration':
           return (
-            <div key={index} className="mb-6">
-              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] text-foreground/90">
+            <div key={index} className="mb-4">
+              <div className="prose prose-sm dark:prose-invert max-w-none">
                 <ReactMarkdown>
                   {part.content}
                 </ReactMarkdown>
@@ -358,24 +358,24 @@ export default function PlayStory() {
           // Split dialogue content by lines and render each separately
           const dialogueLines = part.content.split('\n').filter(line => line.trim());
           return (
-            <div key={index} className="mb-5 space-y-3">
+            <div key={index} className="mb-4 space-y-2">
               {dialogueLines.map((line, lineIndex) => {
                 // Check if line has character name format: "Character | dialogue"
                 const characterMatch = line.match(/^(.+?)\s*\|\s*"?(.+?)"?$/);
                 if (characterMatch) {
                   const [, character, dialogue] = characterMatch;
                   return (
-                    <p key={lineIndex} className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] pl-6">
-                      <span className="font-bold text-foreground">{character.trim()}</span>
-                      <span className="text-foreground/90"> | </span>
-                      <span className="font-semibold text-foreground">"{dialogue.trim()}"</span>
+                    <p key={lineIndex} className="pl-4">
+                      <span className="font-bold">{character.trim()}</span>
+                      <span className="text-muted-foreground"> | </span>
+                      <span className="font-semibold">"{dialogue.trim()}"</span>
                     </p>
                   );
                 }
                 // If no character format, just render the dialogue
                 return (
-                  <p key={lineIndex} className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] pl-6">
-                    <span className="font-semibold text-foreground">"{line.trim()}"</span>
+                  <p key={lineIndex} className="pl-4 font-semibold">
+                    "{line.trim()}"
                   </p>
                 );
               })}
@@ -384,9 +384,9 @@ export default function PlayStory() {
           
         case 'summary':
           return (
-            <div key={index} className="mb-6 mt-8 p-4 bg-muted/30 border-l-2 border-muted-foreground/30 rounded-r">
+            <div key={index} className="my-6 p-4 bg-muted/30 border-l-2 border-muted-foreground/30 rounded-r">
               <div className="text-xs font-medium text-muted-foreground mb-2">상태 정보</div>
-              <pre className="text-xs font-mono text-muted-foreground/80 whitespace-pre-wrap overflow-x-auto leading-relaxed">
+              <pre className="text-xs font-mono text-muted-foreground/80 whitespace-pre-wrap">
                 {part.content}
               </pre>
             </div>
@@ -395,8 +395,8 @@ export default function PlayStory() {
         case 'text':
         default:
           return (
-            <div key={index} className="mb-6">
-              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] text-foreground/90">
+            <div key={index} className="mb-4">
+              <div className="prose prose-sm dark:prose-invert max-w-none">
                 <ReactMarkdown>
                   {part.content}
                 </ReactMarkdown>
@@ -405,39 +405,6 @@ export default function PlayStory() {
           );
       }
     });
-  };
-
-  const markdownComponents = {
-    code({ node, inline, className, children, ...props }: any) {
-      if (inline) {
-        return (
-          <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary" {...props}>
-            {children}
-          </code>
-        );
-      }
-      return (
-        <div className="relative my-4 rounded-lg border bg-muted/50 p-4 font-mono text-sm overflow-x-auto">
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </div>
-      );
-    },
-    blockquote({ node, children, ...props }: any) {
-      return (
-        <div className="border-l-2 border-primary px-4 py-2 my-4 bg-muted/30 rounded-r-md break-words" {...props}>
-          {children}
-        </div>
-      );
-    },
-    em({ node, children, ...props }: any) {
-      return (
-        <span className="text-muted-foreground not-italic" {...props}>
-          {children}
-        </span>
-      );
-    }
   };
 
   const handleSendMessage = async (retryMessage?: string) => {
