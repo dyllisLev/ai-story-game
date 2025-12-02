@@ -874,6 +874,7 @@ AI: {exampleAiResponse}
         );
         const data = await response.json();
         console.log("Gemini API Response:", JSON.stringify(data, null, 2));
+        
         if (data.error) {
           console.error("Gemini API Error:", data.error);
           return res.status(400).json({ error: data.error.message });
@@ -882,7 +883,25 @@ AI: {exampleAiResponse}
           console.error("Gemini API HTTP Error:", response.status, data);
           return res.status(400).json({ error: `Gemini API error: ${response.status}` });
         }
-        generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        
+        // Check if content is empty
+        const candidate = data.candidates?.[0];
+        if (!candidate || !candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+          const finishReason = candidate?.finishReason || "UNKNOWN";
+          console.error("Gemini API returned empty content. Finish reason:", finishReason);
+          
+          if (finishReason === "MAX_TOKENS") {
+            return res.status(400).json({ 
+              error: "AI 응답이 너무 길어서 생성되지 못했습니다. 모델을 변경하거나 프롬프트를 단순화해주세요." 
+            });
+          }
+          
+          return res.status(400).json({ 
+            error: `AI가 응답을 생성하지 못했습니다 (이유: ${finishReason}). 다른 모델을 시도해보세요.` 
+          });
+        }
+        
+        generatedText = candidate.content.parts[0]?.text || "";
       } else if (selectedProvider === "chatgpt") {
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
