@@ -976,6 +976,20 @@ AI: {exampleAiResponse}
         
         // Try to parse as JSON
         if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
+          // Try to fix incomplete JSON by adding missing closing quotes and braces
+          if (!cleanedText.endsWith('}')) {
+            // Count quotes to see if we need to close a string
+            const quoteCount = (cleanedText.match(/"/g) || []).length;
+            if (quoteCount % 2 === 1) {
+              cleanedText += '"'; // Close the unclosed string
+            }
+            // Try to close the JSON object
+            if (!cleanedText.includes('"aiAnswer"')) {
+              cleanedText += ',\n  "aiAnswer": ""';
+            }
+            cleanedText += '\n}';
+          }
+          
           const parsed = JSON.parse(cleanedText);
           if (parsed.nextStrory) {
             // The nextStrory field may contain escaped newlines and tags
@@ -983,13 +997,15 @@ AI: {exampleAiResponse}
             finalResponse = parsed.nextStrory
               .replace(/\\n/g, '\n')  // Convert \n to actual newlines
               .replace(/\\"/g, '"')   // Convert \" to "
-              .replace(/\\'/g, "'");  // Convert \' to '
+              .replace(/\\'/g, "'")   // Convert \' to '
+              .replace(/&lt;/g, '<')  // Convert &lt; to <
+              .replace(/&gt;/g, '>'); // Convert &gt; to >
             console.log("Parsed JSON response, extracted and unescaped nextStrory");
           }
         }
       } catch (parseError) {
         // If parsing fails, use the original text
-        console.log("Response is not JSON, using raw text");
+        console.log("Response is not JSON, using raw text:", parseError);
       }
 
       res.json({ response: finalResponse, provider: selectedProvider, model: selectedModel });

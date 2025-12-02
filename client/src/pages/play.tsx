@@ -309,13 +309,27 @@ export default function PlayStory() {
       
       // Try to parse as JSON
       if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
+        // Try to fix incomplete JSON by adding missing closing quotes and braces
+        if (!cleanedText.endsWith('}')) {
+          const quoteCount = (cleanedText.match(/"/g) || []).length;
+          if (quoteCount % 2 === 1) {
+            cleanedText += '"';
+          }
+          if (!cleanedText.includes('"aiAnswer"')) {
+            cleanedText += ',\n  "aiAnswer": ""';
+          }
+          cleanedText += '\n}';
+        }
+        
         const parsed = JSON.parse(cleanedText);
         if (parsed.nextStrory) {
           // Unescape the content
           processedContent = parsed.nextStrory
             .replace(/\\n/g, '\n')
             .replace(/\\"/g, '"')
-            .replace(/\\'/g, "'");
+            .replace(/\\'/g, "'")
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>');
         }
       }
     } catch (parseError) {
