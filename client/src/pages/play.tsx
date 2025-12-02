@@ -279,6 +279,9 @@ export default function PlayStory() {
                         <Users className="w-4 h-4 text-muted-foreground" /> 대화 프로필
                      </Button>
                      <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
+                        <BookOpen className="w-4 h-4 text-muted-foreground" /> 유저 노트
+                     </Button>
+                     <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
                         <History className="w-4 h-4 text-muted-foreground" /> 요약 메모리 <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded ml-auto">N</span>
                      </Button>
                   </div>
