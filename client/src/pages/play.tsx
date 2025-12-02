@@ -158,9 +158,6 @@ export default function PlayStory() {
                      return (
                         <div key={msg.id} className="group">
                             <div className="flex gap-4">
-                               <div className="w-10 h-10 rounded-full bg-primary/10 flex-shrink-0 overflow-hidden border">
-                                  <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${msg.id}`} alt="AI" className="w-full h-full" />
-                               </div>
                                <div className="flex-1 space-y-2">
                                   <div className="flex items-center gap-2">
                                      <span className="font-bold text-sm">{msg.character}</span>
