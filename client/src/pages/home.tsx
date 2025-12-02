@@ -92,7 +92,13 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-3 max-w-5xl flex items-center justify-end">
+        <div className="container mx-auto px-6 py-3 max-w-5xl flex items-center justify-end gap-2">
+          <Link href="/create">
+            <Button className="bg-primary hover:bg-primary/90 text-white gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95" data-testid="button-create-story">
+              <Plus className="w-4 h-4" />
+              새 스토리 만들기
+            </Button>
+          </Link>
           <Link href="/settings">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" data-testid="button-settings">
               <SettingsIcon className="w-5 h-5" />
@@ -102,17 +108,9 @@ export default function Home() {
       </header>
 
       <main className="container mx-auto px-6 py-8 max-w-5xl">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold mb-1">나의 스토리</h2>
-            <p className="text-muted-foreground text-sm">최근 플레이한 스토리를 이어서 즐겨보세요.</p>
-          </div>
-          <Link href="/create">
-            <Button className="bg-primary hover:bg-primary/90 text-white gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
-              <Plus className="w-4 h-4" />
-              새 스토리 만들기
-            </Button>
-          </Link>
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-1">나의 스토리</h2>
+          <p className="text-muted-foreground text-sm">최근 플레이한 스토리를 이어서 즐겨보세요.</p>
         </div>
 
         {loading ? (
