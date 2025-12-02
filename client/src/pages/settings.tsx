@@ -283,9 +283,16 @@ export default function Settings() {
                       <div className="w-full p-2 rounded-md border bg-muted/50 text-sm text-muted-foreground">
                         API 키를 입력하세요
                       </div>
-                    ) : models.length === 0 ? (
+                    ) : isLoadingModels ? (
                       <div className="w-full p-2 rounded-md border bg-muted/50 text-sm text-muted-foreground">
-                        {isLoadingModels ? "모델 조회 중..." : "'모델 조회' 버튼을 클릭하세요"}
+                        모델 조회 중...
+                      </div>
+                    ) : models.length === 0 ? (
+                      <div className="w-full p-2 rounded-md border bg-white text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{aiModels[providerId]}</span>
+                          <span className="text-xs text-muted-foreground">(저장됨)</span>
+                        </div>
                       </div>
                     ) : (
                       <select
