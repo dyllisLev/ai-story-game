@@ -242,8 +242,9 @@ export async function registerRoutes(
       }
       
       res.status(201).json(session);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create session" });
+    } catch (error: any) {
+      console.error("Error creating session:", error);
+      res.status(500).json({ error: "Failed to create session", details: error.message });
     }
   });
 

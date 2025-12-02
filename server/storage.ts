@@ -78,6 +78,32 @@ function getDb() {
         sqliteDb.exec(`ALTER TABLE stories ADD COLUMN ${col};`);
       } catch (e) { /* column already exists */ }
     }
+    
+    // Migration: Add session_id to messages and remove old story_id
+    try {
+      // Check if session_id column exists
+      const tableInfo = sqliteDb.prepare(`PRAGMA table_info(messages)`).all() as any[];
+      const hasSessionId = tableInfo.some(col => col.name === 'session_id');
+      const hasStoryId = tableInfo.some(col => col.name === 'story_id');
+      
+      if (!hasSessionId && hasStoryId) {
+        // Drop old messages table and recreate with new schema
+        sqliteDb.exec(`DROP TABLE IF EXISTS messages;`);
+        sqliteDb.exec(`
+          CREATE TABLE messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            character TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+          );
+        `);
+      }
+    } catch (e) {
+      console.error("Migration error:", e);
+    }
   }
   return db;
 }
