@@ -268,9 +268,6 @@ export default function PlayStory() {
                   <CornerDownLeft className="w-4 h-4" />
                </Button>
             </div>
-            <div className="text-center mt-2 text-[10px] text-muted-foreground">
-               AI는 부정확한 정보를 제공할 수 있습니다.
-            </div>
          </div>
       </div>
 
