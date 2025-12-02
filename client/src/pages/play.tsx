@@ -301,11 +301,15 @@ export default function PlayStory() {
 
   // Render AI response with special styling
   const renderAIContent = (content: string) => {
-    // First try to parse JSON if the content looks like JSON
-    let processedContent = content;
+    // First convert HTML entities to actual characters
+    let processedContent = content
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+    
+    // Then try to parse JSON if the content looks like JSON
     try {
       // Remove markdown code blocks if present
-      let cleanedText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      let cleanedText = processedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
       // Try to parse as JSON
       if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
@@ -327,13 +331,11 @@ export default function PlayStory() {
           processedContent = parsed.nextStrory
             .replace(/\\n/g, '\n')
             .replace(/\\"/g, '"')
-            .replace(/\\'/g, "'")
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>');
+            .replace(/\\'/g, "'");
         }
       }
     } catch (parseError) {
-      // If parsing fails, use the original content
+      // If parsing fails, use the processed content with HTML entities converted
     }
     
     const parts = parseAIResponse(processedContent);
