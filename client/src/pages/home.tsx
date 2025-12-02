@@ -1,11 +1,21 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { MOCK_STORIES } from "@/lib/mockData";
-import { Plus, Play, MoreHorizontal } from "lucide-react";
+import { Plus, Play, MoreHorizontal, Settings as SettingsIcon } from "lucide-react";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
+      {/* Header with Settings */}
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-3 max-w-5xl flex items-center justify-end">
+          <Link href="/settings">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" data-testid="button-settings">
+              <SettingsIcon className="w-5 h-5" />
+            </Button>
+          </Link>
+        </div>
+      </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8 max-w-5xl">
