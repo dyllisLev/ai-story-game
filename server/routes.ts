@@ -1133,8 +1133,8 @@ nextStrory 구성:
       const commonPromptSetting = await storage.getSetting("commonPrompt");
       let systemPrompt = commonPromptSetting?.value || `당신은 경험 많은 스토리텔러입니다. 다음 스토리를 이어서 작성해주세요.`;
 
-      // Build recent messages string
-      const recentMessages = messages.slice(-5).map(m => 
+      // Build recent messages string (최대 20개)
+      const recentMessages = messages.slice(-20).map(m => 
         `${m.role === 'user' ? '유저' : 'AI'}: ${m.content}`
       ).join('\n\n');
 
@@ -1154,8 +1154,9 @@ nextStrory 구성:
         .replace(/\{userMessage\}/g, userMessage || "")
         .replace(/\{recentMessages\}/g, recentMessages || "");
 
-      // Build conversation history
-      const conversationHistory = messages.map(msg => ({
+      // Build conversation history (최대 20개로 제한하여 토큰 절약)
+      const recentMessagesForApi = messages.slice(-20);
+      const conversationHistory = recentMessagesForApi.map(msg => ({
         role: msg.role === "assistant" ? "assistant" : "user",
         content: msg.content
       }));
