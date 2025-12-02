@@ -43,9 +43,9 @@ import { cn } from "@/lib/utils";
 function parseAIResponse(content: string) {
   const parts: Array<{ type: 'narration' | 'dialogue' | 'summary' | 'text', content: string, character?: string }> = [];
   
-  // Split by tags
+  // Split by tags - support both "Character Dialogue" and "CharacterDialogue" formats
   const narrationRegex = /<Narration>([\s\S]*?)<\/Narration>/gi;
-  const dialogueRegex = /<Character\s+Dialogue>([\s\S]*?)<\/Character\s+Dialogue>/gi;
+  const dialogueRegex = /<Character\s*Dialogue>([\s\S]*?)<\/Character\s*Dialogue>/gi;
   const summaryRegex = /<Summary>([\s\S]*?)<\/Summary>/gi;
   
   let lastIndex = 0;
