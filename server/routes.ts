@@ -193,6 +193,129 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== AI GENERATE API ====================
+
+  app.post("/api/ai/generate-story-settings", async (req, res) => {
+    try {
+      const { title, description, genre, promptTemplate, storySettings, provider = "gemini" } = req.body;
+      
+      // Get API key for the provider
+      const apiKeySetting = await storage.getSetting(`apiKey_${provider}`);
+      if (!apiKeySetting || !apiKeySetting.value) {
+        return res.status(400).json({ error: `API key for ${provider} not configured. Please set it in settings.` });
+      }
+      
+      // Get custom prompt template
+      const customPromptSetting = await storage.getSetting("storyGeneratePrompt");
+      
+      // Build prompt with placeholders
+      let prompt = customPromptSetting?.value || `다음 정보를 바탕으로 상세한 스토리 설정을 작성해주세요.
+
+제목: {title}
+한 줄 소개: {description}
+장르: {genre}
+프롬프트 템플릿: {promptTemplate}
+
+기존 설정:
+{storySettings}
+
+위 정보를 바탕으로 세계관, 주요 등장인물(외모, 성격, 말투 포함), 배경 설정 등을 포함한 상세한 스토리 설정을 한국어로 작성해주세요. 창의적이고 몰입감 있는 설정을 만들어주세요.`;
+
+      // Replace placeholders
+      prompt = prompt
+        .replace(/\{title\}/g, title || "")
+        .replace(/\{description\}/g, description || "")
+        .replace(/\{genre\}/g, genre || "")
+        .replace(/\{promptTemplate\}/g, promptTemplate || "")
+        .replace(/\{storySettings\}/g, storySettings || "");
+
+      let generatedText = "";
+
+      if (provider === "gemini") {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKeySetting.value}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.8, maxOutputTokens: 2048 }
+            })
+          }
+        );
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else if (provider === "chatgpt") {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKeySetting.value}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.8,
+            max_tokens: 2048
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.choices?.[0]?.message?.content || "";
+      } else if (provider === "claude") {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKeySetting.value,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 2048,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.content?.[0]?.text || "";
+      } else if (provider === "grok") {
+        const response = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKeySetting.value}`
+          },
+          body: JSON.stringify({
+            model: "grok-beta",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.8,
+            max_tokens: 2048
+          })
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        generatedText = data.choices?.[0]?.message?.content || "";
+      } else {
+        return res.status(400).json({ error: "Unsupported AI provider" });
+      }
+
+      res.json({ generatedText });
+    } catch (error: any) {
+      console.error("AI generation error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate story settings" });
+    }
+  });
+
   // ==================== MESSAGES API ====================
 
   app.get("/api/stories/:storyId/messages", async (req, res) => {
