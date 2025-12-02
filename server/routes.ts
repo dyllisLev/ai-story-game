@@ -868,7 +868,7 @@ AI: {exampleAiResponse}
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: geminiContents,
-              generationConfig: { temperature: 0.9, maxOutputTokens: 2048 }
+              generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
             })
           }
         );
@@ -916,7 +916,7 @@ AI: {exampleAiResponse}
               ...conversationHistory
             ],
             temperature: 0.9,
-            max_tokens: 2048
+            max_tokens: 8192
           })
         });
         const data = await response.json();
@@ -934,7 +934,7 @@ AI: {exampleAiResponse}
           },
           body: JSON.stringify({
             model: selectedModel,
-            max_tokens: 2048,
+            max_tokens: 8192,
             system: systemPrompt,
             messages: conversationHistory
           })
@@ -958,7 +958,7 @@ AI: {exampleAiResponse}
               ...conversationHistory
             ],
             temperature: 0.9,
-            max_tokens: 2048
+            max_tokens: 8192
           })
         });
         const data = await response.json();
