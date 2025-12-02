@@ -93,6 +93,8 @@ export default function PlayStory() {
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastUserMessage, setLastUserMessage] = useState<string>("");
   
   // Session settings
   const [conversationProfile, setConversationProfile] = useState("");
@@ -264,16 +266,24 @@ export default function PlayStory() {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isGenerating) return;
+  const handleSendMessage = async (retryMessage?: string) => {
+    const userInput = retryMessage || inputValue;
+    if (!userInput.trim() || isGenerating) return;
     
-    const userInput = inputValue;
-    setInputValue("");
+    if (!retryMessage) {
+      setInputValue("");
+    }
     
-    // Save and display user message
-    const userMsg = await saveMessage("user", userInput);
-    if (userMsg) {
-      setMessages(prev => [...prev, userMsg]);
+    // Clear previous error
+    setLastError(null);
+    setLastUserMessage(userInput);
+    
+    // Save and display user message (only if not retrying)
+    if (!retryMessage) {
+      const userMsg = await saveMessage("user", userInput);
+      if (userMsg) {
+        setMessages(prev => [...prev, userMsg]);
+      }
     }
     
     // Call AI API
@@ -294,21 +304,22 @@ export default function PlayStory() {
         if (aiMsg) {
           setMessages(prev => [...prev, aiMsg]);
         }
+        setLastError(null);
       } else {
-        // Show error message to user
-        const errorMsg = await saveMessage("assistant", `*시스템 오류: ${data.error || "AI 응답을 생성할 수 없습니다. 설정에서 API 키를 확인해주세요."}*`, "System");
-        if (errorMsg) {
-          setMessages(prev => [...prev, errorMsg]);
-        }
+        // Set error state instead of saving to DB
+        setLastError(data.error || "AI 응답을 생성할 수 없습니다. 설정에서 API 키를 확인해주세요.");
       }
     } catch (error) {
       console.error("Failed to get AI response:", error);
-      const errorMsg = await saveMessage("assistant", "*시스템 오류: AI 서버에 연결할 수 없습니다.*", "System");
-      if (errorMsg) {
-        setMessages(prev => [...prev, errorMsg]);
-      }
+      setLastError("AI 서버에 연결할 수 없습니다.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (lastUserMessage) {
+      handleSendMessage(lastUserMessage);
     }
   };
 
@@ -487,6 +498,35 @@ export default function PlayStory() {
                   )
                  })
                )}
+               
+               {/* Error Message with Retry Button */}
+               {lastError && (
+                 <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+                   <div className="flex items-start gap-3">
+                     <div className="flex-1">
+                       <p className="text-sm font-medium text-red-900 dark:text-red-100 mb-1">
+                         시스템 오류
+                       </p>
+                       <p className="text-sm text-red-700 dark:text-red-300">
+                         {lastError}
+                       </p>
+                     </div>
+                     <Button
+                       onClick={handleRetry}
+                       disabled={isGenerating}
+                       size="sm"
+                       variant="outline"
+                       className="border-red-300 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
+                       data-testid="button-retry-message"
+                     >
+                       {isGenerating ? (
+                         <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                       ) : null}
+                       재시도
+                     </Button>
+                   </div>
+                 </div>
+               )}
             </div>
          </ScrollArea>
 
@@ -508,7 +548,7 @@ export default function PlayStory() {
                <Button 
                   size="icon" 
                   className="absolute right-2 top-2 h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-white"
-                  onClick={handleSendMessage}
+                  onClick={() => handleSendMessage()}
                   disabled={isGenerating}
                >
                   {isGenerating ? (
