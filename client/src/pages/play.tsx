@@ -264,29 +264,6 @@ export default function PlayStory() {
                      </Button>
                   </div>
 
-                  <Separator />
-
-                  <div className="space-y-4">
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm">
-                           <ImageIcon className="w-4 h-4 text-muted-foreground" /> 상황 이미지 보기
-                        </div>
-                        <Switch />
-                     </div>
-                     
-                     <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-2 text-sm">
-                           <Volume2 className="w-4 h-4 text-muted-foreground" /> 목소리 설정
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                     </div>
-
-                     <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-2 text-sm">
-                           <Keyboard className="w-4 h-4 text-muted-foreground" /> 키보드 단축키
-                        </div>
-                     </div>
-                  </div>
 
                   <Separator />
 
