@@ -470,7 +470,13 @@ export async function registerRoutes(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.8, maxOutputTokens: 2048 }
+              generationConfig: { 
+                temperature: 0.8, 
+                maxOutputTokens: 8192,
+                thinkingConfig: {
+                  thinkingBudget: 0
+                }
+              }
             })
           }
         );
@@ -490,7 +496,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 2048
+            max_tokens: 8192
           })
         });
         const data = await response.json();
@@ -508,7 +514,7 @@ export async function registerRoutes(
           },
           body: JSON.stringify({
             model: selectedModel,
-            max_tokens: 2048,
+            max_tokens: 8192,
             messages: [{ role: "user", content: prompt }]
           })
         });
@@ -528,7 +534,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 2048
+            max_tokens: 8192
           })
         });
         const data = await response.json();
@@ -620,7 +626,13 @@ export async function registerRoutes(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.8, maxOutputTokens: 2048 }
+              generationConfig: { 
+                temperature: 0.8, 
+                maxOutputTokens: 8192,
+                thinkingConfig: {
+                  thinkingBudget: 0
+                }
+              }
             })
           }
         );
@@ -640,7 +652,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 2048
+            max_tokens: 8192
           })
         });
         const data = await response.json();
@@ -658,7 +670,7 @@ export async function registerRoutes(
           },
           body: JSON.stringify({
             model: selectedModel,
-            max_tokens: 2048,
+            max_tokens: 8192,
             messages: [{ role: "user", content: prompt }]
           })
         });
@@ -678,7 +690,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 2048
+            max_tokens: 8192
           })
         });
         const data = await response.json();
@@ -888,7 +900,13 @@ nextStrory 구성:
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: geminiContents,
-              generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
+              generationConfig: { 
+                temperature: 0.9, 
+                maxOutputTokens: 65536,
+                thinkingConfig: {
+                  thinkingBudget: 0
+                }
+              }
             })
           }
         );
