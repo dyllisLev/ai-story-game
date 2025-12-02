@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   ChevronLeft, 
+  Wand2,
+  User,
   Save,
   Loader2,
   Image as ImageIcon
@@ -110,90 +113,126 @@ export default function EditStory() {
           </Link>
           <h1 className="font-bold text-lg">스토리 수정</h1>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={saving || !title.trim()}
-          className="bg-primary hover:bg-primary/90 text-white gap-2"
-          data-testid="button-save-story"
-        >
-          {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          저장
-        </Button>
       </header>
 
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-[57px] z-10">
+        <div className="container mx-auto px-6">
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="h-12 flex items-center">
+              <span className="border-b-2 border-primary text-primary px-4 py-3 text-sm font-medium">
+                프로필 수정
+              </span>
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+
       <div className="flex-1 bg-muted/30 p-6">
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-2">
-                <Label>커버 이미지</Label>
-                <div className="flex gap-4">
-                  <div className="w-32 h-20 bg-muted rounded-lg flex items-center justify-center border overflow-hidden">
-                    {image ? (
-                      <img src={image} alt="Cover" className="w-full h-full object-cover" />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <Input 
-                      placeholder="이미지 URL을 입력하세요" 
-                      className="bg-background"
-                      value={image}
-                      onChange={(e) => setImage(e.target.value)}
-                      data-testid="input-story-image"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">외부 이미지 URL을 입력해주세요</p>
+        <div className="max-w-3xl mx-auto space-y-8 pb-20">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <User className="w-5 h-5 text-primary" /> 프로필 설정
+              </h2>
+              <Button variant="outline" size="sm" className="text-primary border-primary/20 hover:bg-primary/5">
+                <Wand2 className="w-4 h-4 mr-2" /> 랜덤 생성
+              </Button>
+            </div>
+            
+            <Card>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <Label>이미지</Label>
+                  <div className="flex gap-4">
+                    <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center border border-dashed border-muted-foreground/50 overflow-hidden">
+                      {image ? (
+                        <img src={image} alt="Cover" className="w-full h-full object-cover" />
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-end gap-2 flex-1">
+                      <Input 
+                        placeholder="이미지 URL" 
+                        className="bg-background text-sm"
+                        value={image}
+                        onChange={(e) => setImage(e.target.value)}
+                        data-testid="input-story-image"
+                      />
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">업로드</Button>
+                        <Button variant="outline" size="sm"><Wand2 className="w-3 h-3 mr-2" /> 생성</Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>이름 <span className="text-red-500">*</span></Label>
-                <Input 
-                  placeholder="스토리의 이름을 입력해 주세요" 
-                  className="bg-background"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  data-testid="input-story-title"
-                />
-                <p className="text-xs text-muted-foreground text-right">{title.length}/50</p>
-              </div>
+                <div className="space-y-2">
+                  <Label>이름 <span className="text-red-500">*</span></Label>
+                  <Input 
+                    placeholder="스토리의 이름을 입력해 주세요" 
+                    className="bg-background"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    data-testid="input-story-title"
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{title.length}/50</p>
+                </div>
 
-              <div className="space-y-2">
-                <Label>한 줄 소개</Label>
-                <Input 
-                  placeholder="어떤 스토리인지 설명할 수 있는 간단한 소개를 입력해 주세요" 
-                  className="bg-background"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  data-testid="input-story-description"
-                />
-                <p className="text-xs text-muted-foreground text-right">{description.length}/100</p>
-              </div>
+                <div className="space-y-2">
+                  <Label>한 줄 소개</Label>
+                  <Input 
+                    placeholder="어떤 스토리인지 설명할 수 있는 간단한 소개를 입력해 주세요" 
+                    className="bg-background"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    data-testid="input-story-description"
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{description.length}/100</p>
+                </div>
 
-              <div className="space-y-2">
-                <Label>장르</Label>
-                <select 
-                  className="w-full p-2 rounded-md border bg-background text-sm"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  data-testid="select-story-genre"
-                >
-                  <option value="판타지">판타지</option>
-                  <option value="로맨스">로맨스</option>
-                  <option value="사이버펑크">사이버펑크</option>
-                  <option value="호러">호러</option>
-                  <option value="일상">일상</option>
-                  <option value="모험">모험</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="space-y-2">
+                  <Label>장르</Label>
+                  <select 
+                    className="w-full p-2 rounded-md border bg-background text-sm"
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    data-testid="select-story-genre"
+                  >
+                    <option value="판타지">판타지</option>
+                    <option value="로맨스">로맨스</option>
+                    <option value="사이버펑크">사이버펑크</option>
+                    <option value="호러">호러</option>
+                    <option value="일상">일상</option>
+                    <option value="모험">모험</option>
+                  </select>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t bg-background p-4 sticky bottom-0 z-20">
+        <div className="container mx-auto max-w-3xl flex justify-between">
+          <Link href="/">
+            <Button variant="secondary">
+              <ChevronLeft className="w-4 h-4 mr-2" /> 취소
+            </Button>
+          </Link>
+          <Button 
+            className="bg-primary hover:bg-primary/90 text-white gap-2" 
+            onClick={handleSave}
+            disabled={saving || !title.trim()}
+            data-testid="button-save-story"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            저장하기
+          </Button>
         </div>
       </div>
     </div>
