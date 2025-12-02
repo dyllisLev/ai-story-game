@@ -6,21 +6,54 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Save } from "lucide-react";
 
+interface ApiKeys {
+  chatgpt: string;
+  grok: string;
+  claude: string;
+  gemini: string;
+}
+
+const AI_PROVIDERS = [
+  { id: "chatgpt", name: "ChatGPT", color: "bg-green-50 border-green-200" },
+  { id: "grok", name: "Grok", color: "bg-blue-50 border-blue-200" },
+  { id: "claude", name: "Claude", color: "bg-orange-50 border-orange-200" },
+  { id: "gemini", name: "Gemini", color: "bg-purple-50 border-purple-200" },
+];
+
 export default function Settings() {
-  const [apiKey, setApiKey] = useState("");
+  const [apiKeys, setApiKeys] = useState<ApiKeys>({
+    chatgpt: "",
+    grok: "",
+    claude: "",
+    gemini: "",
+  });
   const [commonPrompt, setCommonPrompt] = useState("");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     // Load settings from localStorage
-    const savedApiKey = localStorage.getItem("aiApiKey") || "";
+    const savedApiKeys: ApiKeys = {
+      chatgpt: localStorage.getItem("apiKey_chatgpt") || "",
+      grok: localStorage.getItem("apiKey_grok") || "",
+      claude: localStorage.getItem("apiKey_claude") || "",
+      gemini: localStorage.getItem("apiKey_gemini") || "",
+    };
     const savedPrompt = localStorage.getItem("commonPrompt") || "";
-    setApiKey(savedApiKey);
+    setApiKeys(savedApiKeys);
     setCommonPrompt(savedPrompt);
   }, []);
 
+  const handleApiKeyChange = (provider: keyof ApiKeys, value: string) => {
+    setApiKeys((prev) => ({
+      ...prev,
+      [provider]: value,
+    }));
+  };
+
   const handleSave = () => {
-    localStorage.setItem("aiApiKey", apiKey);
+    Object.entries(apiKeys).forEach(([provider, key]) => {
+      localStorage.setItem(`apiKey_${provider}`, key);
+    });
     localStorage.setItem("commonPrompt", commonPrompt);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -51,16 +84,28 @@ export default function Settings() {
           {/* API Key Section */}
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-semibold mb-2">AI API 설정</h2>
-              <p className="text-sm text-muted-foreground">AI 서비스를 위한 API 키를 입력하세요.</p>
+              <h2 className="text-lg font-semibold mb-2">AI API 키 설정</h2>
+              <p className="text-sm text-muted-foreground">각 AI 서비스의 API 키를 입력하세요. (선택사항)</p>
             </div>
-            <Input
-              type="password"
-              placeholder="API Key 입력"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="font-mono text-sm"
-            />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {AI_PROVIDERS.map((provider) => (
+                <div key={provider.id} className={`p-4 rounded-lg border ${provider.color}`}>
+                  <label className="text-sm font-medium mb-2 block">{provider.name}</label>
+                  <Input
+                    type="password"
+                    placeholder={`${provider.name} API Key`}
+                    value={apiKeys[provider.id as keyof ApiKeys]}
+                    onChange={(e) =>
+                      handleApiKeyChange(provider.id as keyof ApiKeys, e.target.value)
+                    }
+                    className="font-mono text-sm bg-white"
+                    data-testid={`input-api-key-${provider.id}`}
+                  />
+                </div>
+              ))}
+            </div>
+            
             <p className="text-xs text-muted-foreground">
               💡 API 키는 로컬 스토리지에만 저장되며, 서버로 전송되지 않습니다.
             </p>
