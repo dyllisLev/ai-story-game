@@ -159,9 +159,6 @@ export default function PlayStory() {
                         <div key={msg.id} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                     <span className="font-bold text-sm">{msg.character}</span>
-                                  </div>
                                   <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert">
                                      <ReactMarkdown>{msg.content}</ReactMarkdown>
                                   </div>
