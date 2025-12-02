@@ -161,7 +161,6 @@ export default function PlayStory() {
                                <div className="flex-1 space-y-2">
                                   <div className="flex items-center gap-2">
                                      <span className="font-bold text-sm">{msg.character}</span>
-                                     <span className="text-[10px] text-muted-foreground border px-1 rounded">AI</span>
                                   </div>
                                   <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert">
                                      <ReactMarkdown>{msg.content}</ReactMarkdown>
