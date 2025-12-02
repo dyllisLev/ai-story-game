@@ -80,7 +80,7 @@ export default function PlayStory() {
     },
     blockquote({ node, children, ...props }: any) {
       return (
-        <div className="border-l-2 border-primary pl-4 py-2 my-4 bg-muted/30 rounded-r-md break-words" {...props}>
+        <div className="border-l-2 border-primary pl-4 pr-4 py-2 my-4 bg-muted/30 rounded-r-md break-words" {...props}>
           {children}
         </div>
       );
