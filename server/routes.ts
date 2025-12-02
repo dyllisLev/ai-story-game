@@ -193,6 +193,98 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== AI MODELS API ====================
+
+  app.post("/api/ai/models", async (req, res) => {
+    try {
+      const { provider, apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ error: "API key is required" });
+      }
+
+      let models: { id: string; name: string }[] = [];
+
+      if (provider === "gemini") {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+        );
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        models = (data.models || [])
+          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+          .map((m: any) => ({
+            id: m.name.replace("models/", ""),
+            name: m.displayName || m.name.replace("models/", "")
+          }));
+      } else if (provider === "chatgpt") {
+        const response = await fetch("https://api.openai.com/v1/models", {
+          headers: { "Authorization": `Bearer ${apiKey}` }
+        });
+        const data = await response.json();
+        if (data.error) {
+          return res.status(400).json({ error: data.error.message });
+        }
+        const gptModels = (data.data || [])
+          .filter((m: any) => m.id.includes("gpt"))
+          .map((m: any) => ({ id: m.id, name: m.id }))
+          .sort((a: any, b: any) => b.id.localeCompare(a.id));
+        models = gptModels.slice(0, 10);
+      } else if (provider === "claude") {
+        // Anthropic doesn't have a models list API, return hardcoded list
+        models = [
+          { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
+          { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+          { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
+          { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
+        ];
+        // Verify API key works
+        const testResponse = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-3-haiku-20240307",
+            max_tokens: 1,
+            messages: [{ role: "user", content: "hi" }]
+          })
+        });
+        if (!testResponse.ok) {
+          const errData = await testResponse.json();
+          return res.status(400).json({ error: errData.error?.message || "Invalid API key" });
+        }
+      } else if (provider === "grok") {
+        // xAI doesn't have a models list API, return hardcoded list
+        models = [
+          { id: "grok-beta", name: "Grok Beta" },
+          { id: "grok-2-1212", name: "Grok 2" },
+        ];
+        // Verify API key works
+        const testResponse = await fetch("https://api.x.ai/v1/models", {
+          headers: { "Authorization": `Bearer ${apiKey}` }
+        });
+        if (testResponse.ok) {
+          const data = await testResponse.json();
+          if (data.data) {
+            models = data.data.map((m: any) => ({ id: m.id, name: m.id }));
+          }
+        }
+      } else {
+        return res.status(400).json({ error: "Unsupported provider" });
+      }
+
+      res.json({ models });
+    } catch (error: any) {
+      console.error("Failed to fetch models:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch models" });
+    }
+  });
+
   // ==================== AI GENERATE API ====================
 
   app.post("/api/ai/generate-story-settings", async (req, res) => {

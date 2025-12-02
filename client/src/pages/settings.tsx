@@ -20,48 +20,30 @@ interface AiModels {
   gemini: string;
 }
 
+interface ModelOption {
+  id: string;
+  name: string;
+}
+
+interface AvailableModels {
+  chatgpt: ModelOption[];
+  grok: ModelOption[];
+  claude: ModelOption[];
+  gemini: ModelOption[];
+}
+
+interface LoadingModels {
+  chatgpt: boolean;
+  grok: boolean;
+  claude: boolean;
+  gemini: boolean;
+}
+
 const AI_PROVIDERS = [
-  { 
-    id: "chatgpt", 
-    name: "ChatGPT", 
-    color: "bg-green-50 border-green-200",
-    models: [
-      { id: "gpt-4o", name: "GPT-4o" },
-      { id: "gpt-4o-mini", name: "GPT-4o Mini" },
-      { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-    ]
-  },
-  { 
-    id: "grok", 
-    name: "Grok", 
-    color: "bg-blue-50 border-blue-200",
-    models: [
-      { id: "grok-beta", name: "Grok Beta" },
-      { id: "grok-2", name: "Grok 2" },
-    ]
-  },
-  { 
-    id: "claude", 
-    name: "Claude", 
-    color: "bg-orange-50 border-orange-200",
-    models: [
-      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
-      { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
-      { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
-    ]
-  },
-  { 
-    id: "gemini", 
-    name: "Gemini", 
-    color: "bg-purple-50 border-purple-200",
-    models: [
-      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
-      { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
-      { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
-      { id: "gemini-1.5-flash-8b", name: "Gemini 1.5 Flash 8B" },
-    ]
-  },
+  { id: "chatgpt", name: "ChatGPT", color: "bg-green-50 border-green-200" },
+  { id: "grok", name: "Grok", color: "bg-blue-50 border-blue-200" },
+  { id: "claude", name: "Claude", color: "bg-orange-50 border-orange-200" },
+  { id: "gemini", name: "Gemini", color: "bg-purple-50 border-purple-200" },
 ];
 
 export default function Settings() {
@@ -76,6 +58,18 @@ export default function Settings() {
     grok: "grok-beta",
     claude: "claude-3-5-sonnet-20241022",
     gemini: "gemini-2.0-flash",
+  });
+  const [availableModels, setAvailableModels] = useState<AvailableModels>({
+    chatgpt: [],
+    grok: [],
+    claude: [],
+    gemini: [],
+  });
+  const [loadingModels, setLoadingModels] = useState<LoadingModels>({
+    chatgpt: false,
+    grok: false,
+    claude: false,
+    gemini: false,
   });
   const [commonPrompt, setCommonPrompt] = useState("");
   const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
@@ -140,6 +134,38 @@ export default function Settings() {
       ...prev,
       [provider]: value,
     }));
+  };
+
+  const fetchModels = async (provider: keyof ApiKeys, apiKey: string) => {
+    if (!apiKey.trim()) {
+      setAvailableModels(prev => ({ ...prev, [provider]: [] }));
+      return;
+    }
+
+    setLoadingModels(prev => ({ ...prev, [provider]: true }));
+    try {
+      const response = await fetch("/api/ai/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, apiKey }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.models) {
+        setAvailableModels(prev => ({ ...prev, [provider]: data.models }));
+        // Select first model if current selection is not in the list
+        if (data.models.length > 0 && !data.models.find((m: ModelOption) => m.id === aiModels[provider])) {
+          setAiModels(prev => ({ ...prev, [provider]: data.models[0].id }));
+        }
+      } else {
+        setAvailableModels(prev => ({ ...prev, [provider]: [] }));
+      }
+    } catch (error) {
+      console.error(`Failed to fetch models for ${provider}:`, error);
+      setAvailableModels(prev => ({ ...prev, [provider]: [] }));
+    } finally {
+      setLoadingModels(prev => ({ ...prev, [provider]: false }));
+    }
   };
 
   const handleSave = async () => {
@@ -211,32 +237,67 @@ export default function Settings() {
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {AI_PROVIDERS.map((provider) => (
-                <div key={provider.id} className={`p-4 rounded-lg border ${provider.color}`}>
-                  <label className="text-sm font-medium mb-2 block">{provider.name}</label>
-                  <Input
-                    type="password"
-                    placeholder={`${provider.name} API Key`}
-                    value={apiKeys[provider.id as keyof ApiKeys]}
-                    onChange={(e) =>
-                      handleApiKeyChange(provider.id as keyof ApiKeys, e.target.value)
-                    }
-                    className="font-mono text-sm bg-white mb-2"
-                    data-testid={`input-api-key-${provider.id}`}
-                  />
-                  <label className="text-xs text-muted-foreground mb-1 block">모델 선택</label>
-                  <select
-                    value={aiModels[provider.id as keyof AiModels]}
-                    onChange={(e) => handleModelChange(provider.id as keyof AiModels, e.target.value)}
-                    className="w-full p-2 rounded-md border bg-white text-sm"
-                    data-testid={`select-model-${provider.id}`}
-                  >
-                    {provider.models.map((model) => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+              {AI_PROVIDERS.map((provider) => {
+                const providerId = provider.id as keyof ApiKeys;
+                const hasApiKey = apiKeys[providerId].trim().length > 0;
+                const models = availableModels[providerId];
+                const isLoadingModels = loadingModels[providerId];
+                
+                return (
+                  <div key={provider.id} className={`p-4 rounded-lg border ${provider.color}`}>
+                    <label className="text-sm font-medium mb-2 block">{provider.name}</label>
+                    <Input
+                      type="password"
+                      placeholder={`${provider.name} API Key`}
+                      value={apiKeys[providerId]}
+                      onChange={(e) => handleApiKeyChange(providerId, e.target.value)}
+                      className="font-mono text-sm bg-white mb-2"
+                      data-testid={`input-api-key-${provider.id}`}
+                    />
+                    
+                    <div className="flex items-center gap-2 mb-1">
+                      <label className="text-xs text-muted-foreground">모델 선택</label>
+                      {hasApiKey && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fetchModels(providerId, apiKeys[providerId])}
+                          disabled={isLoadingModels}
+                          className="h-5 text-xs px-2"
+                          data-testid={`button-fetch-models-${provider.id}`}
+                        >
+                          {isLoadingModels ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            "모델 조회"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {!hasApiKey ? (
+                      <div className="w-full p-2 rounded-md border bg-muted/50 text-sm text-muted-foreground">
+                        API 키를 입력하세요
+                      </div>
+                    ) : models.length === 0 ? (
+                      <div className="w-full p-2 rounded-md border bg-muted/50 text-sm text-muted-foreground">
+                        {isLoadingModels ? "모델 조회 중..." : "'모델 조회' 버튼을 클릭하세요"}
+                      </div>
+                    ) : (
+                      <select
+                        value={aiModels[providerId]}
+                        onChange={(e) => handleModelChange(providerId, e.target.value)}
+                        className="w-full p-2 rounded-md border bg-white text-sm"
+                        data-testid={`select-model-${provider.id}`}
+                      >
+                        {models.map((model) => (
+                          <option key={model.id} value={model.id}>{model.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             
             <p className="text-xs text-muted-foreground">
