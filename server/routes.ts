@@ -625,6 +625,20 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/stories/:storyId/messages", async (req, res) => {
+    try {
+      const storyId = parseInt(req.params.storyId);
+      if (isNaN(storyId)) {
+        return res.status(400).json({ error: "Invalid story ID" });
+      }
+
+      await storage.deleteMessagesByStory(storyId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete messages" });
+    }
+  });
+
   app.post("/api/stories/:storyId/messages", async (req, res) => {
     try {
       const storyId = parseInt(req.params.storyId);

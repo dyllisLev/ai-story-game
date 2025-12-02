@@ -16,7 +16,8 @@ import {
   Share2,
   CornerDownLeft,
   Home,
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 import { ModelSelector } from "@/components/model-selector";
 import ReactMarkdown from 'react-markdown';
@@ -32,6 +33,12 @@ interface Story {
   author: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  prologue?: string | null;
+  storySettings?: string | null;
+  promptTemplate?: string | null;
+  exampleUserInput?: string | null;
+  exampleAiResponse?: string | null;
+  startingSituation?: string | null;
 }
 
 interface Message {
@@ -45,8 +52,11 @@ interface Message {
 
 export default function PlayStory() {
   const [match, params] = useRoute("/play/:id");
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const storyId = params?.id ? parseInt(params.id) : null;
+  
+  // Check for new=true query parameter
+  const isNewSession = new URLSearchParams(window.location.search).get('new') === 'true';
   
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -57,6 +67,7 @@ export default function PlayStory() {
   const [loading, setLoading] = useState(true);
   const [storyLoading, setStoryLoading] = useState(true);
   const [allStories, setAllStories] = useState<Story[]>([]);
+  const [newSessionProcessed, setNewSessionProcessed] = useState(false);
 
   const loadStory = useCallback(async () => {
     if (!storyId) {
@@ -142,6 +153,41 @@ export default function PlayStory() {
       loadMessages();
     }
   }, [story, loadMessages]);
+
+  // Handle new session - clear messages and add prologue
+  useEffect(() => {
+    const processNewSession = async () => {
+      if (!isNewSession || !story || !storyId || newSessionProcessed) return;
+      
+      setNewSessionProcessed(true);
+      
+      // Clear existing messages for this story
+      try {
+        await fetch(`/api/stories/${storyId}/messages`, {
+          method: "DELETE"
+        });
+        
+        // Add prologue as first message if available
+        if (story.prologue) {
+          const prologueMsg = await saveMessage("assistant", story.prologue, "Narrator");
+          if (prologueMsg) {
+            setMessages([prologueMsg]);
+          } else {
+            setMessages([]);
+          }
+        } else {
+          setMessages([]);
+        }
+        
+        // Remove the new=true from URL without reload
+        window.history.replaceState({}, '', `/play/${storyId}`);
+      } catch (error) {
+        console.error("Failed to start new session:", error);
+      }
+    };
+    
+    processNewSession();
+  }, [isNewSession, story, storyId, newSessionProcessed]);
 
   const formatContent = (content: string) => {
     let processed = content
@@ -252,12 +298,12 @@ export default function PlayStory() {
              <ScrollArea className="flex-1">
                <div className="p-2 space-y-1">
                   {allStories.map((s) => (
-                    <Link key={s.id} href={`/play/${s.id}`}>
-                      <div className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
-                        s.id === story.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
-                      )}>
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
+                    <div key={s.id} className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors group",
+                      s.id === story.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
+                    )}>
+                      <Link href={`/play/${s.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary overflow-hidden flex-shrink-0">
                           {s.image ? (
                             <img src={s.image} className="w-full h-full object-cover" />
                           ) : (
@@ -270,8 +316,31 @@ export default function PlayStory() {
                           </div>
                           <p className="text-xs text-muted-foreground truncate">{s.genre || "일반"}</p>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity flex-shrink-0"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (confirm("정말로 이 스토리를 삭제하시겠습니까?")) {
+                            try {
+                              await fetch(`/api/stories/${s.id}`, { method: "DELETE" });
+                              loadAllStories();
+                              if (s.id === story.id) {
+                                setLocation("/");
+                              }
+                            } catch (error) {
+                              console.error("Failed to delete story:", error);
+                            }
+                          }
+                        }}
+                        data-testid={`button-delete-story-${s.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   ))}
                </div>
              </ScrollArea>
