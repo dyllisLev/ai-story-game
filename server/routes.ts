@@ -736,6 +736,12 @@ export async function registerRoutes(
       // Get conversation history
       const messages = await storage.getMessagesBySession(sessionId);
       
+      // Format recent messages (최대 20개, 오래된 순서부터)
+      const recentMessages = messages.slice(-20).map(msg => {
+        const role = msg.role === 'user' ? '사용자' : 'AI';
+        return `${role}: ${msg.content}`;
+      }).join('\n\n');
+      
       // Use session-specific provider/model if set, otherwise use global settings
       const providers = ["gemini", "chatgpt", "claude", "grok"];
       let selectedProvider = session.sessionProvider || "";
@@ -805,7 +811,10 @@ AI: {exampleAiResponse}
 ## 요약 메모리
 {summaryMemory}
 
-당신은 위 스토리 세계관의 등장인물로서 사용자와 상호작용합니다. 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`;
+## 최근 대화 기록
+{recentMessages}
+
+당신은 위 스토리 세계관의 등장인물로서 사용자와 상호작용합니다. 최근 대화 기록을 참고하여 맥락에 맞는 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`;
 
       // Replace all variables with actual values
       systemPrompt = systemPrompt
@@ -820,7 +829,8 @@ AI: {exampleAiResponse}
         .replace(/\{conversationProfile\}/g, session.conversationProfile || "")
         .replace(/\{userNote\}/g, session.userNote || "")
         .replace(/\{summaryMemory\}/g, session.summaryMemory || "")
-        .replace(/\{userMessage\}/g, userMessage || "");
+        .replace(/\{userMessage\}/g, userMessage || "")
+        .replace(/\{recentMessages\}/g, recentMessages || "");
 
       let generatedText = "";
 

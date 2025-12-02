@@ -338,7 +338,10 @@ export default function Settings() {
 ## 유저 노트
 {userNote}
 
-생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`}
+## 최근 대화 기록
+{recentMessages}
+
+위 정보를 바탕으로 사용자의 다음 메시지에 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`}
               value={commonPrompt}
               onChange={(e) => setCommonPrompt(e.target.value)}
               className="min-h-[300px] font-mono text-sm"
@@ -358,9 +361,11 @@ export default function Settings() {
                 <div><code className="bg-muted px-1 rounded">{"{conversationProfile}"}</code> - 대화 프로필 (세션)</div>
                 <div><code className="bg-muted px-1 rounded">{"{userNote}"}</code> - 유저 노트 (세션)</div>
                 <div><code className="bg-muted px-1 rounded">{"{summaryMemory}"}</code> - 요약 메모리 (세션)</div>
+                <div><code className="bg-muted px-1 rounded">{"{recentMessages}"}</code> - 최근 대화 목록 (최대 20개)</div>
                 <div><code className="bg-muted px-1 rounded">{"{userMessage}"}</code> - 현재 유저 메시지</div>
               </div>
               <p className="text-xs text-muted-foreground mt-2">💡 이 프롬프트는 대화창에서 AI와 채팅할 때마다 사용됩니다. 스토리와 세션 정보가 자동으로 주입됩니다.</p>
+              <p className="text-xs text-muted-foreground">⚡ <code className="bg-muted px-1 rounded">{"{recentMessages}"}</code>는 오래된 순서부터 최대 20개의 대화를 포함하여 AI가 맥락을 파악할 수 있게 합니다.</p>
             </div>
           </div>
 
