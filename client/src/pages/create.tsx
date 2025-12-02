@@ -41,9 +41,6 @@ export default function CreateStory() {
           </Link>
           <h1 className="font-bold text-lg">스토리 만들기</h1>
         </div>
-        <div className="text-xs text-muted-foreground hidden sm:block">
-          민감한 스토리의 경우 제작 시 성인 인증이 필요해요.
-        </div>
       </header>
 
       {/* Tabs Navigation */}
