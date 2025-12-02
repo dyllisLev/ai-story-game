@@ -342,11 +342,8 @@ export default function PlayStory() {
       switch (part.type) {
         case 'narration':
           return (
-            <div key={index} className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border-l-4 border-amber-400 rounded-r-lg">
-              <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2 uppercase tracking-wide">
-                🎭 서술
-              </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed text-amber-900 dark:text-amber-100">
+            <div key={index} className="mb-4">
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.8] text-foreground/90">
                 <ReactMarkdown>
                   {part.content}
                 </ReactMarkdown>
@@ -356,35 +353,26 @@ export default function PlayStory() {
           
         case 'dialogue':
           return (
-            <div key={index} className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/20 border-l-4 border-blue-400 rounded-r-lg">
-              {part.character && (
-                <div className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-[10px]">
-                    {part.character.charAt(0)}
-                  </span>
-                  {part.character}
-                </div>
+            <div key={index} className="mb-3 pl-4">
+              {part.character ? (
+                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.8]">
+                  <span className="font-bold text-foreground">{part.character}</span>
+                  <span className="text-foreground/90"> | </span>
+                  <span className="font-semibold text-foreground">"{part.content}"</span>
+                </p>
+              ) : (
+                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.8]">
+                  <span className="font-semibold text-foreground">"{part.content}"</span>
+                </p>
               )}
-              {!part.character && (
-                <div className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wide">
-                  💬 대화
-                </div>
-              )}
-              <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed text-blue-900 dark:text-blue-100">
-                <ReactMarkdown>
-                  {part.content}
-                </ReactMarkdown>
-              </div>
             </div>
           );
           
         case 'summary':
           return (
-            <div key={index} className="mb-4 p-4 bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-lg">
-              <div className="text-xs font-semibold text-slate-700 dark:text-slate-400 mb-2 uppercase tracking-wide">
-                📋 요약
-              </div>
-              <pre className="text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap overflow-x-auto">
+            <div key={index} className="mb-4 mt-6 p-3 bg-muted/30 border-l-2 border-muted-foreground/30 rounded-r">
+              <div className="text-xs font-medium text-muted-foreground mb-1.5">상태 정보</div>
+              <pre className="text-xs font-mono text-muted-foreground/80 whitespace-pre-wrap overflow-x-auto leading-relaxed">
                 {part.content}
               </pre>
             </div>
@@ -394,7 +382,7 @@ export default function PlayStory() {
         default:
           return (
             <div key={index} className="mb-4">
-              <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-[1.8] text-foreground/90">
                 <ReactMarkdown>
                   {part.content}
                 </ReactMarkdown>
