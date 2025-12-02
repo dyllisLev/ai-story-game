@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ import {
   Image as ImageIcon, 
   Book,
   Plus,
-  Loader2
+  Loader2,
+  Upload
 } from "lucide-react";
 
 export default function CreateStory() {
@@ -29,6 +30,41 @@ export default function CreateStory() {
   const [genre, setGenre] = useState("판타지");
   const [storySettings, setStorySettings] = useState("");
   const [prologue, setPrologue] = useState("");
+  const [promptTemplate, setPromptTemplate] = useState("기본 프롬프트");
+  const [exampleUserInput, setExampleUserInput] = useState("");
+  const [exampleAiResponse, setExampleAiResponse] = useState("");
+  const [startingSituation, setStartingSituation] = useState("");
+  const [image, setImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const { url } = await response.json();
+        setImage(url);
+      } else {
+        alert("이미지 업로드에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+      alert("이미지 업로드 중 오류가 발생했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleRegister = async () => {
     if (!title.trim()) {
@@ -47,7 +83,13 @@ export default function CreateStory() {
           description: description.trim() || "새로운 스토리",
           genre: genre,
           author: "User",
-          image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1000",
+          image: image || "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1000",
+          storySettings: storySettings.trim(),
+          prologue: prologue.trim(),
+          promptTemplate: promptTemplate,
+          exampleUserInput: exampleUserInput.trim(),
+          exampleAiResponse: exampleAiResponse.trim(),
+          startingSituation: startingSituation.trim(),
         }),
       });
 
@@ -132,12 +174,39 @@ export default function CreateStory() {
                 <CardContent className="p-6 space-y-6">
                   <div className="space-y-2">
                     <Label>이미지</Label>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/*"
+                      className="hidden"
+                      data-testid="input-image-upload"
+                    />
                     <div className="flex gap-4">
-                      <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center border border-dashed border-muted-foreground/50">
-                        <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                      <div 
+                        className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center border border-dashed border-muted-foreground/50 overflow-hidden"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {image ? (
+                          <img src={image} alt="Story" className="w-full h-full object-cover" />
+                        ) : isUploading ? (
+                          <Loader2 className="w-8 h-8 text-muted-foreground/50 animate-spin" />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                        )}
                       </div>
                       <div className="flex flex-col justify-end gap-2">
-                        <Button variant="outline" size="sm">업로드</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploading}
+                          data-testid="button-upload-image"
+                        >
+                          {isUploading ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Upload className="w-3 h-3 mr-2" />}
+                          업로드
+                        </Button>
                         <Button variant="outline" size="sm"><Wand2 className="w-3 h-3 mr-2" /> 생성</Button>
                       </div>
                     </div>
@@ -203,10 +272,15 @@ export default function CreateStory() {
                 <CardContent className="p-6 space-y-6">
                   <div className="space-y-2">
                     <Label>프롬프트 템플릿</Label>
-                    <select className="w-full p-2 rounded-md border bg-background text-sm">
-                      <option>기본 프롬프트</option>
-                      <option>판타지 모험</option>
-                      <option>로맨스</option>
+                    <select 
+                      className="w-full p-2 rounded-md border bg-background text-sm"
+                      value={promptTemplate}
+                      onChange={(e) => setPromptTemplate(e.target.value)}
+                      data-testid="select-prompt-template"
+                    >
+                      <option value="기본 프롬프트">기본 프롬프트</option>
+                      <option value="판타지 모험">판타지 모험</option>
+                      <option value="로맨스">로맨스</option>
                     </select>
                   </div>
 
@@ -235,11 +309,23 @@ export default function CreateStory() {
                       <div className="bg-muted/50 p-4 rounded-lg border border-dashed space-y-3">
                          <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">사용자</Label>
-                            <Input className="bg-background h-8 text-sm" placeholder="입력 예시..." />
+                            <Input 
+                              className="bg-background h-8 text-sm" 
+                              placeholder="입력 예시..." 
+                              value={exampleUserInput}
+                              onChange={(e) => setExampleUserInput(e.target.value)}
+                              data-testid="input-example-user"
+                            />
                          </div>
                          <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">AI</Label>
-                            <Textarea className="bg-background min-h-[60px] text-sm" placeholder="AI 응답 예시..." />
+                            <Textarea 
+                              className="bg-background min-h-[60px] text-sm" 
+                              placeholder="AI 응답 예시..." 
+                              value={exampleAiResponse}
+                              onChange={(e) => setExampleAiResponse(e.target.value)}
+                              data-testid="textarea-example-ai"
+                            />
                          </div>
                       </div>
                     </CardContent>
@@ -275,7 +361,13 @@ export default function CreateStory() {
 
                   <div className="space-y-2">
                     <Label>시작 상황</Label>
-                    <Textarea placeholder="사용자의 역할, 등장인물과의 관계, 이야기가 시작되는 세계관 등" className="bg-background min-h-[100px]" />
+                    <Textarea 
+                      placeholder="사용자의 역할, 등장인물과의 관계, 이야기가 시작되는 세계관 등" 
+                      className="bg-background min-h-[100px]"
+                      value={startingSituation}
+                      onChange={(e) => setStartingSituation(e.target.value)}
+                      data-testid="textarea-starting-situation"
+                    />
                   </div>
                 </CardContent>
               </Card>
