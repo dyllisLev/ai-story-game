@@ -22,6 +22,12 @@ export const stories = sqliteTable("stories", {
   exampleUserInput: text("example_user_input"),
   exampleAiResponse: text("example_ai_response"),
   startingSituation: text("starting_situation"),
+  // Session-specific settings
+  conversationProfile: text("conversation_profile"),
+  userNote: text("user_note"),
+  summaryMemory: text("summary_memory"),
+  sessionModel: text("session_model"),
+  sessionProvider: text("session_provider"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });

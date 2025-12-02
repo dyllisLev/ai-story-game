@@ -17,8 +17,23 @@ import {
   CornerDownLeft,
   Home,
   Loader2,
-  Trash2
+  Trash2,
+  Save,
+  X
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ModelSelector } from "@/components/model-selector";
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -68,6 +83,15 @@ export default function PlayStory() {
   const [storyLoading, setStoryLoading] = useState(true);
   const [allStories, setAllStories] = useState<Story[]>([]);
   const [newSessionProcessed, setNewSessionProcessed] = useState(false);
+  
+  // Session settings
+  const [conversationProfile, setConversationProfile] = useState("");
+  const [userNote, setUserNote] = useState("");
+  const [summaryMemory, setSummaryMemory] = useState("");
+  const [sessionProvider, setSessionProvider] = useState("");
+  const [sessionModel, setSessionModel] = useState("");
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const loadStory = useCallback(async () => {
     if (!storyId) {
@@ -79,6 +103,12 @@ export default function PlayStory() {
       if (response.ok) {
         const data = await response.json();
         setStory(data);
+        // Load session settings
+        setConversationProfile(data.conversationProfile || "");
+        setUserNote(data.userNote || "");
+        setSummaryMemory(data.summaryMemory || "");
+        setSessionProvider(data.sessionProvider || "");
+        setSessionModel(data.sessionModel || "");
       } else {
         setLocation("/");
       }
@@ -89,6 +119,24 @@ export default function PlayStory() {
       setStoryLoading(false);
     }
   }, [storyId, setLocation]);
+
+  const saveSessionSettings = async (field: string, value: string) => {
+    if (!storyId) return;
+    setIsSavingSettings(true);
+    try {
+      const updateData: Record<string, string> = { [field]: value };
+      await fetch(`/api/stories/${storyId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+    } catch (error) {
+      console.error("Failed to save session settings:", error);
+    } finally {
+      setIsSavingSettings(false);
+      setEditingField(null);
+    }
+  };
 
   const loadAllStories = useCallback(async () => {
     try {
@@ -232,22 +280,54 @@ export default function PlayStory() {
     }
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isGenerating) return;
     
-    const userMsg = await saveMessage("user", inputValue);
+    const userInput = inputValue;
+    setInputValue("");
+    
+    // Save and display user message
+    const userMsg = await saveMessage("user", userInput);
     if (userMsg) {
       setMessages(prev => [...prev, userMsg]);
     }
-    setInputValue("");
     
-    setTimeout(async () => {
-      const aiContent = "*잠시 침묵하던 AI가 당신을 바라보며 입을 엽니다.* \"흥미로운 제안이군요. 하지만 그 대가는 준비되어 있습니까?\"";
-      const aiMsg = await saveMessage("assistant", aiContent, "AI");
-      if (aiMsg) {
-        setMessages(prev => [...prev, aiMsg]);
+    // Call AI API
+    setIsGenerating(true);
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storyId: storyId,
+          userMessage: userInput
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.response) {
+        const aiMsg = await saveMessage("assistant", data.response, "AI");
+        if (aiMsg) {
+          setMessages(prev => [...prev, aiMsg]);
+        }
+      } else {
+        // Show error message to user
+        const errorMsg = await saveMessage("assistant", `*시스템 오류: ${data.error || "AI 응답을 생성할 수 없습니다. 설정에서 API 키를 확인해주세요."}*`, "System");
+        if (errorMsg) {
+          setMessages(prev => [...prev, errorMsg]);
+        }
       }
-    }, 1000);
+    } catch (error) {
+      console.error("Failed to get AI response:", error);
+      const errorMsg = await saveMessage("assistant", "*시스템 오류: AI 서버에 연결할 수 없습니다.*", "System");
+      if (errorMsg) {
+        setMessages(prev => [...prev, errorMsg]);
+      }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (storyLoading) {
@@ -436,15 +516,21 @@ export default function PlayStory() {
                         handleSendMessage();
                      }
                   }}
-                  placeholder="게임을 시작하지" 
+                  placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요..."} 
+                  disabled={isGenerating}
                   className="min-h-[50px] pl-4 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
                />
                <Button 
                   size="icon" 
                   className="absolute right-2 top-2 h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-white"
                   onClick={handleSendMessage}
+                  disabled={isGenerating}
                >
-                  <CornerDownLeft className="w-4 h-4" />
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CornerDownLeft className="w-4 h-4" />
+                  )}
                </Button>
             </div>
          </div>
@@ -472,29 +558,102 @@ export default function PlayStory() {
                <div className="space-y-6">
                   <div className="space-y-2">
                      <label className="text-xs font-bold text-muted-foreground">모델 설정</label>
-                     <ModelSelector />
+                     <ModelSelector 
+                       storyId={storyId || undefined}
+                       sessionProvider={sessionProvider}
+                       sessionModel={sessionModel}
+                       onProviderChange={(provider) => {
+                         setSessionProvider(provider);
+                         saveSessionSettings("sessionProvider", provider);
+                       }}
+                       onModelChange={(model) => {
+                         setSessionModel(model);
+                         saveSessionSettings("sessionModel", model);
+                       }}
+                     />
                   </div>
 
                   <Separator />
 
                   <div className="space-y-1">
-                     <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
-                        <BookOpen className="w-4 h-4 text-muted-foreground" /> 플레이 가이드
-                     </Button>
-                     <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
+                     <Button 
+                       variant="ghost" 
+                       className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted"
+                       onClick={() => setEditingField("conversationProfile")}
+                     >
                         <Users className="w-4 h-4 text-muted-foreground" /> 대화 프로필
+                        {conversationProfile && <span className="text-[10px] bg-green-100 text-green-600 px-1 rounded ml-auto">설정됨</span>}
                      </Button>
-                     <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
+                     <Button 
+                       variant="ghost" 
+                       className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted"
+                       onClick={() => setEditingField("userNote")}
+                     >
                         <BookOpen className="w-4 h-4 text-muted-foreground" /> 유저 노트
+                        {userNote && <span className="text-[10px] bg-green-100 text-green-600 px-1 rounded ml-auto">설정됨</span>}
                      </Button>
-                     <Button variant="ghost" className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted">
-                        <History className="w-4 h-4 text-muted-foreground" /> 요약 메모리 <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded ml-auto">N</span>
+                     <Button 
+                       variant="ghost" 
+                       className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted"
+                       onClick={() => setEditingField("summaryMemory")}
+                     >
+                        <History className="w-4 h-4 text-muted-foreground" /> 요약 메모리
+                        {summaryMemory && <span className="text-[10px] bg-green-100 text-green-600 px-1 rounded ml-auto">설정됨</span>}
                      </Button>
                   </div>
                </div>
             </ScrollArea>
          </div>
       )}
+
+      {/* Session Settings Edit Dialog */}
+      <Dialog open={editingField !== null} onOpenChange={(open) => !open && setEditingField(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingField === "conversationProfile" && "대화 프로필 편집"}
+              {editingField === "userNote" && "유저 노트 편집"}
+              {editingField === "summaryMemory" && "요약 메모리 편집"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              className="min-h-[200px]"
+              placeholder={
+                editingField === "conversationProfile" ? "캐릭터 정보, 관계 설정 등을 입력하세요..." :
+                editingField === "userNote" ? "사용자에 대한 메모를 입력하세요..." :
+                "대화 요약 및 중요 정보를 입력하세요..."
+              }
+              value={
+                editingField === "conversationProfile" ? conversationProfile :
+                editingField === "userNote" ? userNote :
+                summaryMemory
+              }
+              onChange={(e) => {
+                if (editingField === "conversationProfile") setConversationProfile(e.target.value);
+                else if (editingField === "userNote") setUserNote(e.target.value);
+                else setSummaryMemory(e.target.value);
+              }}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditingField(null)}>
+                <X className="w-4 h-4 mr-2" /> 취소
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (editingField === "conversationProfile") saveSessionSettings("conversationProfile", conversationProfile);
+                  else if (editingField === "userNote") saveSessionSettings("userNote", userNote);
+                  else if (editingField === "summaryMemory") saveSessionSettings("summaryMemory", summaryMemory);
+                }}
+                disabled={isSavingSettings}
+              >
+                {isSavingSettings ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                저장
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

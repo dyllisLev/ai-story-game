@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -6,25 +7,108 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MODELS } from "@/lib/mockData";
 import { Sparkles } from "lucide-react";
 
-export function ModelSelector() {
+interface ModelSelectorProps {
+  storyId?: number;
+  sessionProvider?: string;
+  sessionModel?: string;
+  onProviderChange?: (provider: string) => void;
+  onModelChange?: (model: string) => void;
+}
+
+const PROVIDERS = [
+  { id: "gemini", name: "Gemini" },
+  { id: "chatgpt", name: "ChatGPT" },
+  { id: "claude", name: "Claude" },
+  { id: "grok", name: "Grok" },
+];
+
+export function ModelSelector({ 
+  storyId, 
+  sessionProvider = "", 
+  sessionModel = "",
+  onProviderChange,
+  onModelChange
+}: ModelSelectorProps) {
+  const [provider, setProvider] = useState(sessionProvider || "auto");
+  const [model, setModel] = useState(sessionModel || "");
+  const [models, setModels] = useState<{id: string, name: string}[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  useEffect(() => {
+    setProvider(sessionProvider || "auto");
+    setModel(sessionModel || "");
+  }, [sessionProvider, sessionModel]);
+
+  useEffect(() => {
+    if (provider && provider !== "auto") {
+      loadModels(provider);
+    } else {
+      setModels([]);
+    }
+  }, [provider]);
+
+  const loadModels = async (providerName: string) => {
+    setLoadingModels(true);
+    try {
+      const response = await fetch(`/api/ai/models/${providerName}`);
+      if (response.ok) {
+        const data = await response.json();
+        setModels(data.models || []);
+      }
+    } catch (error) {
+      console.error("Failed to load models:", error);
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  const handleProviderChange = (newProvider: string) => {
+    setProvider(newProvider);
+    setModel("");
+    onProviderChange?.(newProvider === "auto" ? "" : newProvider);
+    onModelChange?.("");
+  };
+
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel);
+    onModelChange?.(newModel);
+  };
+
   return (
-    <div className="flex items-center gap-2">
-      <Sparkles className="w-4 h-4 text-primary" />
-      <Select defaultValue="gemini-3.0-pro">
-        <SelectTrigger className="w-[200px] h-8 text-xs border-none bg-transparent focus:ring-0 shadow-none font-medium text-muted-foreground hover:text-foreground transition-colors">
-          <SelectValue placeholder="Select Model" />
-        </SelectTrigger>
-        <SelectContent>
-          {MODELS.map((model) => (
-            <SelectItem key={model.id} value={model.id}>
-              {model.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-primary" />
+        <Select value={provider} onValueChange={handleProviderChange}>
+          <SelectTrigger className="flex-1 h-8 text-xs">
+            <SelectValue placeholder="AI 제공자 선택" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="auto">자동 선택</SelectItem>
+            {PROVIDERS.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {provider && provider !== "auto" && (
+        <Select value={model} onValueChange={handleModelChange} disabled={loadingModels}>
+          <SelectTrigger className="w-full h-8 text-xs">
+            <SelectValue placeholder={loadingModels ? "모델 로딩 중..." : "모델 선택"} />
+          </SelectTrigger>
+          <SelectContent>
+            {models.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }

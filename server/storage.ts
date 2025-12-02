@@ -56,7 +56,12 @@ function getDb() {
       'prompt_template TEXT',
       'example_user_input TEXT',
       'example_ai_response TEXT',
-      'starting_situation TEXT'
+      'starting_situation TEXT',
+      'conversation_profile TEXT',
+      'user_note TEXT',
+      'summary_memory TEXT',
+      'session_model TEXT',
+      'session_provider TEXT'
     ];
     for (const col of columnsToAdd) {
       try {

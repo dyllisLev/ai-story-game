@@ -613,7 +613,7 @@ export async function registerRoutes(
 
   app.post("/api/ai/chat", async (req, res) => {
     try {
-      const { storyId, userMessage, provider: requestedProvider } = req.body;
+      const { storyId, userMessage } = req.body;
       
       // Get story data
       const story = await storage.getStory(storyId);
@@ -624,19 +624,21 @@ export async function registerRoutes(
       // Get conversation history
       const messages = await storage.getMessagesByStory(storyId);
       
-      // Try to find an available provider with API key
+      // Use session-specific provider/model if set, otherwise use global settings
       const providers = ["gemini", "chatgpt", "claude", "grok"];
-      let selectedProvider = requestedProvider;
+      let selectedProvider = story.sessionProvider || "";
+      let selectedModel = story.sessionModel || "";
       let apiKey = "";
       
-      if (requestedProvider && requestedProvider !== "auto") {
-        const apiKeySetting = await storage.getSetting(`apiKey_${requestedProvider}`);
+      if (selectedProvider) {
+        // Use session-specific provider
+        const apiKeySetting = await storage.getSetting(`apiKey_${selectedProvider}`);
         if (!apiKeySetting || !apiKeySetting.value) {
-          return res.status(400).json({ error: `API key for ${requestedProvider} not configured.` });
+          return res.status(400).json({ error: `API key for ${selectedProvider} not configured.` });
         }
         apiKey = apiKeySetting.value;
-        selectedProvider = requestedProvider;
       } else {
+        // Auto-select: find first provider with API key
         for (const p of providers) {
           const apiKeySetting = await storage.getSetting(`apiKey_${p}`);
           if (apiKeySetting && apiKeySetting.value) {
@@ -651,45 +653,63 @@ export async function registerRoutes(
         }
       }
       
-      // Build system prompt from story settings
-      const commonPromptSetting = await storage.getSetting("commonPrompt");
-      let systemPrompt = commonPromptSetting?.value || "";
+      // Get default model if not specified in session
+      if (!selectedModel) {
+        const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
+        const defaultModels: Record<string, string> = {
+          gemini: "gemini-2.0-flash",
+          chatgpt: "gpt-4o",
+          claude: "claude-3-5-sonnet-20241022",
+          grok: "grok-beta"
+        };
+        selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+      }
       
-      // Add story context
-      systemPrompt += `\n\n## 스토리 정보
+      // Build system prompt from AI persona settings (commonPrompt)
+      const commonPromptSetting = await storage.getSetting("commonPrompt");
+      let systemPrompt = commonPromptSetting?.value || "당신은 스토리텔링 AI입니다.";
+      
+      // Add story basic info
+      systemPrompt += `\n\n## 스토리 기본 정보
 제목: ${story.title}
 장르: ${story.genre || "일반"}
 ${story.description ? `소개: ${story.description}` : ""}
 
-## 스토리 설정
-${story.storySettings || "기본 판타지 세계관"}
+## 스토리 설정 및 정보
+${story.storySettings || ""}
 
 ## 시작 상황
-${story.startingSituation || "사용자가 모험을 시작합니다."}
-
-## 프롬프트 템플릿
-${story.promptTemplate || "기본 프롬프트"}
+${story.startingSituation || ""}
 `;
 
-      // Add example dialogue if exists
+      // Add example dialogue (전개 예시)
       if (story.exampleUserInput && story.exampleAiResponse) {
-        systemPrompt += `\n## 대화 예시
+        systemPrompt += `\n## 전개 예시
 사용자: ${story.exampleUserInput}
 AI: ${story.exampleAiResponse}
 `;
       }
 
-      systemPrompt += `\n\n당신은 위 스토리 세계관의 등장인물로서 사용자와 상호작용합니다. 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`;
+      // Add session-specific info (대화 프로필, 유저 노트, 요약 메모리)
+      if (story.conversationProfile) {
+        systemPrompt += `\n## 대화 프로필
+${story.conversationProfile}
+`;
+      }
+      
+      if (story.userNote) {
+        systemPrompt += `\n## 유저 노트
+${story.userNote}
+`;
+      }
+      
+      if (story.summaryMemory) {
+        systemPrompt += `\n## 요약 메모리
+${story.summaryMemory}
+`;
+      }
 
-      // Get selected model
-      const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
-      const defaultModels: Record<string, string> = {
-        gemini: "gemini-2.0-flash",
-        chatgpt: "gpt-4o",
-        claude: "claude-3-5-sonnet-20241022",
-        grok: "grok-beta"
-      };
-      const selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+      systemPrompt += `\n\n당신은 위 스토리 세계관의 등장인물로서 사용자와 상호작용합니다. 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`;
 
       let generatedText = "";
 
