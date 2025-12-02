@@ -79,16 +79,51 @@ function getDb() {
       } catch (e) { /* column already exists */ }
     }
     
-    // Migration: Add session_id to messages and remove old story_id
+    // Migration: Convert messages from story_id to session_id
     try {
-      // Check if session_id column exists
       const tableInfo = sqliteDb.prepare(`PRAGMA table_info(messages)`).all() as any[];
-      const hasSessionId = tableInfo.some(col => col.name === 'session_id');
-      const hasStoryId = tableInfo.some(col => col.name === 'story_id');
+      const hasSessionId = tableInfo.some((col: any) => col.name === 'session_id');
+      const hasStoryId = tableInfo.some((col: any) => col.name === 'story_id');
       
       if (!hasSessionId && hasStoryId) {
-        // Drop old messages table and recreate with new schema
-        sqliteDb.exec(`DROP TABLE IF EXISTS messages;`);
+        console.log("⚠️  Migrating messages from story-based to session-based system...");
+        
+        // Get all existing messages with story_id
+        const existingMessages = sqliteDb.prepare(`SELECT * FROM messages`).all();
+        console.log(`Found ${existingMessages.length} existing messages to migrate`);
+        
+        // Create a backup of old messages
+        sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS messages_backup_pre_session (
+            id INTEGER,
+            story_id INTEGER,
+            role TEXT,
+            content TEXT,
+            character TEXT,
+            created_at TEXT
+          );
+        `);
+        sqliteDb.exec(`INSERT INTO messages_backup_pre_session SELECT * FROM messages;`);
+        console.log("✓ Created backup table: messages_backup_pre_session");
+        
+        // Create migration sessions for each story that has messages
+        const storyIds = [...new Set(existingMessages.map((m: any) => m.story_id))];
+        const storyToSessionMap = new Map<number, number>();
+        
+        for (const storyId of storyIds) {
+          // Create a migration session for this story
+          const result = sqliteDb.prepare(`
+            INSERT INTO sessions (story_id, title, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+          `).run(storyId, `[Migrated] Story ${storyId} Messages`, 
+                 new Date().toISOString(), 
+                 new Date().toISOString());
+          storyToSessionMap.set(storyId, result.lastInsertRowid as number);
+        }
+        console.log(`✓ Created ${storyToSessionMap.size} migration sessions`);
+        
+        // Drop and recreate messages table with new schema
+        sqliteDb.exec(`DROP TABLE messages;`);
         sqliteDb.exec(`
           CREATE TABLE messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,9 +135,23 @@ function getDb() {
             FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
           );
         `);
+        
+        // Migrate messages to new sessions
+        for (const msg of existingMessages) {
+          const sessionId = storyToSessionMap.get(msg.story_id);
+          if (sessionId) {
+            sqliteDb.prepare(`
+              INSERT INTO messages (session_id, role, content, character, created_at)
+              VALUES (?, ?, ?, ?, ?)
+            `).run(sessionId, msg.role, msg.content, msg.character, msg.created_at);
+          }
+        }
+        console.log(`✓ Migrated ${existingMessages.length} messages to session-based system`);
+        console.log("✓ Migration complete! Old messages preserved in messages_backup_pre_session");
       }
     } catch (e) {
-      console.error("Migration error:", e);
+      console.error("❌ Migration error:", e);
+      throw e; // Re-throw to prevent server from starting with broken database
     }
   }
   return db;
