@@ -13,11 +13,55 @@ interface ApiKeys {
   gemini: string;
 }
 
+interface AiModels {
+  chatgpt: string;
+  grok: string;
+  claude: string;
+  gemini: string;
+}
+
 const AI_PROVIDERS = [
-  { id: "chatgpt", name: "ChatGPT", color: "bg-green-50 border-green-200" },
-  { id: "grok", name: "Grok", color: "bg-blue-50 border-blue-200" },
-  { id: "claude", name: "Claude", color: "bg-orange-50 border-orange-200" },
-  { id: "gemini", name: "Gemini", color: "bg-purple-50 border-purple-200" },
+  { 
+    id: "chatgpt", 
+    name: "ChatGPT", 
+    color: "bg-green-50 border-green-200",
+    models: [
+      { id: "gpt-4o", name: "GPT-4o" },
+      { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+      { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
+      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
+    ]
+  },
+  { 
+    id: "grok", 
+    name: "Grok", 
+    color: "bg-blue-50 border-blue-200",
+    models: [
+      { id: "grok-beta", name: "Grok Beta" },
+      { id: "grok-2", name: "Grok 2" },
+    ]
+  },
+  { 
+    id: "claude", 
+    name: "Claude", 
+    color: "bg-orange-50 border-orange-200",
+    models: [
+      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
+      { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+      { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
+    ]
+  },
+  { 
+    id: "gemini", 
+    name: "Gemini", 
+    color: "bg-purple-50 border-purple-200",
+    models: [
+      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
+      { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
+      { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
+      { id: "gemini-1.5-flash-8b", name: "Gemini 1.5 Flash 8B" },
+    ]
+  },
 ];
 
 export default function Settings() {
@@ -26,6 +70,12 @@ export default function Settings() {
     grok: "",
     claude: "",
     gemini: "",
+  });
+  const [aiModels, setAiModels] = useState<AiModels>({
+    chatgpt: "gpt-4o",
+    grok: "grok-beta",
+    claude: "claude-3-5-sonnet-20241022",
+    gemini: "gemini-2.0-flash",
   });
   const [commonPrompt, setCommonPrompt] = useState("");
   const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
@@ -60,6 +110,12 @@ export default function Settings() {
           loadedPrompt = setting.value;
         } else if (setting.key === "storyGeneratePrompt") {
           setStoryGeneratePrompt(setting.value);
+        } else if (setting.key.startsWith("aiModel_")) {
+          const provider = setting.key.replace("aiModel_", "") as keyof AiModels;
+          setAiModels(prev => ({
+            ...prev,
+            [provider]: setting.value
+          }));
         }
       }
       
@@ -79,6 +135,13 @@ export default function Settings() {
     }));
   };
 
+  const handleModelChange = (provider: keyof AiModels, value: string) => {
+    setAiModels((prev) => ({
+      ...prev,
+      [provider]: value,
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -86,6 +149,10 @@ export default function Settings() {
         ...Object.entries(apiKeys).map(([provider, key]) => ({
           key: `apiKey_${provider}`,
           value: key,
+        })),
+        ...Object.entries(aiModels).map(([provider, model]) => ({
+          key: `aiModel_${provider}`,
+          value: model,
         })),
         { key: "commonPrompt", value: commonPrompt },
         { key: "storyGeneratePrompt", value: storyGeneratePrompt },
@@ -154,9 +221,20 @@ export default function Settings() {
                     onChange={(e) =>
                       handleApiKeyChange(provider.id as keyof ApiKeys, e.target.value)
                     }
-                    className="font-mono text-sm bg-white"
+                    className="font-mono text-sm bg-white mb-2"
                     data-testid={`input-api-key-${provider.id}`}
                   />
+                  <label className="text-xs text-muted-foreground mb-1 block">모델 선택</label>
+                  <select
+                    value={aiModels[provider.id as keyof AiModels]}
+                    onChange={(e) => handleModelChange(provider.id as keyof AiModels, e.target.value)}
+                    className="w-full p-2 rounded-md border bg-white text-sm"
+                    data-testid={`select-model-${provider.id}`}
+                  >
+                    {provider.models.map((model) => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
                 </div>
               ))}
             </div>

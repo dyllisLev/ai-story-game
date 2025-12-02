@@ -254,9 +254,19 @@ export async function registerRoutes(
 
       let generatedText = "";
 
+      // Get selected model for this provider
+      const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
+      const defaultModels: Record<string, string> = {
+        gemini: "gemini-2.0-flash",
+        chatgpt: "gpt-4o",
+        claude: "claude-3-5-sonnet-20241022",
+        grok: "grok-beta"
+      };
+      const selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+
       if (selectedProvider === "gemini") {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -279,7 +289,7 @@ export async function registerRoutes(
             "Authorization": `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: "gpt-4o",
+            model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
             max_tokens: 2048
@@ -299,7 +309,7 @@ export async function registerRoutes(
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
-            model: "claude-3-5-sonnet-20241022",
+            model: selectedModel,
             max_tokens: 2048,
             messages: [{ role: "user", content: prompt }]
           })
@@ -317,7 +327,7 @@ export async function registerRoutes(
             "Authorization": `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: "grok-beta",
+            model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
             max_tokens: 2048
