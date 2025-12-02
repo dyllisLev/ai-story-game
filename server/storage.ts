@@ -237,8 +237,21 @@ export class SqliteStorage implements IStorage {
   }
 
   async getAllStories(): Promise<Story[]> {
-    const db = getDb();
-    return db.select().from(stories).all();
+    // Ensure database is initialized
+    getDb();
+    
+    // Get all stories with their most recent session update time
+    const result = sqliteDb.prepare(`
+      SELECT 
+        s.*,
+        COALESCE(MAX(sess.updated_at), s.created_at) as last_played_at
+      FROM stories s
+      LEFT JOIN sessions sess ON s.id = sess.story_id
+      GROUP BY s.id
+      ORDER BY last_played_at DESC
+    `).all();
+    
+    return result as Story[];
   }
 
   async createStory(story: InsertStory): Promise<Story> {
