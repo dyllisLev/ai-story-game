@@ -16,6 +16,8 @@ export const stories = sqliteTable("stories", {
   image: text("image"),
   genre: text("genre"),
   author: text("author"),
+  storySettings: text("story_settings"),
+  prologue: text("prologue"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });

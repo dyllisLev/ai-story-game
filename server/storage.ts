@@ -32,6 +32,8 @@ function getDb() {
         image TEXT,
         genre TEXT,
         author TEXT,
+        story_settings TEXT,
+        prologue TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
@@ -46,6 +48,14 @@ function getDb() {
         FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
       );
     `);
+    
+    // Migration: Add new columns if they don't exist
+    try {
+      sqliteDb.exec(`ALTER TABLE stories ADD COLUMN story_settings TEXT;`);
+    } catch (e) { /* column already exists */ }
+    try {
+      sqliteDb.exec(`ALTER TABLE stories ADD COLUMN prologue TEXT;`);
+    } catch (e) { /* column already exists */ }
   }
   return db;
 }

@@ -26,6 +26,8 @@ interface Story {
   image: string | null;
   genre: string | null;
   author: string | null;
+  storySettings: string | null;
+  prologue: string | null;
 }
 
 export default function EditStory() {
@@ -56,6 +58,8 @@ export default function EditStory() {
         setTitle(story.title);
         setDescription(story.description || "");
         setGenre(story.genre || "판타지");
+        setStorySettings(story.storySettings || "");
+        setPrologue(story.prologue || "");
       } else {
         setLocation("/");
       }
@@ -83,6 +87,8 @@ export default function EditStory() {
           title: title.trim(),
           description: description.trim() || "스토리",
           genre: genre,
+          storySettings: storySettings.trim(),
+          prologue: prologue.trim(),
         }),
       });
 
