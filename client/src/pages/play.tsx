@@ -40,6 +40,25 @@ export default function PlayStory() {
     return content.split('\n\n').map(part => part.replace(/\n/g, '  \n')).join('\n\n');
   };
 
+  const markdownComponents = {
+    code({ node, inline, className, children, ...props }: any) {
+      if (inline) {
+        return (
+          <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary" {...props}>
+            {children}
+          </code>
+        );
+      }
+      return (
+        <div className="relative my-4 rounded-lg border bg-muted/50 p-4 font-mono text-sm overflow-x-auto">
+          <code className={className} {...props}>
+            {children}
+          </code>
+        </div>
+      );
+    }
+  };
+
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
     
@@ -147,7 +166,7 @@ export default function PlayStory() {
                            <div className="bg-muted/20 rounded-lg p-6 border border-muted/50 text-sm space-y-4">
                                <h3 className="font-bold text-base border-b pb-2 mb-2">초차원 존재의 정체</h3>
                                <div className="leading-loose text-muted-foreground prose prose-sm max-w-none dark:prose-invert prose-p:mb-4">
-                                  <ReactMarkdown>{formatContent(msg.content)}</ReactMarkdown>
+                                  <ReactMarkdown components={markdownComponents}>{formatContent(msg.content)}</ReactMarkdown>
                                </div>
                            </div>
                            {/* Separator */}
@@ -164,7 +183,7 @@ export default function PlayStory() {
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2">
                                   <div className="text-sm leading-loose prose prose-sm max-w-none dark:prose-invert prose-p:mb-4">
-                                     <ReactMarkdown>{formatContent(msg.content)}</ReactMarkdown>
+                                     <ReactMarkdown components={markdownComponents}>{formatContent(msg.content)}</ReactMarkdown>
                                   </div>
                                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                      <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
@@ -184,7 +203,7 @@ export default function PlayStory() {
                      <div key={msg.id} className="group">
                         <div className="flex flex-col items-start gap-2">
                             <div className="max-w-[90%] text-sm leading-loose prose prose-sm max-w-none dark:prose-invert text-left prose-p:mb-4">
-                               <ReactMarkdown>{formatContent(msg.content)}</ReactMarkdown>
+                               <ReactMarkdown components={markdownComponents}>{formatContent(msg.content)}</ReactMarkdown>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"><Settings className="w-3 h-3" /></Button>
