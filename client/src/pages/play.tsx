@@ -143,7 +143,7 @@ export default function PlayStory() {
                            <div className="bg-muted/20 rounded-lg p-6 border border-muted/50 text-sm space-y-4">
                                <h3 className="font-bold text-base border-b pb-2 mb-2">초차원 존재의 정체</h3>
                                <div className="leading-relaxed text-muted-foreground prose prose-sm max-w-none dark:prose-invert">
-                                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                  <ReactMarkdown>{msg.content.replace(/\n/g, '  \n')}</ReactMarkdown>
                                </div>
                            </div>
                            {/* Separator */}
@@ -160,7 +160,7 @@ export default function PlayStory() {
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2">
                                   <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert">
-                                     <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                     <ReactMarkdown>{msg.content.replace(/\n/g, '  \n')}</ReactMarkdown>
                                   </div>
                                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                      <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
