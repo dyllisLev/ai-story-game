@@ -197,12 +197,35 @@ export async function registerRoutes(
 
   app.post("/api/ai/generate-story-settings", async (req, res) => {
     try {
-      const { title, description, genre, promptTemplate, storySettings, provider = "gemini" } = req.body;
+      const { title, description, genre, promptTemplate, storySettings, provider: requestedProvider } = req.body;
       
-      // Get API key for the provider
-      const apiKeySetting = await storage.getSetting(`apiKey_${provider}`);
-      if (!apiKeySetting || !apiKeySetting.value) {
-        return res.status(400).json({ error: `API key for ${provider} not configured. Please set it in settings.` });
+      // Try to find an available provider with API key
+      const providers = ["gemini", "chatgpt", "claude", "grok"];
+      let selectedProvider = requestedProvider;
+      let apiKey = "";
+      
+      if (requestedProvider && requestedProvider !== "auto") {
+        // Use requested provider
+        const apiKeySetting = await storage.getSetting(`apiKey_${requestedProvider}`);
+        if (!apiKeySetting || !apiKeySetting.value) {
+          return res.status(400).json({ error: `API key for ${requestedProvider} not configured. Please set it in settings.` });
+        }
+        apiKey = apiKeySetting.value;
+        selectedProvider = requestedProvider;
+      } else {
+        // Auto-select: find first provider with API key
+        for (const p of providers) {
+          const apiKeySetting = await storage.getSetting(`apiKey_${p}`);
+          if (apiKeySetting && apiKeySetting.value) {
+            apiKey = apiKeySetting.value;
+            selectedProvider = p;
+            break;
+          }
+        }
+        
+        if (!apiKey) {
+          return res.status(400).json({ error: "No AI API key configured. Please set at least one API key in settings." });
+        }
       }
       
       // Get custom prompt template
@@ -231,9 +254,9 @@ export async function registerRoutes(
 
       let generatedText = "";
 
-      if (provider === "gemini") {
+      if (selectedProvider === "gemini") {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKeySetting.value}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -248,12 +271,12 @@ export async function registerRoutes(
           return res.status(400).json({ error: data.error.message });
         }
         generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      } else if (provider === "chatgpt") {
+      } else if (selectedProvider === "chatgpt") {
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKeySetting.value}`
+            "Authorization": `Bearer ${apiKey}`
           },
           body: JSON.stringify({
             model: "gpt-4o",
@@ -267,12 +290,12 @@ export async function registerRoutes(
           return res.status(400).json({ error: data.error.message });
         }
         generatedText = data.choices?.[0]?.message?.content || "";
-      } else if (provider === "claude") {
+      } else if (selectedProvider === "claude") {
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": apiKeySetting.value,
+            "x-api-key": apiKey,
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
@@ -286,12 +309,12 @@ export async function registerRoutes(
           return res.status(400).json({ error: data.error.message });
         }
         generatedText = data.content?.[0]?.text || "";
-      } else if (provider === "grok") {
+      } else if (selectedProvider === "grok") {
         const response = await fetch("https://api.x.ai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKeySetting.value}`
+            "Authorization": `Bearer ${apiKey}`
           },
           body: JSON.stringify({
             model: "grok-beta",

@@ -54,6 +54,7 @@ export default function EditStory() {
   const [startingSituation, setStartingSituation] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,6 +82,41 @@ export default function EditStory() {
       alert("이미지 업로드 중 오류가 발생했습니다.");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleGenerateStorySettings = async () => {
+    if (!title.trim()) {
+      alert("먼저 프로필 탭에서 제목을 입력해주세요.");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch("/api/ai/generate-story-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          genre: genre,
+          promptTemplate: promptTemplate,
+          storySettings: storySettings.trim(),
+          provider: "auto"
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.generatedText) {
+        setStorySettings(prev => prev ? prev + "\n\n" + data.generatedText : data.generatedText);
+      } else {
+        alert(data.error || "스토리 설정 생성에 실패했습니다. 설정에서 API 키를 확인해주세요.");
+      }
+    } catch (error) {
+      console.error("Failed to generate story settings:", error);
+      alert("스토리 설정 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -303,8 +339,23 @@ export default function EditStory() {
                  <h2 className="text-lg font-bold flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-primary" /> 스토리 설정
                 </h2>
-                <Button variant="outline" size="sm" className="text-primary border-primary/20 hover:bg-primary/5">
-                  <Wand2 className="w-4 h-4 mr-2" /> 자동 생성
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-primary border-primary/20 hover:bg-primary/5"
+                  onClick={handleGenerateStorySettings}
+                  disabled={isGenerating}
+                  data-testid="button-auto-generate-story"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-4 h-4 mr-2" /> 자동 생성
+                    </>
+                  )}
                 </Button>
               </div>
 
