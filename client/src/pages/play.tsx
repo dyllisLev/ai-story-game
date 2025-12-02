@@ -184,7 +184,7 @@ export default function PlayStory() {
 
          {/* Chat Messages */}
          <ScrollArea className="flex-1 h-full">
-            <div className="max-w-3xl mx-auto space-y-8 pl-[18px] pr-8 py-6 w-full">
+            <div className="max-w-3xl mx-auto space-y-8 px-4 py-6 w-full">
                {messages.map((msg, index) => {
                   if (msg.type === "context") {
                      return (
