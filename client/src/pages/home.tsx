@@ -131,27 +131,6 @@ export default function Home() {
                     alt={story.title} 
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-4">
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="gap-2"
-                        onClick={() => createNewSession(story.id, story.title)}
-                        data-testid={`button-new-session-${story.id}`}
-                      >
-                        <Plus className="w-3 h-3" /> 새로 시작
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="bg-white text-black hover:bg-white/90 gap-2"
-                        onClick={() => continuePlay(story)}
-                        data-testid={`button-continue-${story.id}`}
-                      >
-                        <Play className="w-3 h-3" /> 이어서 플레이
-                      </Button>
-                    </div>
-                  </div>
                 </div>
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-2">
@@ -187,8 +166,27 @@ export default function Home() {
                     </div>
                   </div>
                   <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">{story.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{story.description}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t border-dashed">
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{story.description}</p>
+                  <div className="flex gap-2 mb-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1 gap-2"
+                      onClick={() => createNewSession(story.id, story.title)}
+                      data-testid={`button-new-session-${story.id}`}
+                    >
+                      <Plus className="w-3 h-3" /> 새로 시작
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="flex-1 gap-2"
+                      onClick={() => continuePlay(story)}
+                      data-testid={`button-continue-${story.id}`}
+                    >
+                      <Play className="w-3 h-3" /> 이어하기
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-dashed">
                     <span>최근 플레이: {formatDate(story.updatedAt)}</span>
                     <span>by {story.author || "Unknown"}</span>
                   </div>
