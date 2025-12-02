@@ -132,18 +132,6 @@ export default function PlayStory() {
             </div>
          </header>
 
-         {/* Context/Stats Banner (Mockup based on screenshot) */}
-         <div className="bg-muted/30 border-b px-6 py-4 text-xs leading-relaxed text-muted-foreground">
-            <div className="max-w-4xl mx-auto">
-               <h3 className="font-bold text-foreground mb-1">현재 상태 요약</h3>
-               <ul className="list-disc pl-4 space-y-0.5 columns-1 sm:columns-2 gap-8">
-                  <li>인구수: 847개 우주 전체 생명체 (무한대급)</li>
-                  <li>보유 영토: 다중우주 전체</li>
-                  <li>재정: 다중우주급 무한 자원</li>
-                  <li>국민 여론: 100% (절대신 숭배)</li>
-               </ul>
-            </div>
-         </div>
 
          {/* Chat Messages */}
          <ScrollArea className="flex-1 px-4 py-6">
