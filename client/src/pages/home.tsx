@@ -6,25 +6,6 @@ import { Plus, Play, MoreHorizontal } from "lucide-react";
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b px-6 py-4 flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-10">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-primary tracking-tight">Crack AI</h1>
-          <nav className="hidden md:flex gap-6 text-sm font-medium text-muted-foreground ml-8">
-            <Link href="/" className="text-foreground hover:text-primary transition-colors">스토리</Link>
-            <a href="#" className="hover:text-foreground transition-colors">캐릭터</a>
-            <a href="#" className="hover:text-foreground transition-colors">내 작품</a>
-            <a href="#" className="hover:text-foreground transition-colors">이미지</a>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <div className="w-8 h-8 bg-muted rounded-full overflow-hidden">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" />
-            </div>
-          </Button>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8 max-w-5xl">
