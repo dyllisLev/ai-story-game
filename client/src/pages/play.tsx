@@ -340,14 +340,14 @@ export default function PlayStory() {
         />
       )}
 
-      {sidebarOpen && (
+      {(!isMobile || sidebarOpen) && (
         <div className={cn(
           "bg-sidebar flex flex-col flex-shrink-0 border-r transition-all duration-300 ease-in-out",
-          isMobile ? "fixed inset-y-0 left-0 z-50 w-[280px] h-full shadow-xl animate-in slide-in-from-left duration-200" : "w-[280px]"
+          isMobile ? "fixed inset-y-0 left-0 z-50 w-full max-w-[320px] h-full shadow-xl animate-in slide-in-from-left duration-200" : "w-[280px]"
         )}>
           <div className="p-4 border-b flex items-center justify-between">
-            <h2 className="font-bold text-lg truncate">{story.title}</h2>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
+            <h2 className="font-bold text-lg truncate pr-2">{story.title}</h2>
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="flex-shrink-0">
               <Menu className="w-4 h-4" />
             </Button>
           </div>
@@ -528,14 +528,14 @@ export default function PlayStory() {
         />
       )}
 
-      {rightSidebarOpen && (
+      {(!isMobile || rightSidebarOpen) && (
          <div className={cn(
             "bg-background border-l flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out",
-            isMobile ? "fixed inset-y-0 right-0 z-50 w-[300px] h-full shadow-xl animate-in slide-in-from-right duration-200" : "w-[300px]"
+            isMobile ? "fixed inset-y-0 right-0 z-50 w-full max-w-[320px] h-full shadow-xl animate-in slide-in-from-right duration-200" : "w-[300px]"
          )}>
             <div className="p-4 border-b font-medium text-sm flex items-center justify-between">
                채팅방 설정
-               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRightSidebarOpen(false)}>
+               <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => setRightSidebarOpen(false)}>
                   <ChevronRight className="w-4 h-4" />
                </Button>
             </div>
