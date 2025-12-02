@@ -352,19 +352,30 @@ export default function PlayStory() {
           );
           
         case 'dialogue':
+          // Split dialogue content by lines and render each separately
+          const dialogueLines = part.content.split('\n').filter(line => line.trim());
           return (
-            <div key={index} className="mb-5 pl-6">
-              {part.character ? (
-                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.9]">
-                  <span className="font-bold text-foreground">{part.character}</span>
-                  <span className="text-foreground/90"> | </span>
-                  <span className="font-semibold text-foreground">"{part.content}"</span>
-                </p>
-              ) : (
-                <p className="prose prose-sm dark:prose-invert max-w-none leading-[1.9]">
-                  <span className="font-semibold text-foreground">"{part.content}"</span>
-                </p>
-              )}
+            <div key={index} className="mb-5 space-y-3">
+              {dialogueLines.map((line, lineIndex) => {
+                // Check if line has character name format: "Character | dialogue"
+                const characterMatch = line.match(/^(.+?)\s*\|\s*"?(.+?)"?$/);
+                if (characterMatch) {
+                  const [, character, dialogue] = characterMatch;
+                  return (
+                    <p key={lineIndex} className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] pl-6">
+                      <span className="font-bold text-foreground">{character.trim()}</span>
+                      <span className="text-foreground/90"> | </span>
+                      <span className="font-semibold text-foreground">"{dialogue.trim()}"</span>
+                    </p>
+                  );
+                }
+                // If no character format, just render the dialogue
+                return (
+                  <p key={lineIndex} className="prose prose-sm dark:prose-invert max-w-none leading-[1.9] pl-6">
+                    <span className="font-semibold text-foreground">"{line.trim()}"</span>
+                  </p>
+                );
+              })}
             </div>
           );
           
