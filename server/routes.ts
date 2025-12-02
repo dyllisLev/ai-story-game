@@ -479,6 +479,16 @@ export async function registerRoutes(
       const selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
 
       if (selectedProvider === "gemini") {
+        // Gemini 3 Pro requires thinking mode, other models can disable it
+        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro");
+        const generationConfig: Record<string, any> = { 
+          temperature: 0.8, 
+          maxOutputTokens: 8192
+        };
+        if (!isThinkingOnlyModel) {
+          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        }
+
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
           {
@@ -486,13 +496,7 @@ export async function registerRoutes(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { 
-                temperature: 0.8, 
-                maxOutputTokens: 8192,
-                thinkingConfig: {
-                  thinkingBudget: 0
-                }
-              }
+              generationConfig
             })
           }
         );
@@ -635,6 +639,16 @@ export async function registerRoutes(
       let generatedText = "";
 
       if (selectedProvider === "gemini") {
+        // Gemini 3 Pro requires thinking mode, other models can disable it
+        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro");
+        const generationConfig: Record<string, any> = { 
+          temperature: 0.8, 
+          maxOutputTokens: 8192
+        };
+        if (!isThinkingOnlyModel) {
+          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        }
+
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
           {
@@ -642,13 +656,7 @@ export async function registerRoutes(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { 
-                temperature: 0.8, 
-                maxOutputTokens: 8192,
-                thinkingConfig: {
-                  thinkingBudget: 0
-                }
-              }
+              generationConfig
             })
           }
         );
@@ -909,6 +917,18 @@ nextStrory 구성:
           }))
         ];
 
+        // Gemini 3 Pro requires thinking mode, other models can disable it
+        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro");
+        const generationConfig: Record<string, any> = { 
+          temperature: 0.9, 
+          maxOutputTokens: 65536
+        };
+        
+        // Only add thinkingConfig to disable thinking for non-thinking-only models
+        if (!isThinkingOnlyModel) {
+          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        }
+
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
           {
@@ -916,13 +936,7 @@ nextStrory 구성:
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: geminiContents,
-              generationConfig: { 
-                temperature: 0.9, 
-                maxOutputTokens: 65536,
-                thinkingConfig: {
-                  thinkingBudget: 0
-                }
-              }
+              generationConfig
             })
           }
         );
