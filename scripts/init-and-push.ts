@@ -67,24 +67,22 @@ async function initAndPush() {
       'postcss.config.js',
       'drizzle.config.ts',
       'README.md',
-      'DEPLOY_GUIDE.md',
-      'QUICK_FIX.md',
-      'TROUBLESHOOTING.md',
       '.gitignore',
       'init-db.sql',
       'setup.sh',
+      'bootstrap.sh',
       'components.json',
       // Client source
       ...getSourceFiles('client/src'),
       'client/index.html',
       // Server source
       ...getSourceFiles('server'),
-      'server/vite.fixed.ts',
       // Shared
       ...getSourceFiles('shared'),
       // Scripts
       'scripts/setup-db.ts',
       'scripts/export-init-db.ts',
+      'scripts/init-and-push.ts',
       'script/build.ts',
     ].filter(f => fs.existsSync(f));
     
@@ -111,25 +109,29 @@ async function initAndPush() {
     const { data: commit } = await octokit.rest.git.createCommit({
       owner: REPO_OWNER,
       repo: REPO_NAME,
-      message: `Complete source code push
+      message: `Clean Replit-based setup with automated bootstrap
 
-✨ Features:
-- Full React + TypeScript source
-- Database initialization (API keys excluded)
-- Setup scripts and deployment guides
-- Sample story included
-- All necessary config files (vite-plugin-meta-images.ts 포함!)
+✨ Interactive Korean AI Story Platform
+- Complete React + TypeScript source code  
+- Automated server bootstrap script (bootstrap.sh)
+- Database initialization with sample data (API keys excluded)
+- Support for 4 AI models (ChatGPT, Claude, Gemini, Grok)
 
-🚀 Quick start:
+🚀 Fresh server installation (one command):
 \`\`\`bash
 git clone https://github.com/${REPO_OWNER}/${REPO_NAME}.git
 cd ${REPO_NAME}
-npm install
-./setup.sh
-npm run dev
+./bootstrap.sh
 \`\`\`
 
-Then add API keys in Settings!`,
+The bootstrap script handles everything:
+- Node.js version check
+- npm install
+- Database initialization  
+- Linux system configuration (inotify limits)
+- Development server startup
+
+Then just add your API keys in Settings!`,
       tree: newTree.sha,
       parents: [latestCommitSha],
     });
