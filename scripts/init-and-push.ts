@@ -54,7 +54,7 @@ async function initAndPush() {
     
     // Step 3: Collect all files
     console.log('\n📁 모든 소스 파일 수집 중...');
-    const files = [
+    const textFiles = [
       // Root config files
       'package.json',
       'package-lock.json',
@@ -82,20 +82,50 @@ async function initAndPush() {
       // Scripts
       'scripts/setup-db.ts',
       'scripts/export-init-db.ts',
+      'scripts/create-example-db.ts',
       'scripts/init-and-push.ts',
       'script/build.ts',
     ].filter(f => fs.existsSync(f));
     
-    console.log(`✅ ${files.length}개 파일 발견`);
+    // Binary files (need base64 encoding)
+    const binaryFiles = [
+      'app.example.db'
+    ].filter(f => fs.existsSync(f));
     
-    // Step 4: Create tree
+    console.log(`✅ ${textFiles.length}개 텍스트 파일, ${binaryFiles.length}개 바이너리 파일 발견`);
+    
+    // Step 4: Create blobs for binary files
+    console.log('\n📦 바이너리 파일 업로드 중...');
+    const binaryBlobs = await Promise.all(
+      binaryFiles.map(async (file) => {
+        const content = fs.readFileSync(file).toString('base64');
+        const { data: blob } = await octokit.rest.git.createBlob({
+          owner: REPO_OWNER,
+          repo: REPO_NAME,
+          content: content,
+          encoding: 'base64',
+        });
+        return { path: file, sha: blob.sha };
+      })
+    );
+    console.log(`✅ ${binaryBlobs.length}개 바이너리 파일 업로드 완료`);
+    
+    // Step 5: Create tree
     console.log('\n🌳 Git tree 생성 중...');
-    const tree = files.map(file => ({
-      path: file,
-      mode: '100644' as const,
-      type: 'blob' as const,
-      content: fs.readFileSync(file, 'utf-8'),
-    }));
+    const tree = [
+      ...textFiles.map(file => ({
+        path: file,
+        mode: '100644' as const,
+        type: 'blob' as const,
+        content: fs.readFileSync(file, 'utf-8'),
+      })),
+      ...binaryBlobs.map(({ path, sha }) => ({
+        path: path,
+        mode: '100644' as const,
+        type: 'blob' as const,
+        sha: sha,
+      }))
+    ];
     
     const { data: newTree } = await octokit.rest.git.createTree({
       owner: REPO_OWNER,
@@ -104,7 +134,7 @@ async function initAndPush() {
       tree: tree,
     });
     
-    // Step 5: Create commit
+    // Step 6: Create commit
     console.log('💾 Commit 생성 중...');
     const { data: commit } = await octokit.rest.git.createCommit({
       owner: REPO_OWNER,
@@ -136,7 +166,7 @@ Then just add your API keys in Settings!`,
       parents: [latestCommitSha],
     });
     
-    // Step 6: Update main branch
+    // Step 7: Update main branch
     console.log('🔀 Main branch 업데이트 중...');
     await octokit.rest.git.updateRef({
       owner: REPO_OWNER,
@@ -146,15 +176,15 @@ Then just add your API keys in Settings!`,
     });
     
     console.log('\n✨ 푸시 완료!');
-    console.log(`📦 ${files.length}개 파일 업로드 완료`);
+    console.log(`📦 ${textFiles.length + binaryFiles.length}개 파일 업로드 완료`);
     console.log(`🔗 https://github.com/${REPO_OWNER}/${REPO_NAME}`);
     console.log('\n📝 이제 다른 서버에서:');
     console.log('   git clone https://github.com/dyllisLev/ai-story-game.git');
     console.log('   cd ai-story-game');
+    console.log('   cp app.example.db app.db');
     console.log('   npm install');
-    console.log('   ./setup.sh');
     console.log('   npm run dev');
-    console.log('\n✅ vite-plugin-meta-images.ts 포함되었습니다!');
+    console.log('\n✅ app.example.db 포함되었습니다! (샘플 스토리 1개 포함)');
     
   } catch (error: any) {
     console.error('\n❌ 오류:', error.message);

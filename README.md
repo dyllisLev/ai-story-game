@@ -19,6 +19,25 @@ Interactive Korean AI story/roleplay platform with multiple AI models.
 - **Build Tool**: Vite
 - **AI APIs**: OpenAI, Anthropic, Google Gemini, xAI (Grok)
 
+## Quick Start (Recommended)
+
+**Easiest method** - Use the pre-configured example database:
+
+```bash
+# Clone the repository
+git clone https://github.com/dyllisLev/ai-story-game.git
+cd ai-story-game
+
+# Copy example database (includes sample story)
+cp app.example.db app.db
+
+# Install dependencies and start
+npm install
+npm run dev
+```
+
+Then open Settings page and add your API keys!
+
 ## Quick Start (Fresh Linux Server)
 
 For a **brand new server** with nothing installed, use the automated bootstrap script:
