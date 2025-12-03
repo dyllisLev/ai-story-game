@@ -41,7 +41,17 @@ npm install
 
 > **Note:** Node.js v22+ may cause "EMFILE: too many open files" errors with Vite. Use v20.x for stability.
 
-### 2. Initialize Database
+### 2. Fix EMFILE Error (Important!)
+
+Replace `vite.config.ts` with the fixed version:
+
+```bash
+cp vite.config.fixed.ts vite.config.ts
+```
+
+This fixes the "EMFILE: too many open files" error on non-Replit servers.
+
+### 3. Initialize Database
 
 ```bash
 chmod +x setup.sh
@@ -55,7 +65,7 @@ npx tsx scripts/setup-db.ts
 
 This will create `app.db` with default settings and a sample story.
 
-### 3. Configure API Keys
+### 4. Configure API Keys
 
 Start the application:
 ```bash
@@ -68,7 +78,7 @@ Open http://localhost:5000 and go to **Settings** to enter your API keys:
 - **Google AI API Key** - For Gemini (gemini-3-pro, gemini-2.5-flash)
 - **xAI API Key** - For Grok (grok-beta)
 
-### 4. Start Creating!
+### 5. Start Creating!
 
 You're all set! Create your own stories or try the sample story included.
 

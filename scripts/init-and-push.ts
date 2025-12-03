@@ -61,6 +61,7 @@ async function initAndPush() {
       '.nvmrc',
       'tsconfig.json',
       'vite.config.ts',
+      'vite.config.fixed.ts',
       'vite-plugin-meta-images.ts',
       'tailwind.config.ts',
       'postcss.config.js',
