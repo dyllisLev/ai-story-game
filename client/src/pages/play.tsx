@@ -382,14 +382,14 @@ export default function PlayStory() {
         
         if (hasCodeBlock) {
           return (
-            <div className="mb-4 w-full max-w-full break-words" {...props}>
+            <div className="mb-4 break-words" style={{ width: '100%', maxWidth: '100%' }} {...props}>
               {children}
             </div>
           );
         }
         
         return (
-          <p className="mb-4 leading-relaxed w-full max-w-full break-words" {...props}>
+          <p className="mb-4 leading-relaxed break-words" style={{ width: '100%', maxWidth: '100%' }} {...props}>
             {children}
           </p>
         );
