@@ -19,21 +19,40 @@ Interactive Korean AI story/roleplay platform with multiple AI models.
 - **Build Tool**: Vite
 - **AI APIs**: OpenAI, Anthropic, Google Gemini, xAI (Grok)
 
-## Getting Started
+## Quick Start
 
-1. Install dependencies:
+### 1. Clone and Install
+
 ```bash
+git clone https://github.com/dyllisLev/ai-story-game.git
+cd ai-story-game
 npm install
 ```
 
-2. Set up your API keys in the settings page
+### 2. Initialize Database
 
-3. Run the development server:
+```bash
+npm run setup-db
+```
+
+This will create `app.db` with default settings and a sample story.
+
+### 3. Configure API Keys
+
+Start the application:
 ```bash
 npm run dev
 ```
 
-4. Open your browser at `http://localhost:5000`
+Open http://localhost:5000 and go to **Settings** to enter your API keys:
+- **OpenAI API Key** - For ChatGPT (gpt-4o)
+- **Anthropic API Key** - For Claude (claude-3-5-sonnet)
+- **Google AI API Key** - For Gemini (gemini-3-pro, gemini-2.5-flash)
+- **xAI API Key** - For Grok (grok-beta)
+
+### 4. Start Creating!
+
+You're all set! Create your own stories or try the sample story included.
 
 ## Database Schema
 
@@ -41,6 +60,34 @@ npm run dev
 - **sessions**: Individual playthroughs with session-specific settings
 - **messages**: Chat history for each session
 - **settings**: Application configuration and API keys
+
+## Development
+
+```bash
+# Development mode
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Reset database (WARNING: Deletes all data)
+rm app.db && npm run setup-db
+```
+
+## Environment Variables
+
+No environment variables needed! All configuration is done through the web interface.
+
+## API Keys
+
+Get your API keys from:
+- OpenAI: https://platform.openai.com/api-keys
+- Anthropic: https://console.anthropic.com/
+- Google AI: https://aistudio.google.com/apikey
+- xAI: https://console.x.ai/
 
 ## License
 

@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 
-const db = new Database('sqlite.db');
+const db = new Database('app.db');
 
 // Get schema
 const tables = db.prepare(`
