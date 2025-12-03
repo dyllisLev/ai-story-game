@@ -6,10 +6,32 @@ Error: EMFILE: too many open files, watch '/workspace/ai-story-game/client'
 ```
 
 ## 원인
-- Rollup 4.44.0+ 버전에서 파일 감시 버그
-- Vite가 너무 많은 파일을 동시에 모니터링
+- Linux의 **inotify watch limit** 초과 (기본값: 8192)
+- Vite가 수백 개의 파일을 동시에 모니터링
+- `ulimit -n`과는 다른 문제!
 
-## ✅ 해결 방법 1: 임시 디렉토리 제거
+## ✅ 해결 방법 1: inotify limit 증가 (권장!)
+
+**Linux 서버**에서 실행하기 전에:
+
+```bash
+# 현재 limit 확인
+cat /proc/sys/fs/inotify/max_user_watches
+
+# 임시 증가
+sudo sysctl fs.inotify.max_user_watches=524288
+
+# 영구 적용
+echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+그 후:
+```bash
+npm run dev
+```
+
+## ✅ 해결 방법 2: 임시 디렉토리 제거 (효과 제한적)
 
 서버 시작 전에 불필요한 디렉토리 제거:
 ```bash
