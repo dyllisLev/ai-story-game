@@ -382,14 +382,14 @@ export default function PlayStory() {
         
         if (hasCodeBlock) {
           return (
-            <div className="mb-4 max-w-full" {...props}>
+            <div className="mb-4 w-full max-w-full break-words" {...props}>
               {children}
             </div>
           );
         }
         
         return (
-          <p className="mb-4 leading-relaxed max-w-full" {...props}>
+          <p className="mb-4 leading-relaxed w-full max-w-full break-words" {...props}>
             {children}
           </p>
         );
