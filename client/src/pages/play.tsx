@@ -366,11 +366,18 @@ export default function PlayStory() {
           );
         }
         return (
-          <pre className="my-3 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-x-auto">
+          <pre className="my-6 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-x-auto">
             <code className={className} {...props}>
               {children}
             </code>
           </pre>
+        );
+      },
+      p({ children, ...props }: any) {
+        return (
+          <p className="mb-4 leading-relaxed" {...props}>
+            {children}
+          </p>
         );
       },
     };
@@ -379,7 +386,7 @@ export default function PlayStory() {
       switch (part.type) {
         case 'narration':
           return (
-            <div key={index} className="mb-4">
+            <div key={index} className="mb-6">
               <div className="prose prose-sm dark:prose-invert max-w-none">
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
@@ -392,14 +399,14 @@ export default function PlayStory() {
           // Split dialogue content by lines and render each separately
           const dialogueLines = part.content.split('\n').filter(line => line.trim());
           return (
-            <div key={index} className="mb-4 space-y-2">
+            <div key={index} className="mb-6 space-y-3">
               {dialogueLines.map((line, lineIndex) => {
                 // Check if line has character name format: "Character | dialogue"
                 const characterMatch = line.match(/^(.+?)\s*\|\s*"?(.+?)"?$/);
                 if (characterMatch) {
                   const [, character, dialogue] = characterMatch;
                   return (
-                    <p key={lineIndex} className="pl-4">
+                    <p key={lineIndex} className="pl-4 leading-relaxed">
                       <span className="font-bold">{character.trim()}</span>
                       <span className="text-muted-foreground"> | </span>
                       <span className="font-semibold">"{dialogue.trim()}"</span>
@@ -408,7 +415,7 @@ export default function PlayStory() {
                 }
                 // If no character format, just render the dialogue
                 return (
-                  <p key={lineIndex} className="pl-4 font-semibold">
+                  <p key={lineIndex} className="pl-4 font-semibold leading-relaxed">
                     "{line.trim()}"
                   </p>
                 );
@@ -429,7 +436,7 @@ export default function PlayStory() {
         case 'text':
         default:
           return (
-            <div key={index} className="mb-4">
+            <div key={index} className="mb-6">
               <div className="prose prose-sm dark:prose-invert max-w-none">
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
