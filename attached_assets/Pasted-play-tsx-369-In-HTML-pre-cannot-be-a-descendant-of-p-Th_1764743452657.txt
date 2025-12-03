@@ -1,0 +1,151 @@
+play.tsx:369 In HTML, <pre> cannot be a descendant of <p>.
+This will cause a hydration error.
+
+  ...
+    <div dir="ltr" className="relative o..." style={{position:"...", ...}} ref={function}>
+      <ScrollAreaViewport className="h-full w-f...">
+        <style>
+        <Primitive.div data-radix-scroll-area-viewport="" className="h-full w-f..." ref={function} style={{...}}>
+          <div data-radix-scroll-area-viewport="" className="h-full w-f..." style={{...}} ref={function}>
+            <div ref={function bound dispatchSetState} style={{minWidth:"...", ...}}>
+              <div className="max-w-3xl ...">
+                <div>
+                <div>
+                <div>
+                <div>
+                <div>
+                <div>
+                <div className="group">
+                  <div className="flex gap-4">
+                    <div className="flex-1 spa...">
+                      <div className="text-sm le...">
+                        <div className="mb-6">
+                          <div className="prose pros...">
+                            <Markdown components={{...}}>
+                              <p>
+                              <p>
+                              <p node={{type:"element", ...}}>
+>                               <p className="mb-4 leading-relaxed max-w-full">
+                                  <code node={{type:"element", ...}}>
+>                                   <pre
+>                                     className="my-6 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-x-a..."
+>                                   >
+                                  ...
+                              ...
+                      ...
+      ...
+
+validateDOMNesting @ react-dom_client.js?v=190a15b5:2156
+completeWork @ react-dom_client.js?v=190a15b5:9002
+runWithFiberInDEV @ react-dom_client.js?v=190a15b5:997
+completeUnitOfWork @ react-dom_client.js?v=190a15b5:12669
+performUnitOfWork @ react-dom_client.js?v=190a15b5:12575
+workLoopSync @ react-dom_client.js?v=190a15b5:12424
+renderRootSync @ react-dom_client.js?v=190a15b5:12408
+performWorkOnRoot @ react-dom_client.js?v=190a15b5:11766
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=190a15b5:13505
+performWorkUntilDeadline @ react-dom_client.js?v=190a15b5:36
+<pre>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=3e65f749:247
+code @ play.tsx:369
+react_stack_bottom_frame @ react-dom_client.js?v=190a15b5:18509
+renderWithHooks @ react-dom_client.js?v=190a15b5:5654
+updateFunctionComponent @ react-dom_client.js?v=190a15b5:7475
+beginWork @ react-dom_client.js?v=190a15b5:8525
+runWithFiberInDEV @ react-dom_client.js?v=190a15b5:997
+performUnitOfWork @ react-dom_client.js?v=190a15b5:12561
+workLoopSync @ react-dom_client.js?v=190a15b5:12424
+renderRootSync @ react-dom_client.js?v=190a15b5:12408
+performWorkOnRoot @ react-dom_client.js?v=190a15b5:11766
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=190a15b5:13505
+performWorkUntilDeadline @ react-dom_client.js?v=190a15b5:36
+<code>
+exports.jsx @ chunk-FXVZLN7E.js?v=8e5100b4:247
+create2 @ react-markdown.js?v=e9ffbf5b:2476
+element @ react-markdown.js?v=e9ffbf5b:2410
+one @ react-markdown.js?v=e9ffbf5b:2372
+createChildren @ react-markdown.js?v=e9ffbf5b:2579
+element @ react-markdown.js?v=e9ffbf5b:2400
+one @ react-markdown.js?v=e9ffbf5b:2372
+createChildren @ react-markdown.js?v=e9ffbf5b:2579
+root @ react-markdown.js?v=e9ffbf5b:2452
+one @ react-markdown.js?v=e9ffbf5b:2384
+toJsxRuntime @ react-markdown.js?v=e9ffbf5b:2359
+post @ react-markdown.js?v=e9ffbf5b:11569
+Markdown @ react-markdown.js?v=e9ffbf5b:11487
+react_stack_bottom_frame @ react-dom_client.js?v=190a15b5:18509
+renderWithHooks @ react-dom_client.js?v=190a15b5:5654
+updateFunctionComponent @ react-dom_client.js?v=190a15b5:7475
+beginWork @ react-dom_client.js?v=190a15b5:8525
+runWithFiberInDEV @ react-dom_client.js?v=190a15b5:997
+performUnitOfWork @ react-dom_client.js?v=190a15b5:12561
+workLoopSync @ react-dom_client.js?v=190a15b5:12424
+renderRootSync @ react-dom_client.js?v=190a15b5:12408
+performWorkOnRoot @ react-dom_client.js?v=190a15b5:11766
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=190a15b5:13505
+performWorkUntilDeadline @ react-dom_client.js?v=190a15b5:36
+<Markdown>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=3e65f749:247
+(anonymous) @ play.tsx:455
+renderAIContent @ play.tsx:399
+(anonymous) @ play.tsx:755
+PlayStory @ play.tsx:748
+react_stack_bottom_frame @ react-dom_client.js?v=190a15b5:18509
+renderWithHooks @ react-dom_client.js?v=190a15b5:5654
+updateFunctionComponent @ react-dom_client.js?v=190a15b5:7475
+beginWork @ react-dom_client.js?v=190a15b5:8525
+runWithFiberInDEV @ react-dom_client.js?v=190a15b5:997
+performUnitOfWork @ react-dom_client.js?v=190a15b5:12561
+workLoopSync @ react-dom_client.js?v=190a15b5:12424
+renderRootSync @ react-dom_client.js?v=190a15b5:12408
+performWorkOnRoot @ react-dom_client.js?v=190a15b5:11766
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=190a15b5:13505
+performWorkUntilDeadline @ react-dom_client.js?v=190a15b5:36
+<PlayStory>
+exports.createElement @ chunk-KMU3Z7QX.js?v=8e5100b4:793
+h_route @ wouter.js?v=4fb37dc7:255
+Route @ wouter.js?v=4fb37dc7:274
+react_stack_bottom_frame @ react-dom_client.js?v=190a15b5:18509
+renderWithHooks @ react-dom_client.js?v=190a15b5:5654
+updateFunctionComponent @ react-dom_client.js?v=190a15b5:7475
+beginWork @ react-dom_client.js?v=190a15b5:8525
+runWithFiberInDEV @ react-dom_client.js?v=190a15b5:997
+performUnitOfWork @ react-dom_client.js?v=190a15b5:12561
+workLoopSync @ react-dom_client.js?v=190a15b5:12424
+renderRootSync @ react-dom_client.js?v=190a15b5:12408
+performWorkOnRoot @ react-dom_client.js?v=190a15b5:11766
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=190a15b5:13505
+performWorkUntilDeadline @ react-dom_client.js?v=190a15b5:36
+<Route>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=3e65f749:247
+Router @ App.tsx:19
+react_stack_bottom_frame @ react-dom_client.js?v=190a15b5:18509
+renderWithHooks @ react-dom_client.js?v=190a15b5:5654
+updateFunctionComponent @ react-dom_client.js?v=190a15b5:7475
+beginWork @ react-dom_client.js?v=190a15b5:8525
+runWithFiberInDEV @ react-dom_client.js?v=190a15b5:997
+performUnitOfWork @ react-dom_client.js?v=190a15b5:12561
+workLoopSync @ react-dom_client.js?v=190a15b5:12424
+renderRootSync @ react-dom_client.js?v=190a15b5:12408
+performWorkOnRoot @ react-dom_client.js?v=190a15b5:11766
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=190a15b5:13505
+performWorkUntilDeadline @ react-dom_client.js?v=190a15b5:36
+<Router>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=3e65f749:247
+App @ App.tsx:31
+react_stack_bottom_frame @ react-dom_client.js?v=190a15b5:18509
+renderWithHooks @ react-dom_client.js?v=190a15b5:5654
+updateFunctionComponent @ react-dom_client.js?v=190a15b5:7475
+beginWork @ react-dom_client.js?v=190a15b5:8525
+runWithFiberInDEV @ react-dom_client.js?v=190a15b5:997
+performUnitOfWork @ react-dom_client.js?v=190a15b5:12561
+workLoopSync @ react-dom_client.js?v=190a15b5:12424
+renderRootSync @ react-dom_client.js?v=190a15b5:12408
+performWorkOnRoot @ react-dom_client.js?v=190a15b5:11766
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=190a15b5:13505
+performWorkUntilDeadline @ react-dom_client.js?v=190a15b5:36
+<App>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=3e65f749:247
+(anonymous) @ main.tsx:5
+play.tsx:392 <p> cannot contain a nested <pre>.
+See this log for the ancestor stack trace.

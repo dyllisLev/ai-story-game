@@ -374,10 +374,10 @@ export default function PlayStory() {
         );
       },
       p({ children, node, ...props }: any) {
-        // Check if children contains a code block (pre element)
+        // Check if children contains a code block (code element that will become pre)
         // If so, render as div to avoid HTML nesting violation
         const hasCodeBlock = node?.children?.some((child: any) => 
-          child.type === 'element' && child.tagName === 'pre'
+          child.type === 'element' && child.tagName === 'code'
         );
         
         if (hasCodeBlock) {
