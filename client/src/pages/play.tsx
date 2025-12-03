@@ -366,14 +366,28 @@ export default function PlayStory() {
           );
         }
         return (
-          <pre className="my-6 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-x-auto">
+          <pre className="my-6 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-x-auto max-w-full">
             <code className={className} {...props}>
               {children}
             </code>
           </pre>
         );
       },
-      p({ children, ...props }: any) {
+      p({ children, node, ...props }: any) {
+        // Check if children contains a code block (pre element)
+        // If so, render as div to avoid HTML nesting violation
+        const hasCodeBlock = node?.children?.some((child: any) => 
+          child.type === 'element' && child.tagName === 'pre'
+        );
+        
+        if (hasCodeBlock) {
+          return (
+            <div className="mb-4 max-w-full" {...props}>
+              {children}
+            </div>
+          );
+        }
+        
         return (
           <p className="mb-4 leading-relaxed max-w-full" {...props}>
             {children}
