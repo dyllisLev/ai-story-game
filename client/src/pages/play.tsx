@@ -734,7 +734,7 @@ export default function PlayStory() {
             </div>
          </header>
 
-         <ScrollArea className="flex-1 h-full">
+         <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto space-y-8 px-4 py-6 w-full">
                {loading ? (
                  <div className="flex items-center justify-center py-12">
@@ -833,7 +833,7 @@ export default function PlayStory() {
                  </div>
                )}
             </div>
-         </ScrollArea>
+         </div>
 
          <div className="p-4 bg-background border-t">
             <div className="max-w-3xl mx-auto relative">
