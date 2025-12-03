@@ -78,20 +78,36 @@ if [ -f "app.db" ]; then
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             rm -f app.db app.db-shm app.db-wal
-            npx tsx scripts/setup-db.ts
-            echo "✓ Database recreated"
+            if [ -f "app.example.db" ]; then
+                cp app.example.db app.db
+                echo "✓ Database created from example (includes sample story)"
+            else
+                npx tsx scripts/setup-db.ts
+                echo "✓ Database recreated"
+            fi
         else
             echo "✓ Keeping existing database"
         fi
     else
         echo "⚠️  Found empty database file, recreating..."
         rm -f app.db app.db-shm app.db-wal
+        if [ -f "app.example.db" ]; then
+            cp app.example.db app.db
+            echo "✓ Database created from example (includes sample story)"
+        else
+            npx tsx scripts/setup-db.ts
+            echo "✓ Database initialized"
+        fi
+    fi
+else
+    # No database exists - use example DB if available
+    if [ -f "app.example.db" ]; then
+        cp app.example.db app.db
+        echo "✓ Database created from example (includes sample story)"
+    else
         npx tsx scripts/setup-db.ts
         echo "✓ Database initialized"
     fi
-else
-    npx tsx scripts/setup-db.ts
-    echo "✓ Database initialized"
 fi
 
 #######################################
