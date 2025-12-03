@@ -8,14 +8,25 @@ const INIT_SQL_PATH = 'init-db.sql';
 
 console.log('🗄️  Database Setup\n');
 
-// Check if database already exists
+// Check if database already exists and has data
 const dbExists = fs.existsSync(DB_PATH);
 
 if (dbExists) {
-  console.log('⚠️  Database already exists at:', DB_PATH);
-  console.log('   Skipping initialization to preserve existing data.');
-  console.log('   To reset the database, delete app.db and run this script again.\n');
-  process.exit(0);
+  // Check if database has tables
+  const db = new Database(DB_PATH);
+  const tables = db.prepare("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").get() as { count: number };
+  db.close();
+  
+  if (tables.count > 0) {
+    console.log('⚠️  Database already exists at:', DB_PATH);
+    console.log(`   Found ${tables.count} table(s) with data.`);
+    console.log('   Skipping initialization to preserve existing data.');
+    console.log('   To reset the database, delete app.db and run this script again.\n');
+    process.exit(0);
+  } else {
+    console.log('⚠️  Found empty database file, removing...');
+    fs.unlinkSync(DB_PATH);
+  }
 }
 
 // Check if init SQL file exists

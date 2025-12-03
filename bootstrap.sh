@@ -67,16 +67,27 @@ echo "✓ Dependencies installed"
 echo ""
 echo "🗄️  Step 3: Initializing database..."
 
+# Check if database has data
 if [ -f "app.db" ]; then
-    echo -e "${YELLOW}⚠️  Database already exists: app.db${NC}"
-    read -p "   Delete and recreate? (y/N) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Check if database has tables (not empty)
+    TABLE_COUNT=$(npx tsx -e "import Database from 'better-sqlite3'; const db = new Database('app.db'); const result = db.prepare(\"SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'\").get(); console.log(result.count); db.close();" 2>/dev/null || echo "0")
+    
+    if [ "$TABLE_COUNT" -gt "0" ]; then
+        echo -e "${YELLOW}⚠️  Database already exists with $TABLE_COUNT tables${NC}"
+        read -p "   Delete and recreate? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -f app.db app.db-shm app.db-wal
+            npx tsx scripts/setup-db.ts
+            echo "✓ Database recreated"
+        else
+            echo "✓ Keeping existing database"
+        fi
+    else
+        echo "⚠️  Found empty database file, recreating..."
         rm -f app.db app.db-shm app.db-wal
         npx tsx scripts/setup-db.ts
-        echo "✓ Database recreated"
-    else
-        echo "✓ Keeping existing database"
+        echo "✓ Database initialized"
     fi
 else
     npx tsx scripts/setup-db.ts
