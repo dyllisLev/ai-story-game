@@ -309,8 +309,22 @@ export default function PlayStory() {
     
     // Then try to parse JSON if the content looks like JSON
     try {
-      // Remove markdown code blocks if present
-      let cleanedText = processedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Remove only the outer markdown code blocks (```json at start and ``` at end)
+      let cleanedText = processedContent;
+      
+      // Remove opening ```json
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\n?/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\n?/, '');
+      }
+      
+      // Remove closing ``` only at the very end
+      if (cleanedText.endsWith('```')) {
+        cleanedText = cleanedText.replace(/\n?```$/, '');
+      }
+      
+      cleanedText = cleanedText.trim();
       
       // Try to parse as JSON
       if (cleanedText.startsWith('{') && cleanedText.includes('nextStory')) {
