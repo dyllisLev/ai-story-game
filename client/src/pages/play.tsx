@@ -341,13 +341,32 @@ export default function PlayStory() {
     
     const parts = parseAIResponse(processedContent);
     
+    const markdownComponents = {
+      code({ node, inline, className, children, ...props }: any) {
+        if (inline) {
+          return (
+            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+              {children}
+            </code>
+          );
+        }
+        return (
+          <pre className="my-3 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-x-auto">
+            <code className={className} {...props}>
+              {children}
+            </code>
+          </pre>
+        );
+      },
+    };
+
     return parts.map((part, index) => {
       switch (part.type) {
         case 'narration':
           return (
             <div key={index} className="mb-4">
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown>
+                <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
               </div>
@@ -397,7 +416,7 @@ export default function PlayStory() {
           return (
             <div key={index} className="mb-4">
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown>
+                <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
               </div>
