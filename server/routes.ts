@@ -1168,9 +1168,20 @@ nextStrory 구성:
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
-      console.log("\n========== AI 스트리밍 시작 ==========");
-      console.log("Provider:", selectedProvider);
-      console.log("Model:", selectedModel);
+      console.log("\n╔════════════════════════════════════════════════════════════");
+      console.log("║ 📤 AI 요청 시작");
+      console.log("╠════════════════════════════════════════════════════════════");
+      console.log("║ Provider:", selectedProvider);
+      console.log("║ Model:", selectedModel);
+      console.log("║ Session ID:", sessionId);
+      console.log("║ 대화 기록 개수:", conversationHistory.length, "개 (최근 20개)");
+      console.log("╠════════════════════════════════════════════════════════════");
+      console.log("║ 💬 사용자 메시지:");
+      console.log("║", userMessage.substring(0, 100) + (userMessage.length > 100 ? "..." : ""));
+      console.log("╠════════════════════════════════════════════════════════════");
+      console.log("║ 📋 시스템 프롬프트 (첫 200자):");
+      console.log("║", systemPrompt.substring(0, 200).replace(/\n/g, "\n║ ") + "...");
+      console.log("╚════════════════════════════════════════════════════════════\n");
 
       if (selectedProvider === "gemini") {
         const geminiContents = [
@@ -1259,6 +1270,14 @@ nextStrory 구성:
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
         res.end();
 
+        console.log("\n╔════════════════════════════════════════════════════════════");
+        console.log("║ ✅ AI 응답 완료 (Gemini)");
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ 응답 미리보기 (첫 200자):");
+        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╚════════════════════════════════════════════════════════════\n");
+
       } else if (selectedProvider === "chatgpt") {
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -1330,6 +1349,14 @@ nextStrory 구성:
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
         res.end();
 
+        console.log("\n╔════════════════════════════════════════════════════════════");
+        console.log("║ ✅ AI 응답 완료 (ChatGPT)");
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ 응답 미리보기 (첫 200자):");
+        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╚════════════════════════════════════════════════════════════\n");
+
       } else if (selectedProvider === "claude") {
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -1398,6 +1425,14 @@ nextStrory 구성:
 
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
         res.end();
+
+        console.log("\n╔════════════════════════════════════════════════════════════");
+        console.log("║ ✅ AI 응답 완료 (Claude)");
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ 응답 미리보기 (첫 200자):");
+        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╚════════════════════════════════════════════════════════════\n");
 
       } else if (selectedProvider === "grok") {
         const response = await fetch("https://api.x.ai/v1/chat/completions", {
@@ -1470,13 +1505,19 @@ nextStrory 구성:
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
         res.end();
 
+        console.log("\n╔════════════════════════════════════════════════════════════");
+        console.log("║ ✅ AI 응답 완료 (Grok)");
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ 응답 미리보기 (첫 200자):");
+        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╚════════════════════════════════════════════════════════════\n");
+
       } else {
         // Fallback for unknown providers
         res.write(`data: ${JSON.stringify({ error: "지원하지 않는 AI 프로바이더입니다." })}\n\n`);
         res.end();
       }
-
-      console.log("========== AI 스트리밍 완료 ==========\n");
 
     } catch (error: any) {
       console.error("AI streaming error:", error);
