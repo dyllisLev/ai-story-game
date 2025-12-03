@@ -1177,10 +1177,17 @@ nextStrory 구성:
       console.log("║ 대화 기록 개수:", conversationHistory.length, "개 (최근 20개)");
       console.log("╠════════════════════════════════════════════════════════════");
       console.log("║ 💬 사용자 메시지:");
-      console.log("║", userMessage.substring(0, 100) + (userMessage.length > 100 ? "..." : ""));
+      console.log("║", userMessage.replace(/\n/g, "\n║ "));
       console.log("╠════════════════════════════════════════════════════════════");
-      console.log("║ 📋 시스템 프롬프트 (첫 200자):");
-      console.log("║", systemPrompt.substring(0, 200).replace(/\n/g, "\n║ ") + "...");
+      console.log("║ 📋 시스템 프롬프트 전문:");
+      console.log("║", systemPrompt.replace(/\n/g, "\n║ "));
+      console.log("╠════════════════════════════════════════════════════════════");
+      console.log("║ 📚 대화 기록 (최근", conversationHistory.length - 1, "개):");
+      conversationHistory.slice(0, -1).forEach((msg, idx) => {
+        console.log("║ ---", idx + 1, "---");
+        console.log("║ Role:", msg.role);
+        console.log("║", msg.content.substring(0, 150).replace(/\n/g, "\n║ ") + (msg.content.length > 150 ? "..." : ""));
+      });
       console.log("╚════════════════════════════════════════════════════════════\n");
 
       if (selectedProvider === "gemini") {
@@ -1274,8 +1281,9 @@ nextStrory 구성:
         console.log("║ ✅ AI 응답 완료 (Gemini)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
-        console.log("║ 응답 미리보기 (첫 200자):");
-        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 📝 AI 응답 전문:");
+        console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
 
       } else if (selectedProvider === "chatgpt") {
@@ -1353,8 +1361,9 @@ nextStrory 구성:
         console.log("║ ✅ AI 응답 완료 (ChatGPT)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
-        console.log("║ 응답 미리보기 (첫 200자):");
-        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 📝 AI 응답 전문:");
+        console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
 
       } else if (selectedProvider === "claude") {
@@ -1430,8 +1439,9 @@ nextStrory 구성:
         console.log("║ ✅ AI 응답 완료 (Claude)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
-        console.log("║ 응답 미리보기 (첫 200자):");
-        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 📝 AI 응답 전문:");
+        console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
 
       } else if (selectedProvider === "grok") {
@@ -1509,8 +1519,9 @@ nextStrory 구성:
         console.log("║ ✅ AI 응답 완료 (Grok)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
-        console.log("║ 응답 미리보기 (첫 200자):");
-        console.log("║", fullText.substring(0, 200).replace(/\n/g, "\n║ ") + (fullText.length > 200 ? "..." : ""));
+        console.log("╠════════════════════════════════════════════════════════════");
+        console.log("║ 📝 AI 응답 전문:");
+        console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
 
       } else {
