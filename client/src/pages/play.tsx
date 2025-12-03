@@ -375,7 +375,7 @@ export default function PlayStory() {
       },
       p({ children, ...props }: any) {
         return (
-          <p className="mb-4 leading-relaxed" {...props}>
+          <p className="mb-4 leading-relaxed max-w-full" {...props}>
             {children}
           </p>
         );
@@ -406,7 +406,7 @@ export default function PlayStory() {
                 if (characterMatch) {
                   const [, character, dialogue] = characterMatch;
                   return (
-                    <p key={lineIndex} className="pl-4 leading-relaxed">
+                    <p key={lineIndex} className="pl-4 leading-relaxed max-w-full break-words">
                       <span className="font-bold">{character.trim()}</span>
                       <span className="text-muted-foreground"> | </span>
                       <span className="font-semibold">"{dialogue.trim()}"</span>
@@ -415,7 +415,7 @@ export default function PlayStory() {
                 }
                 // If no character format, just render the dialogue
                 return (
-                  <p key={lineIndex} className="pl-4 font-semibold leading-relaxed">
+                  <p key={lineIndex} className="pl-4 font-semibold leading-relaxed max-w-full break-words">
                     "{line.trim()}"
                   </p>
                 );
@@ -737,7 +737,7 @@ export default function PlayStory() {
                         <div key={msg.id} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2">
-                                  <div className="text-sm leading-loose max-w-none break-words">
+                                  <div className="text-sm leading-loose max-w-full break-words">
                                      {renderAIContent(msg.content)}
                                   </div>
                                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -773,7 +773,7 @@ export default function PlayStory() {
                  <div className="group">
                    <div className="flex gap-4">
                      <div className="flex-1 space-y-2">
-                       <div className="text-sm leading-loose max-w-none break-words">
+                       <div className="text-sm leading-loose max-w-full break-words">
                          {renderAIContent(streamingContent)}
                          <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
                        </div>
