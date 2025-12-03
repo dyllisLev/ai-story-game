@@ -1,0 +1,37 @@
+root@sjvaplex-seoul:/workspace/ai-story-game# rm -rf uploads/ attached_assets/
+root@sjvaplex-seoul:/workspace/ai-story-game# npm run dev
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+11:14:46 AM [express] serving on port 5000
+node:internal/fs/watchers:247
+    const error = new UVException({
+                  ^
+
+Error: EMFILE: too many open files, watch '/workspace/ai-story-game/client'
+    at FSWatcher.<computed> (node:internal/fs/watchers:247:19)
+    at Object.watch (node:fs:2491:36)
+    at createFsWatchInstance (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16359:16)
+    at setFsWatchListener (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16401:14)
+    at NodeFsHandler$1._watchWithNodeFs (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16515:20)
+    at NodeFsHandler$1._handleDir (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16678:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NodeFsHandler$1._addToNodeFs (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16721:15)
+    at async <anonymous> (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:17375:18)
+    at async Promise.all (index 0)
+Emitted 'error' event on FSWatcher instance at:
+    at FSWatcher._handleError (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:17534:148)
+    at NodeFsHandler$1._addToNodeFs (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16738:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:17375:18)
+    at async Promise.all (index 0) {
+  errno: -24,
+  syscall: 'watch',
+  code: 'EMFILE',
+  path: '/workspace/ai-story-game/client',
+  filename: '/workspace/ai-story-game/client'
+}
+
+Node.js v20.19.3
+root@sjvaplex-seoul:/workspace/ai-story-game# 
