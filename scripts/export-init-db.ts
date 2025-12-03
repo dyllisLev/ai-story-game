@@ -72,7 +72,12 @@ if (stories.length > 0) {
     
     const values = fields.map(field => {
       const val = story[field] || '';
-      return `'${val.toString().replace(/'/g, "''")}'`;
+      // Escape single quotes and remove newlines for SQL compatibility
+      const escapedVal = val.toString()
+        .replace(/'/g, "''")
+        .replace(/\n/g, ' ')
+        .replace(/\r/g, '');
+      return `'${escapedVal}'`;
     });
     
     sql += `INSERT INTO stories (${fields.join(', ')}) VALUES (${values.join(', ')});\n`;

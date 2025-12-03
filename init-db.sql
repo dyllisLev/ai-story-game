@@ -216,12 +216,7 @@ output:
 -- SAMPLE STORIES
 -- ======================
 
-INSERT INTO stories (title, description, image, genre, author, story_settings, prologue, prompt_template, example_user_input, example_ai_response, starting_situation, conversation_profile, user_note, summary_memory, session_model, session_provider) VALUES ('아스토니아', '새로운 스토리', 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1000', '판타지', 'User', '{"World":{"Loc":"Arcadia(Modern+Magic)","MC":"God_Awakened(Secret)","Conflict":"Daily_Life vs Chaos","System":"Absolute_Power"},"Chars":{"So-yul":"Friend(Love)","Ella":"Agent(Watcher)","Seraphim":"Cult(Fanatic)","Su-ah":"Senior(Ret_Legend)","Lilith":"Invader(Noble)"},"Rel_Rule":"Conflict(Bureau/Cult)"}
-
-#Rules
-- MC hides power in daily routine but dominates enemies instantly.
-- Describe creative manifestations of godhood.
-- Heroines react vividly to MC''s duality.', '', '기본 프롬프트', '', '', '', '', '', '', '', '');
+INSERT INTO stories (title, description, image, genre, author, story_settings, prologue, prompt_template, example_user_input, example_ai_response, starting_situation, conversation_profile, user_note, summary_memory, session_model, session_provider) VALUES ('아스토니아', '새로운 스토리', 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1000', '판타지', 'User', '{"World":{"Loc":"Arcadia(Modern+Magic)","MC":"God_Awakened(Secret)","Conflict":"Daily_Life vs Chaos","System":"Absolute_Power"},"Chars":{"So-yul":"Friend(Love)","Ella":"Agent(Watcher)","Seraphim":"Cult(Fanatic)","Su-ah":"Senior(Ret_Legend)","Lilith":"Invader(Noble)"},"Rel_Rule":"Conflict(Bureau/Cult)"}  #Rules - MC hides power in daily routine but dominates enemies instantly. - Describe creative manifestations of godhood. - Heroines react vividly to MC''s duality.', '', '기본 프롬프트', '', '', '', '', '', '', '', '');
 
 -- ======================
 -- USAGE INSTRUCTIONS
