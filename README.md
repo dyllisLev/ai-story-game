@@ -32,7 +32,13 @@ npm install
 ### 2. Initialize Database
 
 ```bash
-npm run setup-db
+chmod +x setup.sh
+./setup.sh
+```
+
+Or directly:
+```bash
+npx tsx scripts/setup-db.ts
 ```
 
 This will create `app.db` with default settings and a sample story.
