@@ -313,7 +313,7 @@ export default function PlayStory() {
       let cleanedText = processedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
       // Try to parse as JSON
-      if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
+      if (cleanedText.startsWith('{') && cleanedText.includes('nextStory')) {
         // Try to fix incomplete JSON by adding missing closing quotes and braces
         if (!cleanedText.endsWith('}')) {
           const quoteCount = (cleanedText.match(/"/g) || []).length;
@@ -327,9 +327,9 @@ export default function PlayStory() {
         }
         
         const parsed = JSON.parse(cleanedText);
-        if (parsed.nextStrory) {
+        if (parsed.nextStory) {
           // Unescape the content
-          processedContent = parsed.nextStrory
+          processedContent = parsed.nextStory
             .replace(/\\n/g, '\n')
             .replace(/\\"/g, '"')
             .replace(/\\'/g, "'");
