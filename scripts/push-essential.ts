@@ -38,6 +38,7 @@ async function pushToGitHub() {
       'package.json',
       'tsconfig.json',
       'vite.config.ts',
+      'vite-plugin-meta-images.ts',
       'tailwind.config.ts',
       'postcss.config.js',
       'drizzle.config.ts',
@@ -45,6 +46,7 @@ async function pushToGitHub() {
       '.gitignore',
       'init-db.sql',
       'setup.sh',
+      'components.json',
       // Client source
       ...getSourceFiles('client/src'),
       'client/index.html',
