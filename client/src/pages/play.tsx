@@ -750,7 +750,7 @@ export default function PlayStory() {
                      return (
                         <div key={msg.id} className="group">
                             <div className="flex gap-4">
-                               <div className="flex-1 space-y-2">
+                               <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                                   <div className="text-sm leading-loose max-w-full break-words">
                                      {renderAIContent(msg.content)}
                                   </div>
@@ -786,7 +786,7 @@ export default function PlayStory() {
                {isGenerating && streamingContent && (
                  <div className="group">
                    <div className="flex gap-4">
-                     <div className="flex-1 space-y-2">
+                     <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                        <div className="text-sm leading-loose max-w-full break-words">
                          {renderAIContent(streamingContent)}
                          <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
