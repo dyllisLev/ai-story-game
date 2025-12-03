@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -181,6 +181,13 @@ export default function PlayStory() {
   const [sessionModel, setSessionModel] = useState("");
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  
+  // Auto-scroll to bottom
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   const loadSession = useCallback(async () => {
     if (!sessionId) {
@@ -298,6 +305,14 @@ export default function PlayStory() {
       loadMessages();
     }
   }, [session, loadMessages]);
+
+  // Auto-scroll to bottom when messages load or change
+  useEffect(() => {
+    if (messages.length > 0 && !loading) {
+      // Small delay to ensure DOM is updated
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [messages, loading, scrollToBottom]);
 
 
   // Render AI response with special styling
@@ -832,6 +847,9 @@ export default function PlayStory() {
                    </div>
                  </div>
                )}
+               
+               {/* Auto-scroll target */}
+               <div ref={messagesEndRef} />
             </div>
          </div>
 
