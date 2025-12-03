@@ -79,6 +79,7 @@ async function initAndPush() {
       'client/index.html',
       // Server source
       ...getSourceFiles('server'),
+      'server/vite.fixed.ts',
       // Shared
       ...getSourceFiles('shared'),
       // Scripts

@@ -10,26 +10,19 @@ Error: EMFILE: too many open files, watch '/workspace/ai-story-game/client'
 - Vite가 수백 개의 파일을 동시에 모니터링
 - `ulimit -n`과는 다른 문제!
 
-## ✅ 해결 방법 1: inotify limit 증가 (권장!)
+## ✅ 해결 방법 1: server/vite.ts 교체 (필수!)
 
 **Linux 서버**에서 실행하기 전에:
 
 ```bash
-# 현재 limit 확인
-cat /proc/sys/fs/inotify/max_user_watches
-
-# 임시 증가
-sudo sysctl fs.inotify.max_user_watches=524288
-
-# 영구 적용
-echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-```
-
-그 후:
-```bash
+cp server/vite.fixed.ts server/vite.ts
 npm run dev
 ```
+
+**왜 필요한가?**
+- `server/vite.ts`는 `configFile: false`로 Vite를 실행
+- 이로 인해 `vite.config.ts`의 watch 설정이 무시됨
+- `server/vite.fixed.ts`는 watch 설정을 직접 포함
 
 ## ✅ 해결 방법 2: 임시 디렉토리 제거 (효과 제한적)
 

@@ -41,23 +41,15 @@ npm install
 
 > **Note:** Node.js v22+ may cause "EMFILE: too many open files" errors with Vite. Use v20.x for stability.
 
-### 2. Fix EMFILE Error on Linux (Important!)
+### 2. Fix EMFILE Error on Linux (CRITICAL!)
 
-**On Linux servers**, increase the inotify watch limit:
+**On Linux/non-Replit servers**, replace the server file:
 
 ```bash
-# Check current limit
-cat /proc/sys/fs/inotify/max_user_watches
-
-# Increase limit temporarily
-sudo sysctl fs.inotify.max_user_watches=524288
-
-# Make it permanent
-echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
+cp server/vite.fixed.ts server/vite.ts
 ```
 
-> **Why?** The dev server watches many files for hot reload. Default Linux limit (8192) is too low.
+> **Why?** The default `server/vite.ts` watches too many files causing "EMFILE: too many open files" error. The fixed version ignores unnecessary directories (uploads, node_modules, etc.).
 
 ### 3. Initialize Database
 
