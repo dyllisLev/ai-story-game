@@ -124,10 +124,13 @@
     @apply font-sans antialiased bg-background text-foreground;
     font-family: 'Noto Sans KR', sans-serif;
   }
-  
-  /* Override Tailwind Typography's 65ch paragraph width limit for mobile responsiveness */
+}
+
+/* Override Tailwind Typography's 65ch paragraph width limit for mobile responsiveness
+   Must be in @layer components to load AFTER Typography plugin */
+@layer components {
   .prose :where(p):not(:where(.not-prose *)) {
-    max-width: 100%;
+    max-width: 100% !important;
     width: 100%;
   }
 }
