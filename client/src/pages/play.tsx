@@ -401,7 +401,7 @@ export default function PlayStory() {
         case 'narration':
           return (
             <div key={index} className="mb-6">
-              <div className="prose prose-sm dark:prose-invert max-w-full">
+              <div className="prose prose-sm dark:prose-invert w-full max-w-full">
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
@@ -451,7 +451,7 @@ export default function PlayStory() {
         default:
           return (
             <div key={index} className="mb-6">
-              <div className="prose prose-sm dark:prose-invert max-w-full">
+              <div className="prose prose-sm dark:prose-invert w-full max-w-full">
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
