@@ -327,6 +327,7 @@ export default function PlayStory() {
         }
         
         const parsed = JSON.parse(cleanedText);
+        
         if (parsed.nextStory) {
           // Unescape the content
           processedContent = parsed.nextStory
