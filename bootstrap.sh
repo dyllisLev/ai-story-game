@@ -66,22 +66,44 @@ echo "✓ Dependencies installed"
 #######################################
 echo ""
 echo "🗄️  Step 3: Initializing database..."
+echo ""
+
+# Debug: Check if example DB exists
+if [ -f "app.example.db" ]; then
+    EXAMPLE_SIZE=$(ls -lh app.example.db | awk '{print $5}')
+    echo "   [DEBUG] app.example.db found (size: $EXAMPLE_SIZE)"
+else
+    echo "   [DEBUG] app.example.db NOT found - will use init-db.sql fallback"
+fi
 
 # Check if database has data
 if [ -f "app.db" ]; then
+    APP_DB_SIZE=$(ls -lh app.db | awk '{print $5}')
+    echo "   [DEBUG] app.db already exists (size: $APP_DB_SIZE)"
+    
     # Check if database has tables (not empty)
     TABLE_COUNT=$(npx tsx -e "import Database from 'better-sqlite3'; const db = new Database('app.db'); const result = db.prepare(\"SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'\").get(); console.log(result.count); db.close();" 2>/dev/null || echo "0")
+    echo "   [DEBUG] Existing database has $TABLE_COUNT tables"
     
     if [ "$TABLE_COUNT" -gt "0" ]; then
         echo -e "${YELLOW}⚠️  Database already exists with $TABLE_COUNT tables${NC}"
         read -p "   Delete and recreate? (y/N) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "   [DEBUG] Deleting existing database files..."
             rm -f app.db app.db-shm app.db-wal
             if [ -f "app.example.db" ]; then
+                echo "   [DEBUG] Copying app.example.db to app.db..."
                 cp app.example.db app.db
+                NEW_SIZE=$(ls -lh app.db | awk '{print $5}')
+                echo "   [DEBUG] Copy complete (new size: $NEW_SIZE)"
+                
+                # Verify data
+                STORY_COUNT=$(npx tsx -e "import Database from 'better-sqlite3'; const db = new Database('app.db'); const result = db.prepare('SELECT COUNT(*) as count FROM stories').get(); console.log(result.count); db.close();" 2>/dev/null || echo "0")
+                echo "   [DEBUG] Stories in new database: $STORY_COUNT"
                 echo "✓ Database created from example (includes sample story)"
             else
+                echo "   [DEBUG] Running setup-db.ts..."
                 npx tsx scripts/setup-db.ts
                 echo "✓ Database recreated"
             fi
@@ -90,25 +112,45 @@ if [ -f "app.db" ]; then
         fi
     else
         echo "⚠️  Found empty database file, recreating..."
+        echo "   [DEBUG] Deleting empty database..."
         rm -f app.db app.db-shm app.db-wal
         if [ -f "app.example.db" ]; then
+            echo "   [DEBUG] Copying app.example.db to app.db..."
             cp app.example.db app.db
+            NEW_SIZE=$(ls -lh app.db | awk '{print $5}')
+            echo "   [DEBUG] Copy complete (new size: $NEW_SIZE)"
+            
+            # Verify data
+            STORY_COUNT=$(npx tsx -e "import Database from 'better-sqlite3'; const db = new Database('app.db'); const result = db.prepare('SELECT COUNT(*) as count FROM stories').get(); console.log(result.count); db.close();" 2>/dev/null || echo "0")
+            echo "   [DEBUG] Stories in new database: $STORY_COUNT"
             echo "✓ Database created from example (includes sample story)"
         else
+            echo "   [DEBUG] Running setup-db.ts..."
             npx tsx scripts/setup-db.ts
             echo "✓ Database initialized"
         fi
     fi
 else
     # No database exists - use example DB if available
+    echo "   [DEBUG] No app.db found"
     if [ -f "app.example.db" ]; then
+        echo "   [DEBUG] Copying app.example.db to app.db..."
         cp app.example.db app.db
+        NEW_SIZE=$(ls -lh app.db | awk '{print $5}')
+        echo "   [DEBUG] Copy complete (new size: $NEW_SIZE)"
+        
+        # Verify data
+        STORY_COUNT=$(npx tsx -e "import Database from 'better-sqlite3'; const db = new Database('app.db'); const result = db.prepare('SELECT COUNT(*) as count FROM stories').get(); console.log(result.count); db.close();" 2>/dev/null || echo "0")
+        echo "   [DEBUG] Stories in new database: $STORY_COUNT"
         echo "✓ Database created from example (includes sample story)"
     else
+        echo "   [DEBUG] Running setup-db.ts..."
         npx tsx scripts/setup-db.ts
         echo "✓ Database initialized"
     fi
 fi
+
+echo ""
 
 #######################################
 # 4. Check Linux File Watcher Limit
