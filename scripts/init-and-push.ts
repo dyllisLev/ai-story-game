@@ -68,6 +68,7 @@ async function initAndPush() {
       'README.md',
       'DEPLOY_GUIDE.md',
       'QUICK_FIX.md',
+      'TROUBLESHOOTING.md',
       '.gitignore',
       'init-db.sql',
       'setup.sh',

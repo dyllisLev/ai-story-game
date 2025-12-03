@@ -1,0 +1,103 @@
+root@sjvaplex-seoul:/workspace/ai-story-game# cd ..
+root@sjvaplex-seoul:/workspace# rm -rf ai-story-game
+root@sjvaplex-seoul:/workspace# git clone https://github.com/dyllisLev/ai-story-game.git
+Cloning into 'ai-story-game'...
+remote: Enumerating objects: 122, done.
+remote: Counting objects: 100% (122/122), done.
+remote: Compressing objects: 100% (119/119), done.
+remote: Total 122 (delta 18), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (122/122), 189.29 KiB | 8.60 MiB/s, done.
+Resolving deltas: 100% (18/18), done.
+root@sjvaplex-seoul:/workspace# cd a
+ai-story-game/ ai_trader/     autoCoin_ai/   autoTrading/   avView/        
+root@sjvaplex-seoul:/workspace# cd a
+ai-story-game/ ai_trader/     autoCoin_ai/   autoTrading/   avView/        
+root@sjvaplex-seoul:/workspace# cd ai-story-game/
+root@sjvaplex-seoul:/workspace/ai-story-game# npm install
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+
+added 584 packages, and audited 585 packages in 11s
+
+117 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (2 low, 4 moderate)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+root@sjvaplex-seoul:/workspace/ai-story-game# chmod +x setup.sh
+./setup.sh
+🗄️  AI Story Game - Database Setup
+
+📋 Initializing database from init-db.sql...
+🗄️  Database Setup
+
+📋 Reading initialization SQL...
+🔨 Creating new database...
+⚡ Executing initialization SQL...
+
+✅ Database initialized successfully!
+   Location: /workspace/ai-story-game/app.db
+   Executed: 10 SQL statements
+
+📝 Next steps:
+   1. Start the application: npm run dev
+   2. Open Settings page
+   3. Enter your API keys:
+      - OpenAI API Key (for ChatGPT)
+      - Anthropic API Key (for Claude)
+      - Google AI API Key (for Gemini)
+      - xAI API Key (for Grok)
+   4. Start creating stories!
+
+
+✅ Setup complete!
+
+📝 Next steps:
+   1. Start the application: npm run dev
+   2. Open http://localhost:5000
+   3. Go to Settings and enter your API keys
+   4. Start creating stories!
+
+root@sjvaplex-seoul:/workspace/ai-story-game# npm run dev
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+11:12:01 AM [express] serving on port 5000
+node:internal/fs/watchers:247
+    const error = new UVException({
+                  ^
+
+Error: EMFILE: too many open files, watch '/workspace/ai-story-game/client'
+    at FSWatcher.<computed> (node:internal/fs/watchers:247:19)
+    at Object.watch (node:fs:2491:36)
+    at createFsWatchInstance (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16359:16)
+    at setFsWatchListener (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16401:14)
+    at NodeFsHandler$1._watchWithNodeFs (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16515:20)
+    at NodeFsHandler$1._handleDir (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16678:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NodeFsHandler$1._addToNodeFs (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16721:15)
+    at async <anonymous> (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:17375:18)
+    at async Promise.all (index 0)
+Emitted 'error' event on FSWatcher instance at:
+    at FSWatcher._handleError (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:17534:148)
+    at NodeFsHandler$1._addToNodeFs (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:16738:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/workspace/ai-story-game/node_modules/vite/dist/node/chunks/config.js:17375:18)
+    at async Promise.all (index 0) {
+  errno: -24,
+  syscall: 'watch',
+  code: 'EMFILE',
+  path: '/workspace/ai-story-game/client',
+  filename: '/workspace/ai-story-game/client'
+}
+
+Node.js v20.19.3
+root@sjvaplex-seoul:/workspace/ai-story-game#
