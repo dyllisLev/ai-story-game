@@ -734,8 +734,8 @@ export default function PlayStory() {
             </div>
          </header>
 
-         <div className="flex-1 overflow-y-auto">
-            <div className="max-w-3xl mx-auto space-y-8 px-4 py-6 w-full">
+         <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="max-w-3xl mx-auto space-y-8 px-4 py-6">
                {loading ? (
                  <div className="flex items-center justify-center py-12">
                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
