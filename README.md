@@ -23,11 +23,23 @@ Interactive Korean AI story/roleplay platform with multiple AI models.
 
 ### 1. Clone and Install
 
+**⚠️ Important: Use Node.js v20.x (recommended: v20.19.3)**
+
 ```bash
+# Using nvm (recommended)
+nvm install 20.19.3
+nvm use 20.19.3
+
+# Or check your Node version
+node --version  # Should be v20.x
+
+# Clone and install
 git clone https://github.com/dyllisLev/ai-story-game.git
 cd ai-story-game
 npm install
 ```
+
+> **Note:** Node.js v22+ may cause "EMFILE: too many open files" errors with Vite. Use v20.x for stability.
 
 ### 2. Initialize Database
 

@@ -57,6 +57,8 @@ async function initAndPush() {
     const files = [
       // Root config files
       'package.json',
+      'package-lock.json',
+      '.nvmrc',
       'tsconfig.json',
       'vite.config.ts',
       'vite-plugin-meta-images.ts',
