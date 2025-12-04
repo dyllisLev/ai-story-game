@@ -31,10 +31,6 @@ localPort = 40929
 externalPort = 3003
 
 [[ports]]
-localPort = 42991
-externalPort = 5000
-
-[[ports]]
 localPort = 43611
 externalPort = 3002
 
@@ -68,4 +64,4 @@ mockupState = "FULLSTACK"
 [userenv]
 
 [userenv.shared]
-DATABASE_URL = "postgresql://postgres:S2gkqslek@db.xdkzzucqhzslzunuqrqt.supabase.co:5432/postgres"
+DATABASE_URL = "postgresql://postgres:M%5E8oWSD%5E8V38@db.xdkzzucqhzslzunuqrqt.supabase.co:5432/postgres"
