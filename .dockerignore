@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build outputs (will be created in container)
+dist/
+
+# Development files
+*.log
+npm-debug.log*
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Database files (should use volume mount)
+*.db
+*.db-shm
+*.db-wal
+sqlite.db
+
+# Replit specific
+.replit
+replit.nix
+replit.md
+.config/
+
+# Test and documentation
+*.md
+!README.md
+
+# Attached assets (optional - uncomment if not needed in image)
+# attached_assets/
+
+# Temporary files
+tmp/
+temp/
