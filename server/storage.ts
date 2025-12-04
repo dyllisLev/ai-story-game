@@ -1,6 +1,6 @@
 import { sql, eq, and } from "drizzle-orm";
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { Pool } from "@neondatabase/serverless";
 import { settings, stories, sessions, messages, users } from "@shared/schema";
 import { 
   type InsertSetting, type Setting,
@@ -12,568 +12,238 @@ import {
 import crypto from "crypto";
 
 let db: ReturnType<typeof drizzle>;
-let sqliteDb: Database.Database;
+let pool: Pool;
 
 function getDb() {
   if (!db) {
-    sqliteDb = new Database("app.db");
-    sqliteDb.pragma("journal_mode = WAL");
-    db = drizzle(sqliteDb);
-    
-    // Create tables if not exist
-    sqliteDb.exec(`
-      CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        key TEXT NOT NULL UNIQUE,
-        value TEXT NOT NULL
-      );
-      
-      CREATE TABLE IF NOT EXISTS stories (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        image TEXT,
-        genre TEXT,
-        author TEXT,
-        story_settings TEXT,
-        prologue TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        story_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL DEFAULT 1,
-        title TEXT NOT NULL,
-        conversation_profile TEXT,
-        user_note TEXT,
-        summary_memory TEXT,
-        session_model TEXT,
-        session_provider TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
-      
-      CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id INTEGER NOT NULL,
-        role TEXT NOT NULL,
-        content TEXT NOT NULL,
-        character TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-      );
-      
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        email TEXT UNIQUE,
-        password TEXT NOT NULL,
-        display_name TEXT,
-        profile_image TEXT,
-        role TEXT DEFAULT 'user',
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    
-    // Migration: Add new columns to stories if they don't exist
-    const storyColumnsToAdd = [
-      'story_settings TEXT',
-      'prologue TEXT',
-      'prompt_template TEXT',
-      'example_user_input TEXT',
-      'example_ai_response TEXT',
-      'starting_situation TEXT'
-    ];
-    for (const col of storyColumnsToAdd) {
-      try {
-        sqliteDb.exec(`ALTER TABLE stories ADD COLUMN ${col};`);
-      } catch (e) { /* column already exists */ }
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL environment variable is not set");
     }
     
-    // Migration: Add API key columns to users if they don't exist
-    const userColumnsToAdd = [
-      'api_key_chatgpt TEXT',
-      'api_key_grok TEXT',
-      'api_key_claude TEXT',
-      'api_key_gemini TEXT',
-      "ai_model_chatgpt TEXT DEFAULT 'gpt-4o'",
-      "ai_model_grok TEXT DEFAULT 'grok-beta'",
-      "ai_model_claude TEXT DEFAULT 'claude-3-5-sonnet-20241022'",
-      "ai_model_gemini TEXT DEFAULT 'gemini-2.0-flash'",
-      'conversation_profiles TEXT'
-    ];
-    for (const col of userColumnsToAdd) {
-      try {
-        sqliteDb.exec(`ALTER TABLE users ADD COLUMN ${col};`);
-      } catch (e) { /* column already exists */ }
-    }
+    pool = new Pool({ connectionString: databaseUrl });
+    db = drizzle(pool);
     
-    // Migration: Add user_id to sessions if it doesn't exist
-    try {
-      const sessionTableInfo = sqliteDb.prepare(`PRAGMA table_info(sessions)`).all() as any[];
-      const hasUserId = sessionTableInfo.some((col: any) => col.name === 'user_id');
-      
-      if (!hasUserId) {
-        console.log("⚠️  Adding user_id column to sessions table...");
-        
-        // Get the first user (or create a default user)
-        let defaultUserId = 1;
-        const firstUser = sqliteDb.prepare(`SELECT id FROM users ORDER BY id LIMIT 1`).get() as any;
-        if (firstUser) {
-          defaultUserId = firstUser.id;
-          console.log(`Using first user (ID: ${defaultUserId}) as default for existing sessions`);
-        } else {
-          console.warn("⚠️  No users found - existing sessions will have invalid user_id");
-        }
-        
-        // Add user_id column with default value
-        sqliteDb.exec(`ALTER TABLE sessions ADD COLUMN user_id INTEGER NOT NULL DEFAULT ${defaultUserId};`);
-        
-        // Verify the column was added successfully
-        const updatedTableInfo = sqliteDb.prepare(`PRAGMA table_info(sessions)`).all() as any[];
-        const userIdAdded = updatedTableInfo.some((col: any) => col.name === 'user_id');
-        
-        if (userIdAdded) {
-          console.log(`✓ Successfully added user_id column to sessions (default: ${defaultUserId})`);
-        } else {
-          throw new Error("Failed to add user_id column to sessions table");
-        }
-      }
-    } catch (e) {
-      console.error("❌ Error adding user_id to sessions:", e);
-      throw e; // Re-throw to prevent server from starting with broken schema
-    }
-    
-    // Migration: Convert messages from story_id to session_id
-    try {
-      const tableInfo = sqliteDb.prepare(`PRAGMA table_info(messages)`).all() as any[];
-      const hasSessionId = tableInfo.some((col: any) => col.name === 'session_id');
-      const hasStoryId = tableInfo.some((col: any) => col.name === 'story_id');
-      
-      if (!hasSessionId && hasStoryId) {
-        console.log("⚠️  Migrating messages from story-based to session-based system...");
-        
-        // Get all existing messages with story_id
-        const existingMessages = sqliteDb.prepare(`SELECT * FROM messages`).all();
-        console.log(`Found ${existingMessages.length} existing messages to migrate`);
-        
-        // Create a backup of old messages
-        sqliteDb.exec(`
-          CREATE TABLE IF NOT EXISTS messages_backup_pre_session (
-            id INTEGER,
-            story_id INTEGER,
-            role TEXT,
-            content TEXT,
-            character TEXT,
-            created_at TEXT
-          );
-        `);
-        sqliteDb.exec(`INSERT INTO messages_backup_pre_session SELECT * FROM messages;`);
-        console.log("✓ Created backup table: messages_backup_pre_session");
-        
-        // Create migration sessions for each story that has messages
-        const storyIds = [...new Set(existingMessages.map((m: any) => m.story_id))];
-        const storyToSessionMap = new Map<number, number>();
-        
-        for (const storyId of storyIds) {
-          // Create a migration session for this story
-          const result = sqliteDb.prepare(`
-            INSERT INTO sessions (story_id, title, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
-          `).run(storyId, `[Migrated] Story ${storyId} Messages`, 
-                 new Date().toISOString(), 
-                 new Date().toISOString());
-          storyToSessionMap.set(storyId, result.lastInsertRowid as number);
-        }
-        console.log(`✓ Created ${storyToSessionMap.size} migration sessions`);
-        
-        // Drop and recreate messages table with new schema
-        sqliteDb.exec(`DROP TABLE messages;`);
-        sqliteDb.exec(`
-          CREATE TABLE messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            character TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-          );
-        `);
-        
-        // Migrate messages to new sessions
-        for (const msg of existingMessages) {
-          const sessionId = storyToSessionMap.get(msg.story_id);
-          if (sessionId) {
-            sqliteDb.prepare(`
-              INSERT INTO messages (session_id, role, content, character, created_at)
-              VALUES (?, ?, ?, ?, ?)
-            `).run(sessionId, msg.role, msg.content, msg.character, msg.created_at);
-          }
-        }
-        console.log(`✓ Migrated ${existingMessages.length} messages to session-based system`);
-        console.log("✓ Migration complete! Old messages preserved in messages_backup_pre_session");
-      }
-    } catch (e) {
-      console.error("❌ Migration error:", e);
-      throw e; // Re-throw to prevent server from starting with broken database
-    }
+    console.log("✓ Connected to Supabase PostgreSQL database");
   }
   return db;
 }
 
 export interface IStorage {
-  // Settings
   getSetting(key: string): Promise<Setting | undefined>;
+  setSetting(setting: InsertSetting): Promise<Setting>;
   getAllSettings(): Promise<Setting[]>;
-  setSetting(key: string, value: string): Promise<Setting>;
   
-  // Stories
   getStory(id: number): Promise<Story | undefined>;
   getAllStories(): Promise<Story[]>;
   createStory(story: InsertStory): Promise<Story>;
-  updateStory(id: number, story: Partial<InsertStory>): Promise<Story | undefined>;
-  deleteStory(id: number): Promise<boolean>;
+  updateStory(id: number, story: Partial<InsertStory>): Promise<Story>;
+  deleteStory(id: number): Promise<void>;
   
-  // Sessions
   getSession(id: number): Promise<Session | undefined>;
-  getSessionsByStory(storyId: number, userId?: number): Promise<Session[]>;
+  getSessionsByStory(storyId: number, userId: number): Promise<Session[]>;
+  getUserSessions(userId: number): Promise<Session[]>;
   createSession(session: InsertSession): Promise<Session>;
-  updateSession(id: number, session: Partial<InsertSession>): Promise<Session | undefined>;
-  deleteSession(id: number): Promise<boolean>;
+  updateSession(id: number, session: Partial<InsertSession>): Promise<Session>;
+  deleteSession(id: number): Promise<void>;
   
-  // Messages
   getMessage(id: number): Promise<Message | undefined>;
   getMessagesBySession(sessionId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
-  deleteMessagesBySession(sessionId: number): Promise<boolean>;
+  deleteMessage(id: number): Promise<void>;
+  deleteAllSessionMessages(sessionId: number): Promise<void>;
   
-  // Users
-  getUser(id: number): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
-  updateUserApiKeys(id: number, apiKeys: Partial<UserApiKeys>): Promise<User | undefined>;
-  getUserApiKeys(id: number): Promise<UserApiKeys | undefined>;
-  getUserConversationProfiles(id: number): Promise<ConversationProfile[]>;
-  updateUserConversationProfiles(id: number, profiles: ConversationProfile[]): Promise<void>;
-  deleteUser(id: number): Promise<boolean>;
-  validatePassword(plainPassword: string, hashedPassword: string): boolean;
-  hashPassword(password: string): string;
+  updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>): Promise<User>;
+  updateUserApiKeys(userId: number, apiKeys: Partial<UserApiKeys>): Promise<User>;
+  getUserApiKeys(userId: number): Promise<UserApiKeys | null>;
+  updateUserConversationProfiles(userId: number, profiles: ConversationProfile[]): Promise<User>;
+  getUserConversationProfiles(userId: number): Promise<ConversationProfile[]>;
 }
 
-export class SqliteStorage implements IStorage {
-  // Settings
+export class Storage implements IStorage {
   async getSetting(key: string): Promise<Setting | undefined> {
     const db = getDb();
-    const result = db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, key))
-      .limit(1)
-      .all();
+    const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
     return result[0];
+  }
+
+  async setSetting(setting: InsertSetting): Promise<Setting> {
+    const db = getDb();
+    const existing = await this.getSetting(setting.key);
+    
+    if (existing) {
+      const updated = await db
+        .update(settings)
+        .set({ value: setting.value })
+        .where(eq(settings.key, setting.key))
+        .returning();
+      return updated[0];
+    }
+    
+    const inserted = await db.insert(settings).values(setting).returning();
+    return inserted[0];
   }
 
   async getAllSettings(): Promise<Setting[]> {
     const db = getDb();
-    return db.select().from(settings).all();
+    return db.select().from(settings);
   }
 
-  async setSetting(key: string, value: string): Promise<Setting> {
-    const db = getDb();
-    const existing = await this.getSetting(key);
-    
-    if (existing) {
-      const result = db
-        .update(settings)
-        .set({ value })
-        .where(eq(settings.key, key))
-        .returning()
-        .all();
-      return result[0];
-    }
-    
-    const result = db
-      .insert(settings)
-      .values({ key, value })
-      .returning()
-      .all();
-    return result[0];
-  }
-
-  // Stories
   async getStory(id: number): Promise<Story | undefined> {
     const db = getDb();
-    const result = db
-      .select()
-      .from(stories)
-      .where(eq(stories.id, id))
-      .limit(1)
-      .all();
+    const result = await db.select().from(stories).where(eq(stories.id, id)).limit(1);
     return result[0];
   }
 
   async getAllStories(): Promise<Story[]> {
-    // Ensure database is initialized
-    getDb();
-    
-    // Get all stories with their most recent session update time
-    const result = sqliteDb.prepare(`
-      SELECT 
-        s.*,
-        COALESCE(MAX(sess.updated_at), s.created_at) as last_played_at
-      FROM stories s
-      LEFT JOIN sessions sess ON s.id = sess.story_id
-      GROUP BY s.id
-      ORDER BY last_played_at DESC
-    `).all();
-    
-    return result as Story[];
+    const db = getDb();
+    return db.select().from(stories).orderBy(sql`${stories.createdAt} DESC`);
   }
 
   async createStory(story: InsertStory): Promise<Story> {
     const db = getDb();
-    const result = db
-      .insert(stories)
-      .values(story)
-      .returning()
-      .all();
-    return result[0];
+    const inserted = await db.insert(stories).values(story).returning();
+    return inserted[0];
   }
 
-  async updateStory(id: number, story: Partial<InsertStory>): Promise<Story | undefined> {
+  async updateStory(id: number, story: Partial<InsertStory>): Promise<Story> {
     const db = getDb();
-    const result = db
+    const updated = await db
       .update(stories)
-      .set({ ...story, updatedAt: new Date().toISOString() })
+      .set({ ...story, updatedAt: new Date() })
       .where(eq(stories.id, id))
-      .returning()
-      .all();
-    return result[0];
+      .returning();
+    return updated[0];
   }
 
-  async deleteStory(id: number): Promise<boolean> {
+  async deleteStory(id: number): Promise<void> {
     const db = getDb();
-    const result = db
-      .delete(stories)
-      .where(eq(stories.id, id))
-      .returning()
-      .all();
-    return result.length > 0;
+    await db.delete(stories).where(eq(stories.id, id));
   }
 
-  // Sessions
   async getSession(id: number): Promise<Session | undefined> {
     const db = getDb();
-    const result = db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.id, id))
-      .limit(1)
-      .all();
+    const result = await db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
     return result[0];
   }
 
-  async getSessionsByStory(storyId: number, userId?: number): Promise<Session[]> {
+  async getSessionsByStory(storyId: number, userId: number): Promise<Session[]> {
     const db = getDb();
-    const conditions = userId 
-      ? and(eq(sessions.storyId, storyId), eq(sessions.userId, userId))
-      : eq(sessions.storyId, storyId);
-    
     return db
       .select()
       .from(sessions)
-      .where(conditions)
-      .all();
+      .where(and(eq(sessions.storyId, storyId), eq(sessions.userId, userId)))
+      .orderBy(sql`${sessions.updatedAt} DESC`);
+  }
+
+  async getUserSessions(userId: number): Promise<Session[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(sql`${sessions.updatedAt} DESC`);
   }
 
   async createSession(session: InsertSession): Promise<Session> {
     const db = getDb();
-    const result = db
-      .insert(sessions)
-      .values(session)
-      .returning()
-      .all();
-    return result[0];
+    const inserted = await db.insert(sessions).values(session).returning();
+    return inserted[0];
   }
 
-  async updateSession(id: number, session: Partial<InsertSession>): Promise<Session | undefined> {
+  async updateSession(id: number, session: Partial<InsertSession>): Promise<Session> {
     const db = getDb();
-    const result = db
+    const updated = await db
       .update(sessions)
-      .set({ ...session, updatedAt: new Date().toISOString() })
+      .set({ ...session, updatedAt: new Date() })
       .where(eq(sessions.id, id))
-      .returning()
-      .all();
-    return result[0];
+      .returning();
+    return updated[0];
   }
 
-  async deleteSession(id: number): Promise<boolean> {
+  async deleteSession(id: number): Promise<void> {
     const db = getDb();
-    const result = db
-      .delete(sessions)
-      .where(eq(sessions.id, id))
-      .returning()
-      .all();
-    return result.length > 0;
+    await db.delete(sessions).where(eq(sessions.id, id));
   }
 
-  // Messages
   async getMessage(id: number): Promise<Message | undefined> {
     const db = getDb();
-    const result = db
-      .select()
-      .from(messages)
-      .where(eq(messages.id, id))
-      .limit(1)
-      .all();
+    const result = await db.select().from(messages).where(eq(messages.id, id)).limit(1);
     return result[0];
   }
 
   async getMessagesBySession(sessionId: number): Promise<Message[]> {
     const db = getDb();
-    return db
-      .select()
-      .from(messages)
-      .where(eq(messages.sessionId, sessionId))
-      .all();
+    return db.select().from(messages).where(eq(messages.sessionId, sessionId)).orderBy(sql`${messages.createdAt} ASC`);
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
     const db = getDb();
-    const result = db
-      .insert(messages)
-      .values(message)
-      .returning()
-      .all();
-    return result[0];
+    const inserted = await db.insert(messages).values(message).returning();
+    return inserted[0];
   }
 
-  async deleteMessagesBySession(sessionId: number): Promise<boolean> {
+  async deleteMessage(id: number): Promise<void> {
     const db = getDb();
-    db
-      .delete(messages)
-      .where(eq(messages.sessionId, sessionId))
-      .run();
-    return true;
+    await db.delete(messages).where(eq(messages.id, id));
   }
 
-  // Users
-  hashPassword(password: string): string {
-    const salt = crypto.randomBytes(16).toString("hex");
-    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-    return `${salt}:${hash}`;
-  }
-
-  validatePassword(plainPassword: string, hashedPassword: string): boolean {
-    const [salt, hash] = hashedPassword.split(":");
-    const verifyHash = crypto.pbkdf2Sync(plainPassword, salt, 1000, 64, "sha512").toString("hex");
-    return hash === verifyHash;
-  }
-
-  async getUser(id: number): Promise<User | undefined> {
+  async deleteAllSessionMessages(sessionId: number): Promise<void> {
     const db = getDb();
-    const result = db
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1)
-      .all();
+    await db.delete(messages).where(eq(messages.sessionId, sessionId));
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    const db = getDb();
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
     return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const db = getDb();
-    const result = db
-      .select()
-      .from(users)
-      .where(eq(users.username, username))
-      .limit(1)
-      .all();
+    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
     return result[0];
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const db = getDb();
-    const result = db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1)
-      .all();
+    const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
     return result[0];
   }
 
   async createUser(user: InsertUser): Promise<User> {
     const db = getDb();
-    const hashedPassword = this.hashPassword(user.password);
-    const result = db
-      .insert(users)
-      .values({ ...user, password: hashedPassword })
-      .returning()
-      .all();
-    return result[0];
+    const inserted = await db.insert(users).values(user).returning();
+    return inserted[0];
   }
 
-  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+  async updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>): Promise<User> {
     const db = getDb();
-    const updateData: any = { ...user, updatedAt: new Date().toISOString() };
-    
-    if (user.password) {
-      updateData.password = this.hashPassword(user.password);
-    }
-    
-    const result = db
+    const updated = await db
       .update(users)
-      .set(updateData)
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
-      .returning()
-      .all();
-    return result[0];
+      .returning();
+    return updated[0];
   }
 
-  async deleteUser(id: number): Promise<boolean> {
+  async updateUserApiKeys(userId: number, apiKeys: Partial<UserApiKeys>): Promise<User> {
     const db = getDb();
-    const result = db
-      .delete(users)
-      .where(eq(users.id, id))
-      .returning()
-      .all();
-    return result.length > 0;
-  }
-
-  async updateUserApiKeys(id: number, apiKeys: Partial<UserApiKeys>): Promise<User | undefined> {
-    const db = getDb();
-    const updateData: any = { updatedAt: new Date().toISOString() };
-    
-    if (apiKeys.apiKeyChatgpt !== undefined) updateData.apiKeyChatgpt = apiKeys.apiKeyChatgpt;
-    if (apiKeys.apiKeyGrok !== undefined) updateData.apiKeyGrok = apiKeys.apiKeyGrok;
-    if (apiKeys.apiKeyClaude !== undefined) updateData.apiKeyClaude = apiKeys.apiKeyClaude;
-    if (apiKeys.apiKeyGemini !== undefined) updateData.apiKeyGemini = apiKeys.apiKeyGemini;
-    if (apiKeys.aiModelChatgpt !== undefined) updateData.aiModelChatgpt = apiKeys.aiModelChatgpt;
-    if (apiKeys.aiModelGrok !== undefined) updateData.aiModelGrok = apiKeys.aiModelGrok;
-    if (apiKeys.aiModelClaude !== undefined) updateData.aiModelClaude = apiKeys.aiModelClaude;
-    if (apiKeys.aiModelGemini !== undefined) updateData.aiModelGemini = apiKeys.aiModelGemini;
-    
-    const result = db
+    const updated = await db
       .update(users)
-      .set(updateData)
-      .where(eq(users.id, id))
-      .returning()
-      .all();
-    return result[0];
+      .set({ ...apiKeys, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated[0];
   }
 
-  async getUserApiKeys(id: number): Promise<UserApiKeys | undefined> {
-    const user = await this.getUser(id);
-    if (!user) return undefined;
+  async getUserApiKeys(userId: number): Promise<UserApiKeys | null> {
+    const user = await this.getUserById(userId);
+    if (!user) return null;
     
     return {
       apiKeyChatgpt: user.apiKeyChatgpt,
@@ -587,27 +257,37 @@ export class SqliteStorage implements IStorage {
     };
   }
 
-  async getUserConversationProfiles(id: number): Promise<ConversationProfile[]> {
-    const user = await this.getUser(id);
+  async updateUserConversationProfiles(userId: number, profiles: ConversationProfile[]): Promise<User> {
+    const db = getDb();
+    const updated = await db
+      .update(users)
+      .set({ 
+        conversationProfiles: JSON.stringify(profiles),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated[0];
+  }
+
+  async getUserConversationProfiles(userId: number): Promise<ConversationProfile[]> {
+    const user = await this.getUserById(userId);
     if (!user || !user.conversationProfiles) return [];
     
     try {
-      return JSON.parse(user.conversationProfiles) as ConversationProfile[];
+      return JSON.parse(user.conversationProfiles);
     } catch {
       return [];
     }
   }
-
-  async updateUserConversationProfiles(id: number, profiles: ConversationProfile[]): Promise<void> {
-    const db = getDb();
-    db.update(users)
-      .set({ 
-        conversationProfiles: JSON.stringify(profiles),
-        updatedAt: sql`CURRENT_TIMESTAMP`
-      })
-      .where(eq(users.id, id))
-      .run();
-  }
 }
 
-export const storage = new SqliteStorage();
+export function hashPassword(password: string): string {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+export function verifyPassword(password: string, hash: string): boolean {
+  return hashPassword(password) === hash;
+}
+
+export const storage = new Storage();
