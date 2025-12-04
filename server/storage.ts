@@ -1,13 +1,15 @@
 import { sql, eq } from "drizzle-orm";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { settings, stories, sessions, messages } from "@shared/schema";
+import { settings, stories, sessions, messages, users } from "@shared/schema";
 import { 
   type InsertSetting, type Setting,
   type InsertStory, type Story,
   type InsertSession, type Session,
-  type InsertMessage, type Message
+  type InsertMessage, type Message,
+  type InsertUser, type User, type SafeUser
 } from "@shared/schema";
+import crypto from "crypto";
 
 let db: ReturnType<typeof drizzle>;
 let sqliteDb: Database.Database;
@@ -61,6 +63,18 @@ function getDb() {
         character TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+      );
+      
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT UNIQUE,
+        password TEXT NOT NULL,
+        display_name TEXT,
+        profile_image TEXT,
+        role TEXT DEFAULT 'user',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
     
@@ -182,6 +196,16 @@ export interface IStorage {
   getMessagesBySession(sessionId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   deleteMessagesBySession(sessionId: number): Promise<boolean>;
+  
+  // Users
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
+  validatePassword(plainPassword: string, hashedPassword: string): boolean;
+  hashPassword(password: string): string;
 }
 
 export class SqliteStorage implements IStorage {
@@ -375,6 +399,90 @@ export class SqliteStorage implements IStorage {
       .where(eq(messages.sessionId, sessionId))
       .run();
     return true;
+  }
+
+  // Users
+  hashPassword(password: string): string {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+    return `${salt}:${hash}`;
+  }
+
+  validatePassword(plainPassword: string, hashedPassword: string): boolean {
+    const [salt, hash] = hashedPassword.split(":");
+    const verifyHash = crypto.pbkdf2Sync(plainPassword, salt, 1000, 64, "sha512").toString("hex");
+    return hash === verifyHash;
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    const db = getDb();
+    const result = db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1)
+      .all();
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const db = getDb();
+    const result = db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1)
+      .all();
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const db = getDb();
+    const result = db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1)
+      .all();
+    return result[0];
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const db = getDb();
+    const hashedPassword = this.hashPassword(user.password);
+    const result = db
+      .insert(users)
+      .values({ ...user, password: hashedPassword })
+      .returning()
+      .all();
+    return result[0];
+  }
+
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+    const db = getDb();
+    const updateData: any = { ...user, updatedAt: new Date().toISOString() };
+    
+    if (user.password) {
+      updateData.password = this.hashPassword(user.password);
+    }
+    
+    const result = db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning()
+      .all();
+    return result[0];
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    const db = getDb();
+    const result = db
+      .delete(users)
+      .where(eq(users.id, id))
+      .returning()
+      .all();
+    return result.length > 0;
   }
 }
 
