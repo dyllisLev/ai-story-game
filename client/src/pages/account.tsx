@@ -69,8 +69,8 @@ export default function AccountPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -148,28 +148,29 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-3 max-w-2xl flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/")}
-            className="text-white hover:bg-slate-800"
             data-testid="button-back"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold text-white">계정 관리</h1>
+          <h1 className="text-xl font-bold">계정 관리</h1>
         </div>
+      </header>
 
-        <Card className="bg-slate-800/50 border-slate-700 mb-6">
+      <main className="container mx-auto px-6 py-8 max-w-2xl">
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
               {user?.displayName || user?.username}
             </CardTitle>
-            <CardDescription className="text-gray-400">
+            <CardDescription>
               @{user?.username}
             </CardDescription>
           </CardHeader>
@@ -182,45 +183,42 @@ export default function AccountPage() {
           </TabsList>
 
           <TabsContent value="profile">
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-white">프로필 정보</CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardTitle>프로필 정보</CardTitle>
+                <CardDescription>
                   프로필 정보를 수정하세요
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="displayName" className="text-gray-300">표시 이름</Label>
+                    <Label htmlFor="displayName">표시 이름</Label>
                     <Input
                       id="displayName"
                       data-testid="input-profile-displayname"
                       placeholder="표시될 이름"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...profileForm.register("displayName")}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-gray-300">이메일</Label>
+                    <Label htmlFor="email">이메일</Label>
                     <Input
                       id="email"
                       data-testid="input-profile-email"
                       type="email"
                       placeholder="이메일 주소"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...profileForm.register("email")}
                     />
                     {profileForm.formState.errors.email && (
-                      <p className="text-sm text-red-400">{profileForm.formState.errors.email.message}</p>
+                      <p className="text-sm text-destructive">{profileForm.formState.errors.email.message}</p>
                     )}
                   </div>
 
                   <Button
                     type="submit"
                     data-testid="button-save-profile"
-                    className="bg-purple-600 hover:bg-purple-700"
                     disabled={updateProfileMutation.isPending}
                   >
                     {updateProfileMutation.isPending ? (
@@ -234,67 +232,63 @@ export default function AccountPage() {
           </TabsContent>
 
           <TabsContent value="security">
-            <Card className="bg-slate-800/50 border-slate-700 mb-4">
+            <Card className="mb-4">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
                   비밀번호 변경
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription>
                   계정 비밀번호를 변경하세요
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword" className="text-gray-300">현재 비밀번호</Label>
+                    <Label htmlFor="currentPassword">현재 비밀번호</Label>
                     <Input
                       id="currentPassword"
                       data-testid="input-current-password"
                       type="password"
                       placeholder="현재 비밀번호"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...passwordForm.register("currentPassword")}
                     />
                     {passwordForm.formState.errors.currentPassword && (
-                      <p className="text-sm text-red-400">{passwordForm.formState.errors.currentPassword.message}</p>
+                      <p className="text-sm text-destructive">{passwordForm.formState.errors.currentPassword.message}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword" className="text-gray-300">새 비밀번호</Label>
+                    <Label htmlFor="newPassword">새 비밀번호</Label>
                     <Input
                       id="newPassword"
                       data-testid="input-new-password"
                       type="password"
                       placeholder="새 비밀번호"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...passwordForm.register("newPassword")}
                     />
                     {passwordForm.formState.errors.newPassword && (
-                      <p className="text-sm text-red-400">{passwordForm.formState.errors.newPassword.message}</p>
+                      <p className="text-sm text-destructive">{passwordForm.formState.errors.newPassword.message}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confirmNewPassword" className="text-gray-300">새 비밀번호 확인</Label>
+                    <Label htmlFor="confirmNewPassword">새 비밀번호 확인</Label>
                     <Input
                       id="confirmNewPassword"
                       data-testid="input-confirm-new-password"
                       type="password"
                       placeholder="새 비밀번호 확인"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...passwordForm.register("confirmNewPassword")}
                     />
                     {passwordForm.formState.errors.confirmNewPassword && (
-                      <p className="text-sm text-red-400">{passwordForm.formState.errors.confirmNewPassword.message}</p>
+                      <p className="text-sm text-destructive">{passwordForm.formState.errors.confirmNewPassword.message}</p>
                     )}
                   </div>
 
                   <Button
                     type="submit"
                     data-testid="button-change-password"
-                    className="bg-purple-600 hover:bg-purple-700"
                     disabled={changePasswordMutation.isPending}
                   >
                     {changePasswordMutation.isPending ? (
@@ -306,13 +300,13 @@ export default function AccountPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-800/50 border-red-900/50">
+            <Card className="border-destructive/50">
               <CardHeader>
-                <CardTitle className="text-red-400 flex items-center gap-2">
+                <CardTitle className="text-destructive flex items-center gap-2">
                   <Trash2 className="h-5 w-5" />
                   위험 구역
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription>
                   계정을 삭제하면 복구할 수 없습니다
                 </CardDescription>
               </CardHeader>
@@ -320,7 +314,7 @@ export default function AccountPage() {
                 <Button
                   variant="outline"
                   onClick={handleLogout}
-                  className="w-full border-slate-600 text-gray-300 hover:bg-slate-700"
+                  className="w-full"
                   data-testid="button-logout"
                   disabled={logoutMutation.isPending}
                 >
@@ -340,10 +334,10 @@ export default function AccountPage() {
                       계정 삭제
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-slate-800 border-slate-700">
+                  <DialogContent>
                     <DialogHeader>
-                      <DialogTitle className="text-white">계정 삭제 확인</DialogTitle>
-                      <DialogDescription className="text-gray-400">
+                      <DialogTitle>계정 삭제 확인</DialogTitle>
+                      <DialogDescription>
                         정말로 계정을 삭제하시겠습니까? 이 작업은 취소할 수 없으며, 모든 데이터가 영구적으로 삭제됩니다.
                       </DialogDescription>
                     </DialogHeader>
@@ -351,7 +345,6 @@ export default function AccountPage() {
                       <Button
                         variant="outline"
                         onClick={() => setDeleteDialogOpen(false)}
-                        className="border-slate-600 text-gray-300"
                         data-testid="button-cancel-delete"
                       >
                         취소
@@ -374,7 +367,7 @@ export default function AccountPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+      </main>
     </div>
   );
 }
