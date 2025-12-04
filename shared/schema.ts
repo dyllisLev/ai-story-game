@@ -3,6 +3,18 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  username: text("username").notNull().unique(),
+  email: text("email").unique(),
+  password: text("password").notNull(),
+  displayName: text("display_name"),
+  profileImage: text("profile_image"),
+  role: text("role").default("user"),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   key: text("key").notNull().unique(),
@@ -80,3 +92,44 @@ export type Session = typeof sessions.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const loginSchema = z.object({
+  username: z.string().min(3, "사용자명은 3자 이상이어야 합니다"),
+  password: z.string().min(6, "비밀번호는 6자 이상이어야 합니다"),
+});
+
+export const registerSchema = z.object({
+  username: z.string().min(3, "사용자명은 3자 이상이어야 합니다"),
+  email: z.string().email("유효한 이메일을 입력하세요").optional().or(z.literal("")),
+  password: z.string().min(6, "비밀번호는 6자 이상이어야 합니다"),
+  confirmPassword: z.string(),
+  displayName: z.string().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "비밀번호가 일치하지 않습니다",
+  path: ["confirmPassword"],
+});
+
+export const updateProfileSchema = z.object({
+  displayName: z.string().optional(),
+  email: z.string().email("유효한 이메일을 입력하세요").optional().or(z.literal("")),
+  profileImage: z.string().optional(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "현재 비밀번호를 입력하세요"),
+  newPassword: z.string().min(6, "새 비밀번호는 6자 이상이어야 합니다"),
+  confirmNewPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  message: "새 비밀번호가 일치하지 않습니다",
+  path: ["confirmNewPassword"],
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+export type SafeUser = Omit<User, "password">;
