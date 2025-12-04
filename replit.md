@@ -49,8 +49,9 @@ Preferred communication style: Simple, everyday language.
 - Batch operations support for efficient updates
 
 **Database Schema:**
-The application uses four main tables:
-- `settings` - Key-value store for API keys and configuration
+The application uses five main tables:
+- `users` - User accounts with authentication and per-user API key storage (username, email, password hash, API keys for each provider, model selections)
+- `settings` - Key-value store for global configuration (system prompts, fallback API keys)
 - `stories` - Story templates with metadata (title, description, genre, author, prologue, story settings, timestamps)
 - `sessions` - Individual playthroughs of stories (storyId FK, title, conversation profile, user notes, summary memory, model/provider settings, timestamps)
 - `messages` - Chat history with session ID foreign key, role (user/assistant), content, and optional character attribution
@@ -84,11 +85,17 @@ The application uses four main tables:
 ## External Dependencies
 
 **AI Service Integrations:**
-The application supports multiple AI language model providers through API keys stored in the settings table:
+The application supports multiple AI language model providers with per-user API key management:
 - Google Gemini (gemini-3.0-pro, gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash)
 - OpenAI GPT-4o
 - Anthropic Claude 3.5 Sonnet
 - Grok (xAI)
+
+**Per-User API Key Architecture:**
+- Each user can configure their own API keys via the Account Management page ("계정 관리" → "API 키" tab)
+- API keys are stored per-user in the users table (apiKeyChatgpt, apiKeyGrok, apiKeyClaude, apiKeyGemini)
+- Model selections are also stored per-user (aiModelChatgpt, aiModelGrok, aiModelClaude, aiModelGemini)
+- AI endpoints use user-specific keys when available, with fallback to global settings for unauthenticated requests
 
 **AI API Implementation:**
 - **Streaming Responses:** Real-time text streaming using Server-Sent Events (SSE)
@@ -145,6 +152,6 @@ The application supports multiple AI language model providers through API keys s
 
 ## Security Considerations
 
-**API Key Storage:** API keys for AI services are stored in the SQLite database settings table. This approach works for single-user local deployments but should be reconsidered for multi-user or hosted scenarios.
+**API Key Storage:** API keys for AI services are stored per-user in the SQLite database users table. Each user's keys are isolated and only accessible through authenticated API requests. Global fallback keys remain in the settings table for unauthenticated requests.
 
 **Input Validation:** Drizzle-zod schemas provide runtime validation for database inserts, ensuring type safety between client and server.
