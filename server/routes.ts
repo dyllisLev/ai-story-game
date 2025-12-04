@@ -22,6 +22,52 @@ function excludePassword(user: any): SafeUser {
   return safeUser;
 }
 
+async function getUserApiKeyForProvider(userId: number | undefined, provider: string): Promise<string | null> {
+  if (userId) {
+    const apiKeys = await storage.getUserApiKeys(userId);
+    if (apiKeys) {
+      const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof typeof apiKeys;
+      if (apiKeys[keyField]) {
+        return apiKeys[keyField] as string;
+      }
+    }
+  }
+  const globalSetting = await storage.getSetting(`apiKey_${provider}`);
+  return globalSetting?.value || null;
+}
+
+async function getUserModelForProvider(userId: number | undefined, provider: string): Promise<string> {
+  const defaultModels: Record<string, string> = {
+    gemini: "gemini-2.0-flash",
+    chatgpt: "gpt-4o",
+    claude: "claude-3-5-sonnet-20241022",
+    grok: "grok-beta"
+  };
+  
+  if (userId) {
+    const apiKeys = await storage.getUserApiKeys(userId);
+    if (apiKeys) {
+      const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof typeof apiKeys;
+      if (apiKeys[modelField]) {
+        return apiKeys[modelField] as string;
+      }
+    }
+  }
+  const globalSetting = await storage.getSetting(`aiModel_${provider}`);
+  return globalSetting?.value || defaultModels[provider] || "";
+}
+
+async function findAvailableProvider(userId: number | undefined): Promise<{ provider: string; apiKey: string } | null> {
+  const providers = ["gemini", "chatgpt", "claude", "grok"];
+  for (const p of providers) {
+    const apiKey = await getUserApiKeyForProvider(userId, p);
+    if (apiKey) {
+      return { provider: p, apiKey };
+    }
+  }
+  return null;
+}
+
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (req.session?.userId) {
     next();
@@ -658,34 +704,24 @@ export async function registerRoutes(
   app.post("/api/ai/generate-story-settings", async (req, res) => {
     try {
       const { title, description, genre, promptTemplate, storySettings, provider: requestedProvider } = req.body;
+      const userId = req.session?.userId;
       
-      // Try to find an available provider with API key
-      const providers = ["gemini", "chatgpt", "claude", "grok"];
       let selectedProvider = requestedProvider;
       let apiKey = "";
       
       if (requestedProvider && requestedProvider !== "auto") {
-        // Use requested provider
-        const apiKeySetting = await storage.getSetting(`apiKey_${requestedProvider}`);
-        if (!apiKeySetting || !apiKeySetting.value) {
-          return res.status(400).json({ error: `API key for ${requestedProvider} not configured. Please set it in settings.` });
+        apiKey = await getUserApiKeyForProvider(userId, requestedProvider) || "";
+        if (!apiKey) {
+          return res.status(400).json({ error: `${requestedProvider} API 키가 설정되지 않았습니다. 계정 관리에서 API 키를 설정해주세요.` });
         }
-        apiKey = apiKeySetting.value;
         selectedProvider = requestedProvider;
       } else {
-        // Auto-select: find first provider with API key
-        for (const p of providers) {
-          const apiKeySetting = await storage.getSetting(`apiKey_${p}`);
-          if (apiKeySetting && apiKeySetting.value) {
-            apiKey = apiKeySetting.value;
-            selectedProvider = p;
-            break;
-          }
+        const available = await findAvailableProvider(userId);
+        if (!available) {
+          return res.status(400).json({ error: "설정된 AI API 키가 없습니다. 계정 관리에서 API 키를 설정해주세요." });
         }
-        
-        if (!apiKey) {
-          return res.status(400).json({ error: "No AI API key configured. Please set at least one API key in settings." });
-        }
+        selectedProvider = available.provider;
+        apiKey = available.apiKey;
       }
       
       // Get custom prompt template
@@ -713,16 +749,7 @@ export async function registerRoutes(
         .replace(/\{storySettings\}/g, storySettings || "");
 
       let generatedText = "";
-
-      // Get selected model for this provider
-      const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
-      const defaultModels: Record<string, string> = {
-        gemini: "gemini-2.0-flash",
-        chatgpt: "gpt-4o",
-        claude: "claude-3-5-sonnet-20241022",
-        grok: "grok-beta"
-      };
-      const selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+      const selectedModel = await getUserModelForProvider(userId, selectedProvider);
 
       if (selectedProvider === "gemini") {
         // Gemini 3 Pro requires thinking mode, other models can disable it
@@ -822,35 +849,26 @@ export async function registerRoutes(
   app.post("/api/ai/generate-prologue", async (req, res) => {
     try {
       const { title, description, genre, storySettings, provider: requestedProvider } = req.body;
+      const userId = req.session?.userId;
       
-      // Try to find an available provider with API key
-      const providers = ["gemini", "chatgpt", "claude", "grok"];
       let selectedProvider = requestedProvider;
       let apiKey = "";
       
       if (requestedProvider && requestedProvider !== "auto") {
-        const apiKeySetting = await storage.getSetting(`apiKey_${requestedProvider}`);
-        if (!apiKeySetting || !apiKeySetting.value) {
-          return res.status(400).json({ error: `API key for ${requestedProvider} not configured.` });
+        apiKey = await getUserApiKeyForProvider(userId, requestedProvider) || "";
+        if (!apiKey) {
+          return res.status(400).json({ error: `${requestedProvider} API 키가 설정되지 않았습니다.` });
         }
-        apiKey = apiKeySetting.value;
         selectedProvider = requestedProvider;
       } else {
-        for (const p of providers) {
-          const apiKeySetting = await storage.getSetting(`apiKey_${p}`);
-          if (apiKeySetting && apiKeySetting.value) {
-            apiKey = apiKeySetting.value;
-            selectedProvider = p;
-            break;
-          }
+        const available = await findAvailableProvider(userId);
+        if (!available) {
+          return res.status(400).json({ error: "설정된 AI API 키가 없습니다." });
         }
-        
-        if (!apiKey) {
-          return res.status(400).json({ error: "No AI API key configured." });
-        }
+        selectedProvider = available.provider;
+        apiKey = available.apiKey;
       }
       
-      // Get custom prompt template
       const customPromptSetting = await storage.getSetting("prologueGeneratePrompt");
       
       let prompt = customPromptSetting?.value || `다음 정보를 바탕으로 프롤로그와 시작 상황을 작성해주세요.
@@ -872,15 +890,7 @@ export async function registerRoutes(
         .replace(/\{genre\}/g, genre || "")
         .replace(/\{storySettings\}/g, storySettings || "");
 
-      // Get selected model
-      const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
-      const defaultModels: Record<string, string> = {
-        gemini: "gemini-2.0-flash",
-        chatgpt: "gpt-4o",
-        claude: "claude-3-5-sonnet-20241022",
-        grok: "grok-beta"
-      };
-      const selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+      const selectedModel = await getUserModelForProvider(userId, selectedProvider);
 
       let generatedText = "";
 
@@ -1002,67 +1012,45 @@ export async function registerRoutes(
   app.post("/api/ai/chat", async (req, res) => {
     try {
       const { sessionId, userMessage } = req.body;
+      const userId = req.session?.userId;
       
-      // Get session data
       const session = await storage.getSession(sessionId);
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
       }
 
-      // Get story data
       const story = await storage.getStory(session.storyId);
       if (!story) {
         return res.status(404).json({ error: "Story not found" });
       }
 
-      // Get conversation history
       const messages = await storage.getMessagesBySession(sessionId);
       
-      // Format recent messages (최대 20개, 오래된 순서부터)
       const recentMessages = messages.slice(-20).map(msg => {
         const role = msg.role === 'user' ? '사용자' : 'AI';
         return `${role}: ${msg.content}`;
       }).join('\n\n');
       
-      // Use session-specific provider/model if set, otherwise use global settings
-      const providers = ["gemini", "chatgpt", "claude", "grok"];
       let selectedProvider = session.sessionProvider || "";
       let selectedModel = session.sessionModel || "";
       let apiKey = "";
       
       if (selectedProvider) {
-        // Use session-specific provider
-        const apiKeySetting = await storage.getSetting(`apiKey_${selectedProvider}`);
-        if (!apiKeySetting || !apiKeySetting.value) {
-          return res.status(400).json({ error: `API key for ${selectedProvider} not configured.` });
-        }
-        apiKey = apiKeySetting.value;
-      } else {
-        // Auto-select: find first provider with API key
-        for (const p of providers) {
-          const apiKeySetting = await storage.getSetting(`apiKey_${p}`);
-          if (apiKeySetting && apiKeySetting.value) {
-            apiKey = apiKeySetting.value;
-            selectedProvider = p;
-            break;
-          }
-        }
-        
+        apiKey = await getUserApiKeyForProvider(userId, selectedProvider) || "";
         if (!apiKey) {
-          return res.status(400).json({ error: "No AI API key configured." });
+          return res.status(400).json({ error: `${selectedProvider} API 키가 설정되지 않았습니다. 계정 관리에서 API 키를 설정해주세요.` });
         }
+      } else {
+        const available = await findAvailableProvider(userId);
+        if (!available) {
+          return res.status(400).json({ error: "설정된 AI API 키가 없습니다. 계정 관리에서 API 키를 설정해주세요." });
+        }
+        selectedProvider = available.provider;
+        apiKey = available.apiKey;
       }
       
-      // Get default model if not specified in session
       if (!selectedModel) {
-        const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
-        const defaultModels: Record<string, string> = {
-          gemini: "gemini-2.0-flash",
-          chatgpt: "gpt-4o",
-          claude: "claude-3-5-sonnet-20241022",
-          grok: "grok-beta"
-        };
-        selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+        selectedModel = await getUserModelForProvider(userId, selectedProvider);
       }
       
       // Build system prompt from AI persona settings (commonPrompt) with variable substitution
@@ -1334,6 +1322,7 @@ nextStrory 구성:
   app.post("/api/ai/chat/stream", async (req, res) => {
     try {
       const { sessionId, userMessage, storyId } = req.body;
+      const userId = req.session?.userId;
 
       if (!sessionId || !userMessage || !storyId) {
         return res.status(400).json({ error: "sessionId, userMessage, and storyId are required" });
@@ -1349,27 +1338,26 @@ nextStrory 구성:
         return res.status(404).json({ error: "Session not found" });
       }
 
-      // Get provider and model from session or settings
-      let selectedProvider = session.sessionProvider || "gemini";
+      let selectedProvider = session.sessionProvider || "";
       let selectedModel = session.sessionModel || "";
+      let apiKey = "";
 
-      // Get API key
-      const apiKeySetting = await storage.getSetting(`apiKey_${selectedProvider}`);
-      if (!apiKeySetting || !apiKeySetting.value) {
-        return res.status(400).json({ error: `API key for ${selectedProvider} not configured` });
+      if (selectedProvider) {
+        apiKey = await getUserApiKeyForProvider(userId, selectedProvider) || "";
+        if (!apiKey) {
+          return res.status(400).json({ error: `${selectedProvider} API 키가 설정되지 않았습니다. 계정 관리에서 API 키를 설정해주세요.` });
+        }
+      } else {
+        const available = await findAvailableProvider(userId);
+        if (!available) {
+          return res.status(400).json({ error: "설정된 AI API 키가 없습니다. 계정 관리에서 API 키를 설정해주세요." });
+        }
+        selectedProvider = available.provider;
+        apiKey = available.apiKey;
       }
-      const apiKey = apiKeySetting.value;
 
-      // Get default model if not set
       if (!selectedModel) {
-        const modelSetting = await storage.getSetting(`aiModel_${selectedProvider}`);
-        const defaultModels: Record<string, string> = {
-          gemini: "gemini-2.0-flash",
-          chatgpt: "gpt-4o",
-          claude: "claude-3-5-sonnet-20241022",
-          grok: "grok-beta"
-        };
-        selectedModel = modelSetting?.value || defaultModels[selectedProvider] || "";
+        selectedModel = await getUserModelForProvider(userId, selectedProvider);
       }
 
       // Get messages for context
