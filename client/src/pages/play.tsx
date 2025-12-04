@@ -1001,6 +1001,7 @@ export default function PlayStory() {
                     const profile = savedProfiles.find(p => p.id === profileId);
                     if (profile) {
                       setConversationProfile(profile.content);
+                      saveSessionSettings("conversationProfile", profile.content);
                     }
                   }}
                 >
@@ -1019,6 +1020,7 @@ export default function PlayStory() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">프로필 선택 시 자동으로 적용됩니다. 수정 후 저장 버튼을 클릭하세요.</p>
               </div>
             )}
             <Textarea
