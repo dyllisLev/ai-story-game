@@ -53,15 +53,16 @@ The application uses five main tables:
 - `users` - User accounts with authentication and per-user API key storage (username, email, password hash, API keys for each provider, model selections)
 - `settings` - Key-value store for global configuration (system prompts, fallback API keys)
 - `stories` - Story templates with metadata (title, description, genre, author, prologue, story settings, timestamps)
-- `sessions` - Individual playthroughs of stories (storyId FK, title, conversation profile, user notes, summary memory, model/provider settings, timestamps)
+- `sessions` - Individual playthroughs of stories (storyId FK, userId FK, title, conversation profile, user notes, summary memory, model/provider settings, timestamps)
 - `messages` - Chat history with session ID foreign key, role (user/assistant), content, and optional character attribution
 
 **Session System Architecture:**
 - **Stories as Templates:** Stories serve as reusable templates that define the world, characters, and starting situation
 - **Sessions as Playthroughs:** Each session represents an independent playthrough of a story with its own chat history and settings
+- **Per-User Session Isolation:** Sessions are tied to users via userId foreign key - users can only view and manage their own sessions
 - **Isolated Chat History:** Messages are tied to sessions, allowing multiple concurrent playthroughs of the same story
 - **Session-Specific Settings:** Each session can have custom conversation profiles, user notes, summary memory, and AI model preferences
-- **Safe Data Migration:** Existing story-based messages are automatically migrated to session-based storage with backup preservation
+- **Safe Data Migration:** Existing story-based messages are automatically migrated to session-based storage with backup preservation; existing sessions are assigned to the first user during schema migration
 
 **Architectural Choices:**
 - **SQLite over PostgreSQL initially:** Uses better-sqlite3 for local development simplicity, though the drizzle config references PostgreSQL (prepared for future migration)
@@ -153,5 +154,12 @@ The application supports multiple AI language model providers with per-user API 
 ## Security Considerations
 
 **API Key Storage:** API keys for AI services are stored per-user in the SQLite database users table. Each user's keys are isolated and only accessible through authenticated API requests. Global fallback keys remain in the settings table for unauthenticated requests.
+
+**Session Access Control:**
+- All session endpoints require authentication (401 if not authenticated)
+- Users can only access their own sessions (403 if attempting to access another user's session)
+- Session creation automatically assigns the authenticated user as owner
+- Session updates prevent changing userId, storyId, and other immutable ownership fields
+- Session deletion requires ownership verification
 
 **Input Validation:** Drizzle-zod schemas provide runtime validation for database inserts, ensuring type safety between client and server.
