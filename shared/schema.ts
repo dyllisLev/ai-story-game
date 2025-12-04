@@ -11,6 +11,14 @@ export const users = sqliteTable("users", {
   displayName: text("display_name"),
   profileImage: text("profile_image"),
   role: text("role").default("user"),
+  apiKeyChatgpt: text("api_key_chatgpt"),
+  apiKeyGrok: text("api_key_grok"),
+  apiKeyClaude: text("api_key_claude"),
+  apiKeyGemini: text("api_key_gemini"),
+  aiModelChatgpt: text("ai_model_chatgpt").default("gpt-4o"),
+  aiModelGrok: text("ai_model_grok").default("grok-beta"),
+  aiModelClaude: text("ai_model_claude").default("claude-3-5-sonnet-20241022"),
+  aiModelGemini: text("ai_model_gemini").default("gemini-2.0-flash"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -130,6 +138,27 @@ export const changePasswordSchema = z.object({
   path: ["confirmNewPassword"],
 });
 
+export const updateApiKeysSchema = z.object({
+  apiKeyChatgpt: z.string().optional(),
+  apiKeyGrok: z.string().optional(),
+  apiKeyClaude: z.string().optional(),
+  apiKeyGemini: z.string().optional(),
+  aiModelChatgpt: z.string().optional(),
+  aiModelGrok: z.string().optional(),
+  aiModelClaude: z.string().optional(),
+  aiModelGemini: z.string().optional(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type SafeUser = Omit<User, "password">;
+export type UserApiKeys = {
+  apiKeyChatgpt: string | null;
+  apiKeyGrok: string | null;
+  apiKeyClaude: string | null;
+  apiKeyGemini: string | null;
+  aiModelChatgpt: string | null;
+  aiModelGrok: string | null;
+  aiModelClaude: string | null;
+  aiModelGemini: string | null;
+};
