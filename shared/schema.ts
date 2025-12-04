@@ -19,6 +19,7 @@ export const users = sqliteTable("users", {
   aiModelGrok: text("ai_model_grok").default("grok-beta"),
   aiModelClaude: text("ai_model_claude").default("claude-3-5-sonnet-20241022"),
   aiModelGemini: text("ai_model_gemini").default("gemini-2.0-flash"),
+  conversationProfiles: text("conversation_profiles"), // JSON array of {id, name, content}
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -163,3 +164,19 @@ export type UserApiKeys = {
   aiModelClaude: string | null;
   aiModelGemini: string | null;
 };
+
+export interface ConversationProfile {
+  id: string;
+  name: string;
+  content: string;
+}
+
+export const conversationProfileSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "프로필 이름을 입력하세요"),
+  content: z.string(),
+});
+
+export const updateConversationProfilesSchema = z.object({
+  profiles: z.array(conversationProfileSchema),
+});

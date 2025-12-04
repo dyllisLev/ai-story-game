@@ -7,7 +7,7 @@ import {
   type InsertStory, type Story,
   type InsertSession, type Session,
   type InsertMessage, type Message,
-  type InsertUser, type User, type SafeUser, type UserApiKeys
+  type InsertUser, type User, type SafeUser, type UserApiKeys, type ConversationProfile
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -104,7 +104,8 @@ function getDb() {
       "ai_model_chatgpt TEXT DEFAULT 'gpt-4o'",
       "ai_model_grok TEXT DEFAULT 'grok-beta'",
       "ai_model_claude TEXT DEFAULT 'claude-3-5-sonnet-20241022'",
-      "ai_model_gemini TEXT DEFAULT 'gemini-2.0-flash'"
+      "ai_model_gemini TEXT DEFAULT 'gemini-2.0-flash'",
+      'conversation_profiles TEXT'
     ];
     for (const col of userColumnsToAdd) {
       try {
@@ -260,6 +261,8 @@ export interface IStorage {
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
   updateUserApiKeys(id: number, apiKeys: Partial<UserApiKeys>): Promise<User | undefined>;
   getUserApiKeys(id: number): Promise<UserApiKeys | undefined>;
+  getUserConversationProfiles(id: number): Promise<ConversationProfile[]>;
+  updateUserConversationProfiles(id: number, profiles: ConversationProfile[]): Promise<void>;
   deleteUser(id: number): Promise<boolean>;
   validatePassword(plainPassword: string, hashedPassword: string): boolean;
   hashPassword(password: string): string;
@@ -582,6 +585,28 @@ export class SqliteStorage implements IStorage {
       aiModelClaude: user.aiModelClaude,
       aiModelGemini: user.aiModelGemini,
     };
+  }
+
+  async getUserConversationProfiles(id: number): Promise<ConversationProfile[]> {
+    const user = await this.getUser(id);
+    if (!user || !user.conversationProfiles) return [];
+    
+    try {
+      return JSON.parse(user.conversationProfiles) as ConversationProfile[];
+    } catch {
+      return [];
+    }
+  }
+
+  async updateUserConversationProfiles(id: number, profiles: ConversationProfile[]): Promise<void> {
+    const db = getDb();
+    db.update(users)
+      .set({ 
+        conversationProfiles: JSON.stringify(profiles),
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(users.id, id))
+      .run();
   }
 }
 

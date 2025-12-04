@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateApiKeysSchema, type SafeUser } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateApiKeysSchema, updateConversationProfilesSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -331,6 +331,34 @@ export async function registerRoutes(
       res.json(apiKeys);
     } catch (error) {
       res.status(500).json({ error: "API 키 업데이트에 실패했습니다" });
+    }
+  });
+
+  // Conversation Profiles API
+  app.get("/api/auth/conversation-profiles", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const profiles = await storage.getUserConversationProfiles(userId);
+      res.json({ profiles });
+    } catch (error) {
+      res.status(500).json({ error: "대화 프로필을 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.put("/api/auth/conversation-profiles", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = updateConversationProfilesSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const userId = req.session.userId!;
+      await storage.updateUserConversationProfiles(userId, parsed.data.profiles);
+      
+      const profiles = await storage.getUserConversationProfiles(userId);
+      res.json({ profiles });
+    } catch (error) {
+      res.status(500).json({ error: "대화 프로필 업데이트에 실패했습니다" });
     }
   });
 
