@@ -7,13 +7,14 @@ import { useAuth, useUpdateProfile, useChangePassword, useDeleteAccount, useLogo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, User, Lock, Trash2, Key, Eye, EyeOff, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, User, Lock, Trash2, Key, Eye, EyeOff, Check, RefreshCw, Users, Plus, Pencil, X } from "lucide-react";
 
 const profileSchema = z.object({
   displayName: z.string().optional(),
@@ -46,6 +47,12 @@ interface UserApiKeys {
   aiModelGrok: string | null;
   aiModelClaude: string | null;
   aiModelGemini: string | null;
+}
+
+interface ConversationProfile {
+  id: string;
+  name: string;
+  content: string;
 }
 
 export default function AccountPage() {
@@ -100,6 +107,118 @@ export default function AccountPage() {
   const [localApiKeys, setLocalApiKeys] = useState<Partial<UserApiKeys>>({});
   const [providerModels, setProviderModels] = useState<Record<string, AIModel[]>>({});
   const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
+
+  // Conversation Profiles
+  const [conversationProfiles, setConversationProfiles] = useState<ConversationProfile[]>([]);
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editingProfileName, setEditingProfileName] = useState("");
+  const [editingProfileContent, setEditingProfileContent] = useState("");
+  const [isAddingProfile, setIsAddingProfile] = useState(false);
+
+  const { data: profilesData, isLoading: profilesLoading } = useQuery<{ profiles: ConversationProfile[] }>({
+    queryKey: ["/api/auth/conversation-profiles"],
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (profilesData?.profiles) {
+      setConversationProfiles(profilesData.profiles);
+    }
+  }, [profilesData]);
+
+  const updateProfilesMutation = useMutation({
+    mutationFn: async (profiles: ConversationProfile[]) => {
+      const res = await fetch("/api/auth/conversation-profiles", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profiles }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update profiles");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/conversation-profiles"] });
+      toast({
+        title: "대화 프로필 저장 완료",
+        description: "대화 프로필이 저장되었습니다.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "대화 프로필 저장 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddProfile = () => {
+    setIsAddingProfile(true);
+    setEditingProfileName("");
+    setEditingProfileContent("");
+  };
+
+  const handleSaveNewProfile = () => {
+    if (!editingProfileName.trim()) {
+      toast({
+        title: "프로필 이름 필요",
+        description: "프로필 이름을 입력하세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newProfile: ConversationProfile = {
+      id: crypto.randomUUID(),
+      name: editingProfileName.trim(),
+      content: editingProfileContent,
+    };
+    const updatedProfiles = [...conversationProfiles, newProfile];
+    setConversationProfiles(updatedProfiles);
+    updateProfilesMutation.mutate(updatedProfiles);
+    setIsAddingProfile(false);
+  };
+
+  const handleEditProfile = (profile: ConversationProfile) => {
+    setEditingProfileId(profile.id);
+    setEditingProfileName(profile.name);
+    setEditingProfileContent(profile.content);
+  };
+
+  const handleSaveEditProfile = () => {
+    if (!editingProfileName.trim()) {
+      toast({
+        title: "프로필 이름 필요",
+        description: "프로필 이름을 입력하세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const updatedProfiles = conversationProfiles.map(p => 
+      p.id === editingProfileId 
+        ? { ...p, name: editingProfileName.trim(), content: editingProfileContent }
+        : p
+    );
+    setConversationProfiles(updatedProfiles);
+    updateProfilesMutation.mutate(updatedProfiles);
+    setEditingProfileId(null);
+  };
+
+  const handleDeleteProfile = (profileId: string) => {
+    if (confirm("정말로 이 프로필을 삭제하시겠습니까?")) {
+      const updatedProfiles = conversationProfiles.filter(p => p.id !== profileId);
+      setConversationProfiles(updatedProfiles);
+      updateProfilesMutation.mutate(updatedProfiles);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProfileId(null);
+    setIsAddingProfile(false);
+  };
 
   const fetchModels = async (provider: string, apiKey?: string, showToast = true, savedModel?: string) => {
     setLoadingModels(prev => ({ ...prev, [provider]: true }));
@@ -446,8 +565,9 @@ export default function AccountPage() {
         </Card>
 
         <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile" data-testid="tab-profile">프로필</TabsTrigger>
+            <TabsTrigger value="conversations" data-testid="tab-conversations">대화 프로필</TabsTrigger>
             <TabsTrigger value="apikeys" data-testid="tab-apikeys">API 키</TabsTrigger>
             <TabsTrigger value="security" data-testid="tab-security">보안</TabsTrigger>
           </TabsList>
@@ -499,6 +619,172 @@ export default function AccountPage() {
                 </form>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="conversations">
+            {profilesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <Card className="bg-muted/50 border-dashed">
+                  <CardContent className="pt-4">
+                    <p className="text-sm text-muted-foreground">
+                      자주 사용하는 대화 프로필을 미리 등록해두세요. 게임 플레이 시 빠르게 선택하여 사용할 수 있습니다.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {conversationProfiles.map((profile) => (
+                  <Card key={profile.id}>
+                    {editingProfileId === profile.id ? (
+                      <CardContent className="pt-4 space-y-4">
+                        <div className="space-y-2">
+                          <Label>프로필 이름</Label>
+                          <Input
+                            value={editingProfileName}
+                            onChange={(e) => setEditingProfileName(e.target.value)}
+                            placeholder="프로필 이름 (예: 첫사랑 로맨스)"
+                            data-testid={`input-profile-name-${profile.id}`}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>프로필 내용</Label>
+                          <Textarea
+                            value={editingProfileContent}
+                            onChange={(e) => setEditingProfileContent(e.target.value)}
+                            placeholder="캐릭터 정보, 관계 설정, 시나리오 배경 등을 입력하세요..."
+                            className="min-h-[120px]"
+                            data-testid={`textarea-profile-content-${profile.id}`}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            onClick={handleSaveEditProfile}
+                            disabled={updateProfilesMutation.isPending}
+                            data-testid={`button-save-profile-${profile.id}`}
+                          >
+                            {updateProfilesMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Check className="h-4 w-4 mr-2" />
+                            )}
+                            저장
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={handleCancelEdit}
+                            data-testid={`button-cancel-edit-${profile.id}`}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            취소
+                          </Button>
+                        </div>
+                      </CardContent>
+                    ) : (
+                      <>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              {profile.name}
+                            </CardTitle>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => handleEditProfile(profile)}
+                                data-testid={`button-edit-profile-${profile.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteProfile(profile.id)}
+                                data-testid={`button-delete-profile-${profile.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">
+                            {profile.content || "(내용 없음)"}
+                          </p>
+                        </CardContent>
+                      </>
+                    )}
+                  </Card>
+                ))}
+
+                {isAddingProfile ? (
+                  <Card>
+                    <CardContent className="pt-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label>프로필 이름</Label>
+                        <Input
+                          value={editingProfileName}
+                          onChange={(e) => setEditingProfileName(e.target.value)}
+                          placeholder="프로필 이름 (예: 첫사랑 로맨스)"
+                          data-testid="input-new-profile-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>프로필 내용</Label>
+                        <Textarea
+                          value={editingProfileContent}
+                          onChange={(e) => setEditingProfileContent(e.target.value)}
+                          placeholder="캐릭터 정보, 관계 설정, 시나리오 배경 등을 입력하세요..."
+                          className="min-h-[120px]"
+                          data-testid="textarea-new-profile-content"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={handleSaveNewProfile}
+                          disabled={updateProfilesMutation.isPending}
+                          data-testid="button-save-new-profile"
+                        >
+                          {updateProfilesMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-2" />
+                          )}
+                          저장
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={handleCancelEdit}
+                          data-testid="button-cancel-new-profile"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          취소
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={handleAddProfile}
+                    data-testid="button-add-profile"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    새 프로필 추가
+                  </Button>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="apikeys">
