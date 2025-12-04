@@ -49,6 +49,7 @@ export const stories = sqliteTable("stories", {
 export const sessions = sqliteTable("sessions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   storyId: integer("story_id").notNull().references(() => stories.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   conversationProfile: text("conversation_profile"),
   userNote: text("user_note"),

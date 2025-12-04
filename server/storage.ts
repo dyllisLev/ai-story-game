@@ -1,4 +1,4 @@
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { settings, stories, sessions, messages, users } from "@shared/schema";
@@ -44,6 +44,7 @@ function getDb() {
       CREATE TABLE IF NOT EXISTS sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         story_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL DEFAULT 1,
         title TEXT NOT NULL,
         conversation_profile TEXT,
         user_note TEXT,
@@ -52,7 +53,8 @@ function getDb() {
         session_provider TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+        FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
       
       CREATE TABLE IF NOT EXISTS messages (
@@ -108,6 +110,42 @@ function getDb() {
       try {
         sqliteDb.exec(`ALTER TABLE users ADD COLUMN ${col};`);
       } catch (e) { /* column already exists */ }
+    }
+    
+    // Migration: Add user_id to sessions if it doesn't exist
+    try {
+      const sessionTableInfo = sqliteDb.prepare(`PRAGMA table_info(sessions)`).all() as any[];
+      const hasUserId = sessionTableInfo.some((col: any) => col.name === 'user_id');
+      
+      if (!hasUserId) {
+        console.log("⚠️  Adding user_id column to sessions table...");
+        
+        // Get the first user (or create a default user)
+        let defaultUserId = 1;
+        const firstUser = sqliteDb.prepare(`SELECT id FROM users ORDER BY id LIMIT 1`).get() as any;
+        if (firstUser) {
+          defaultUserId = firstUser.id;
+          console.log(`Using first user (ID: ${defaultUserId}) as default for existing sessions`);
+        } else {
+          console.warn("⚠️  No users found - existing sessions will have invalid user_id");
+        }
+        
+        // Add user_id column with default value
+        sqliteDb.exec(`ALTER TABLE sessions ADD COLUMN user_id INTEGER NOT NULL DEFAULT ${defaultUserId};`);
+        
+        // Verify the column was added successfully
+        const updatedTableInfo = sqliteDb.prepare(`PRAGMA table_info(sessions)`).all() as any[];
+        const userIdAdded = updatedTableInfo.some((col: any) => col.name === 'user_id');
+        
+        if (userIdAdded) {
+          console.log(`✓ Successfully added user_id column to sessions (default: ${defaultUserId})`);
+        } else {
+          throw new Error("Failed to add user_id column to sessions table");
+        }
+      }
+    } catch (e) {
+      console.error("❌ Error adding user_id to sessions:", e);
+      throw e; // Re-throw to prevent server from starting with broken schema
     }
     
     // Migration: Convert messages from story_id to session_id
@@ -203,7 +241,7 @@ export interface IStorage {
   
   // Sessions
   getSession(id: number): Promise<Session | undefined>;
-  getSessionsByStory(storyId: number): Promise<Session[]>;
+  getSessionsByStory(storyId: number, userId?: number): Promise<Session[]>;
   createSession(session: InsertSession): Promise<Session>;
   updateSession(id: number, session: Partial<InsertSession>): Promise<Session | undefined>;
   deleteSession(id: number): Promise<boolean>;
@@ -340,12 +378,16 @@ export class SqliteStorage implements IStorage {
     return result[0];
   }
 
-  async getSessionsByStory(storyId: number): Promise<Session[]> {
+  async getSessionsByStory(storyId: number, userId?: number): Promise<Session[]> {
     const db = getDb();
+    const conditions = userId 
+      ? and(eq(sessions.storyId, storyId), eq(sessions.userId, userId))
+      : eq(sessions.storyId, storyId);
+    
     return db
       .select()
       .from(sessions)
-      .where(eq(sessions.storyId, storyId))
+      .where(conditions)
       .all();
   }
 

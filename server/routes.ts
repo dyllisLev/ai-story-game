@@ -590,21 +590,22 @@ export async function registerRoutes(
 
   // ==================== SESSIONS API ====================
 
-  app.get("/api/stories/:storyId/sessions", async (req, res) => {
+  app.get("/api/stories/:storyId/sessions", isAuthenticated, async (req, res) => {
     try {
       const storyId = parseInt(req.params.storyId);
       if (isNaN(storyId)) {
         return res.status(400).json({ error: "Invalid story ID" });
       }
 
-      const sessions = await storage.getSessionsByStory(storyId);
+      const userId = req.session.userId!;
+      const sessions = await storage.getSessionsByStory(storyId, userId);
       res.json(sessions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch sessions" });
     }
   });
 
-  app.post("/api/stories/:storyId/sessions", async (req, res) => {
+  app.post("/api/stories/:storyId/sessions", isAuthenticated, async (req, res) => {
     try {
       const storyId = parseInt(req.params.storyId);
       if (isNaN(storyId)) {
@@ -615,6 +616,8 @@ export async function registerRoutes(
       if (!story) {
         return res.status(404).json({ error: "Story not found" });
       }
+
+      const userId = req.session.userId!;
 
       // Get default provider and model from settings
       const providerSetting = await storage.getSetting("aiProvider");
@@ -633,6 +636,7 @@ export async function registerRoutes(
       const parsed = insertSessionSchema.safeParse({
         ...req.body,
         storyId,
+        userId,
         sessionProvider: req.body.sessionProvider || defaultProvider,
         sessionModel: req.body.sessionModel || defaultModel
       });
@@ -659,7 +663,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/sessions/:id", async (req, res) => {
+  app.get("/api/sessions/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -670,40 +674,63 @@ export async function registerRoutes(
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
       }
+      
+      // Verify user owns this session
+      if (session.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
       res.json(session);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch session" });
     }
   });
 
-  app.put("/api/sessions/:id", async (req, res) => {
+  app.put("/api/sessions/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid session ID" });
       }
 
-      const session = await storage.updateSession(id, req.body);
-      if (!session) {
+      const existingSession = await storage.getSession(id);
+      if (!existingSession) {
         return res.status(404).json({ error: "Session not found" });
       }
+      
+      // Verify user owns this session
+      if (existingSession.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Prevent changing userId, storyId, and other immutable fields
+      const { userId, storyId, createdAt, ...updateData } = req.body;
+      
+      const session = await storage.updateSession(id, updateData);
       res.json(session);
     } catch (error) {
       res.status(500).json({ error: "Failed to update session" });
     }
   });
 
-  app.delete("/api/sessions/:id", async (req, res) => {
+  app.delete("/api/sessions/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid session ID" });
       }
 
-      const deleted = await storage.deleteSession(id);
-      if (!deleted) {
+      const existingSession = await storage.getSession(id);
+      if (!existingSession) {
         return res.status(404).json({ error: "Session not found" });
       }
+      
+      // Verify user owns this session
+      if (existingSession.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const deleted = await storage.deleteSession(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete session" });
