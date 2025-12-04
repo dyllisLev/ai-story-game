@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, type SafeUser } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateApiKeysSchema, type SafeUser } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -247,6 +247,44 @@ export async function registerRoutes(
       res.json({ message: "계정이 삭제되었습니다" });
     } catch (error) {
       res.status(500).json({ error: "계정 삭제에 실패했습니다" });
+    }
+  });
+
+  // ==================== USER API KEYS API ====================
+
+  app.get("/api/auth/api-keys", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const apiKeys = await storage.getUserApiKeys(userId);
+      
+      if (!apiKeys) {
+        return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
+      }
+
+      res.json(apiKeys);
+    } catch (error) {
+      res.status(500).json({ error: "API 키를 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.put("/api/auth/api-keys", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = updateApiKeysSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const userId = req.session.userId!;
+      const user = await storage.updateUserApiKeys(userId, parsed.data);
+      
+      if (!user) {
+        return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
+      }
+
+      const apiKeys = await storage.getUserApiKeys(userId);
+      res.json(apiKeys);
+    } catch (error) {
+      res.status(500).json({ error: "API 키 업데이트에 실패했습니다" });
     }
   });
 
