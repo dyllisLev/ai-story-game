@@ -7,7 +7,7 @@ import {
   type InsertStory, type Story,
   type InsertSession, type Session,
   type InsertMessage, type Message,
-  type InsertUser, type User, type SafeUser
+  type InsertUser, type User, type SafeUser, type UserApiKeys
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -90,6 +90,23 @@ function getDb() {
     for (const col of storyColumnsToAdd) {
       try {
         sqliteDb.exec(`ALTER TABLE stories ADD COLUMN ${col};`);
+      } catch (e) { /* column already exists */ }
+    }
+    
+    // Migration: Add API key columns to users if they don't exist
+    const userColumnsToAdd = [
+      'api_key_chatgpt TEXT',
+      'api_key_grok TEXT',
+      'api_key_claude TEXT',
+      'api_key_gemini TEXT',
+      "ai_model_chatgpt TEXT DEFAULT 'gpt-4o'",
+      "ai_model_grok TEXT DEFAULT 'grok-beta'",
+      "ai_model_claude TEXT DEFAULT 'claude-3-5-sonnet-20241022'",
+      "ai_model_gemini TEXT DEFAULT 'gemini-2.0-flash'"
+    ];
+    for (const col of userColumnsToAdd) {
+      try {
+        sqliteDb.exec(`ALTER TABLE users ADD COLUMN ${col};`);
       } catch (e) { /* column already exists */ }
     }
     
@@ -203,6 +220,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
+  updateUserApiKeys(id: number, apiKeys: Partial<UserApiKeys>): Promise<User | undefined>;
+  getUserApiKeys(id: number): Promise<UserApiKeys | undefined>;
   deleteUser(id: number): Promise<boolean>;
   validatePassword(plainPassword: string, hashedPassword: string): boolean;
   hashPassword(password: string): string;
@@ -483,6 +502,44 @@ export class SqliteStorage implements IStorage {
       .returning()
       .all();
     return result.length > 0;
+  }
+
+  async updateUserApiKeys(id: number, apiKeys: Partial<UserApiKeys>): Promise<User | undefined> {
+    const db = getDb();
+    const updateData: any = { updatedAt: new Date().toISOString() };
+    
+    if (apiKeys.apiKeyChatgpt !== undefined) updateData.apiKeyChatgpt = apiKeys.apiKeyChatgpt;
+    if (apiKeys.apiKeyGrok !== undefined) updateData.apiKeyGrok = apiKeys.apiKeyGrok;
+    if (apiKeys.apiKeyClaude !== undefined) updateData.apiKeyClaude = apiKeys.apiKeyClaude;
+    if (apiKeys.apiKeyGemini !== undefined) updateData.apiKeyGemini = apiKeys.apiKeyGemini;
+    if (apiKeys.aiModelChatgpt !== undefined) updateData.aiModelChatgpt = apiKeys.aiModelChatgpt;
+    if (apiKeys.aiModelGrok !== undefined) updateData.aiModelGrok = apiKeys.aiModelGrok;
+    if (apiKeys.aiModelClaude !== undefined) updateData.aiModelClaude = apiKeys.aiModelClaude;
+    if (apiKeys.aiModelGemini !== undefined) updateData.aiModelGemini = apiKeys.aiModelGemini;
+    
+    const result = db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning()
+      .all();
+    return result[0];
+  }
+
+  async getUserApiKeys(id: number): Promise<UserApiKeys | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+    
+    return {
+      apiKeyChatgpt: user.apiKeyChatgpt,
+      apiKeyGrok: user.apiKeyGrok,
+      apiKeyClaude: user.apiKeyClaude,
+      apiKeyGemini: user.apiKeyGemini,
+      aiModelChatgpt: user.aiModelChatgpt,
+      aiModelGrok: user.aiModelGrok,
+      aiModelClaude: user.aiModelClaude,
+      aiModelGemini: user.aiModelGemini,
+    };
   }
 }
 
