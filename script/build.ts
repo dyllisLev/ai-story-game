@@ -1,67 +1,53 @@
+import { build } from "vite";
+import { resolve } from "path";
 import { build as esbuild } from "esbuild";
-import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import fs from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
-const allowlist = [
-  "@google/generative-ai",
-  "@neondatabase/serverless",
-  "axios",
-  "connect-pg-simple",
-  "cors",
-  "date-fns",
-  "drizzle-orm",
-  "drizzle-zod",
-  "express",
-  "express-rate-limit",
-  "express-session",
-  "jsonwebtoken",
-  "memorystore",
-  "multer",
-  "nanoid",
-  "nodemailer",
-  "openai",
-  "passport",
-  "passport-local",
-  "stripe",
-  "uuid",
-  "ws",
-  "xlsx",
-  "zod",
-  "zod-validation-error",
-];
+const __dirname = new URL(".", import.meta.url).pathname;
 
-async function buildAll() {
-  await rm("dist", { recursive: true, force: true });
-
-  console.log("building client...");
-  await viteBuild();
-
-  console.log("building server...");
-  const pkg = JSON.parse(await readFile("package.json", "utf-8"));
-  const allDeps = [
-    ...Object.keys(pkg.dependencies || {}),
-    ...Object.keys(pkg.devDependencies || {}),
-  ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
-
-  await esbuild({
-    entryPoints: ["server/index.ts"],
-    platform: "node",
-    bundle: true,
-    format: "cjs",
-    outfile: "dist/index.cjs",
-    define: {
-      "process.env.NODE_ENV": '"production"',
+async function buildClient() {
+  console.log("Building client...");
+  await build({
+    root: resolve(__dirname, "../client"),
+    build: {
+      outDir: resolve(__dirname, "../dist/public"),
+      emptyOutDir: true,
     },
-    minify: true,
-    external: externals,
-    logLevel: "info",
   });
 }
 
-buildAll().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function buildServer() {
+  console.log("Building server...");
+  await esbuild({
+    entryPoints: [resolve(__dirname, "../server/index.ts")],
+    bundle: true,
+    platform: "node",
+    target: "node20",
+    format: "cjs",
+    outfile: resolve(__dirname, "../dist/index.cjs"),
+    external: [
+      "express",
+      "better-sqlite3",
+      "@neondatabase/serverless",
+      "express-session",
+      "memorystore",
+      "multer",
+    ],
+  });
+}
+
+async function copyAssets() {
+  console.log("Copying assets...");
+  const uploadsDir = resolve(__dirname, "../dist/uploads");
+  await fs.mkdir(uploadsDir, { recursive: true });
+  await fs.writeFile(resolve(uploadsDir, ".gitkeep"), "");
+}
+
+async function main() {
+  await buildClient();
+  await buildServer();
+  await copyAssets();
+  console.log("Build complete!");
+}
+
+main().catch(console.error);
