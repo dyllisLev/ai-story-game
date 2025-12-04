@@ -65,3 +65,5 @@ mockupState = "FULLSTACK"
 
 [userenv.shared]
 DATABASE_URL = "postgresql://postgres:M%5E8oWSD%5E8V38@db.xdkzzucqhzslzunuqrqt.supabase.co:5432/postgres"
+SUPABASE_URL = "https://supa.nuc.hmini.me"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzM5ODA0NDAwLAogICJleHAiOiAxODk3NTcwODAwCn0.AFXH3OIGsCoWsWF9XVQLtN90OLC9g-_AjoeIfxVPfeE"

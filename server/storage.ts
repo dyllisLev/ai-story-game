@@ -1,7 +1,4 @@
-import { sql, eq, and } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { Pool } from "@neondatabase/serverless";
-import { settings, stories, sessions, messages, users } from "@shared/schema";
+import { supabase } from "./supabase";
 import { 
   type InsertSetting, type Setting,
   type InsertStory, type Story,
@@ -10,24 +7,6 @@ import {
   type InsertUser, type User, type SafeUser, type UserApiKeys, type ConversationProfile
 } from "@shared/schema";
 import crypto from "crypto";
-
-let db: ReturnType<typeof drizzle>;
-let pool: Pool;
-
-function getDb() {
-  if (!db) {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL environment variable is not set");
-    }
-    
-    pool = new Pool({ connectionString: databaseUrl });
-    db = drizzle(pool);
-    
-    console.log("✓ Connected to Supabase PostgreSQL database");
-  }
-  return db;
-}
 
 export interface IStorage {
   getSetting(key: string): Promise<Setting | undefined>;
@@ -66,179 +45,286 @@ export interface IStorage {
 
 export class Storage implements IStorage {
   async getSetting(key: string): Promise<Setting | undefined> {
-    const db = getDb();
-    const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('key', key)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || undefined;
   }
 
   async setSetting(setting: InsertSetting): Promise<Setting> {
-    const db = getDb();
     const existing = await this.getSetting(setting.key);
     
     if (existing) {
-      const updated = await db
-        .update(settings)
-        .set({ value: setting.value })
-        .where(eq(settings.key, setting.key))
-        .returning();
-      return updated[0];
+      const { data, error } = await supabase
+        .from('settings')
+        .update({ value: setting.value })
+        .eq('key', setting.key)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
     }
     
-    const inserted = await db.insert(settings).values(setting).returning();
-    return inserted[0];
+    const { data, error } = await supabase
+      .from('settings')
+      .insert(setting)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async getAllSettings(): Promise<Setting[]> {
-    const db = getDb();
-    return db.select().from(settings);
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*');
+    
+    if (error) throw error;
+    return data || [];
   }
 
   async getStory(id: number): Promise<Story | undefined> {
-    const db = getDb();
-    const result = await db.select().from(stories).where(eq(stories.id, id)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from('stories')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || undefined;
   }
 
   async getAllStories(): Promise<Story[]> {
-    const db = getDb();
-    return db.select().from(stories).orderBy(sql`${stories.createdAt} DESC`);
+    const { data, error } = await supabase
+      .from('stories')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
   }
 
   async createStory(story: InsertStory): Promise<Story> {
-    const db = getDb();
-    const inserted = await db.insert(stories).values(story).returning();
-    return inserted[0];
+    const { data, error } = await supabase
+      .from('stories')
+      .insert(story)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async updateStory(id: number, story: Partial<InsertStory>): Promise<Story> {
-    const db = getDb();
-    const updated = await db
-      .update(stories)
-      .set({ ...story, updatedAt: new Date() })
-      .where(eq(stories.id, id))
-      .returning();
-    return updated[0];
+    const { data, error } = await supabase
+      .from('stories')
+      .update({ ...story, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async deleteStory(id: number): Promise<void> {
-    const db = getDb();
-    await db.delete(stories).where(eq(stories.id, id));
+    const { error } = await supabase
+      .from('stories')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 
   async getSession(id: number): Promise<Session | undefined> {
-    const db = getDb();
-    const result = await db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || undefined;
   }
 
   async getSessionsByStory(storyId: number, userId: number): Promise<Session[]> {
-    const db = getDb();
-    return db
-      .select()
-      .from(sessions)
-      .where(and(eq(sessions.storyId, storyId), eq(sessions.userId, userId)))
-      .orderBy(sql`${sessions.updatedAt} DESC`);
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('story_id', storyId)
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
   }
 
   async getUserSessions(userId: number): Promise<Session[]> {
-    const db = getDb();
-    return db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.userId, userId))
-      .orderBy(sql`${sessions.updatedAt} DESC`);
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
   }
 
   async createSession(session: InsertSession): Promise<Session> {
-    const db = getDb();
-    const inserted = await db.insert(sessions).values(session).returning();
-    return inserted[0];
+    const { data, error } = await supabase
+      .from('sessions')
+      .insert(session)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async updateSession(id: number, session: Partial<InsertSession>): Promise<Session> {
-    const db = getDb();
-    const updated = await db
-      .update(sessions)
-      .set({ ...session, updatedAt: new Date() })
-      .where(eq(sessions.id, id))
-      .returning();
-    return updated[0];
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ ...session, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async deleteSession(id: number): Promise<void> {
-    const db = getDb();
-    await db.delete(sessions).where(eq(sessions.id, id));
+    const { error } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 
   async getMessage(id: number): Promise<Message | undefined> {
-    const db = getDb();
-    const result = await db.select().from(messages).where(eq(messages.id, id)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || undefined;
   }
 
   async getMessagesBySession(sessionId: number): Promise<Message[]> {
-    const db = getDb();
-    return db.select().from(messages).where(eq(messages.sessionId, sessionId)).orderBy(sql`${messages.createdAt} ASC`);
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    return data || [];
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const db = getDb();
-    const inserted = await db.insert(messages).values(message).returning();
-    return inserted[0];
+    const { data, error } = await supabase
+      .from('messages')
+      .insert(message)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async deleteMessage(id: number): Promise<void> {
-    const db = getDb();
-    await db.delete(messages).where(eq(messages.id, id));
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 
   async deleteAllSessionMessages(sessionId: number): Promise<void> {
-    const db = getDb();
-    await db.delete(messages).where(eq(messages.sessionId, sessionId));
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('session_id', sessionId);
+    
+    if (error) throw error;
   }
 
   async getUserById(id: number): Promise<User | undefined> {
-    const db = getDb();
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const db = getDb();
-    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const db = getDb();
-    const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || undefined;
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const db = getDb();
-    const inserted = await db.insert(users).values(user).returning();
-    return inserted[0];
+    const { data, error} = await supabase
+      .from('users')
+      .insert(user)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>): Promise<User> {
-    const db = getDb();
-    const updated = await db
-      .update(users)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    return updated[0];
+    const { data, error } = await supabase
+      .from('users')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async updateUserApiKeys(userId: number, apiKeys: Partial<UserApiKeys>): Promise<User> {
-    const db = getDb();
-    const updated = await db
-      .update(users)
-      .set({ ...apiKeys, updatedAt: new Date() })
-      .where(eq(users.id, userId))
-      .returning();
-    return updated[0];
+    const { data, error } = await supabase
+      .from('users')
+      .update({ ...apiKeys, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async getUserApiKeys(userId: number): Promise<UserApiKeys | null> {
@@ -258,16 +344,18 @@ export class Storage implements IStorage {
   }
 
   async updateUserConversationProfiles(userId: number, profiles: ConversationProfile[]): Promise<User> {
-    const db = getDb();
-    const updated = await db
-      .update(users)
-      .set({ 
-        conversationProfiles: JSON.stringify(profiles),
-        updatedAt: new Date()
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        conversation_profiles: JSON.stringify(profiles),
+        updated_at: new Date().toISOString()
       })
-      .where(eq(users.id, userId))
-      .returning();
-    return updated[0];
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   async getUserConversationProfiles(userId: number): Promise<ConversationProfile[]> {
