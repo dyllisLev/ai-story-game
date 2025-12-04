@@ -107,20 +107,26 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <BookOpen className="h-10 w-10 text-purple-400" />
-            <h1 className="text-3xl font-bold text-white">AI Story Game</h1>
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-3 max-w-5xl flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            <h1 className="text-xl font-bold">AI Story Game</h1>
           </div>
-          <p className="text-gray-400">AI와 함께 만드는 인터랙티브 스토리</p>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-6 py-8 max-w-md">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold mb-2">환영합니다</h2>
+          <p className="text-muted-foreground">AI와 함께 만드는 인터랙티브 스토리</p>
         </div>
 
-        <Card className="bg-slate-800/50 border-slate-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white">계정</CardTitle>
-            <CardDescription className="text-gray-400">
+            <CardTitle>계정</CardTitle>
+            <CardDescription>
               로그인하거나 새 계정을 만드세요
             </CardDescription>
           </CardHeader>
@@ -134,38 +140,36 @@ export default function AuthPage() {
               <TabsContent value="login">
                 <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-username" className="text-gray-300">사용자명</Label>
+                    <Label htmlFor="login-username">사용자명</Label>
                     <Input
                       id="login-username"
                       data-testid="input-login-username"
                       placeholder="사용자명을 입력하세요"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...loginForm.register("username")}
                     />
                     {loginForm.formState.errors.username && (
-                      <p className="text-sm text-red-400">{loginForm.formState.errors.username.message}</p>
+                      <p className="text-sm text-destructive">{loginForm.formState.errors.username.message}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-gray-300">비밀번호</Label>
+                    <Label htmlFor="login-password">비밀번호</Label>
                     <Input
                       id="login-password"
                       data-testid="input-login-password"
                       type="password"
                       placeholder="비밀번호를 입력하세요"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...loginForm.register("password")}
                     />
                     {loginForm.formState.errors.password && (
-                      <p className="text-sm text-red-400">{loginForm.formState.errors.password.message}</p>
+                      <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>
                     )}
                   </div>
 
                   <Button
                     type="submit"
                     data-testid="button-login"
-                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    className="w-full"
                     disabled={loginMutation.isPending}
                   >
                     {loginMutation.isPending ? (
@@ -179,79 +183,74 @@ export default function AuthPage() {
               <TabsContent value="register">
                 <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-username" className="text-gray-300">사용자명 *</Label>
+                    <Label htmlFor="register-username">사용자명 *</Label>
                     <Input
                       id="register-username"
                       data-testid="input-register-username"
                       placeholder="사용자명을 입력하세요"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...registerForm.register("username")}
                     />
                     {registerForm.formState.errors.username && (
-                      <p className="text-sm text-red-400">{registerForm.formState.errors.username.message}</p>
+                      <p className="text-sm text-destructive">{registerForm.formState.errors.username.message}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-displayName" className="text-gray-300">표시 이름</Label>
+                    <Label htmlFor="register-displayName">표시 이름</Label>
                     <Input
                       id="register-displayName"
                       data-testid="input-register-displayname"
                       placeholder="표시될 이름 (선택사항)"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...registerForm.register("displayName")}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-email" className="text-gray-300">이메일</Label>
+                    <Label htmlFor="register-email">이메일</Label>
                     <Input
                       id="register-email"
                       data-testid="input-register-email"
                       type="email"
                       placeholder="이메일 주소 (선택사항)"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...registerForm.register("email")}
                     />
                     {registerForm.formState.errors.email && (
-                      <p className="text-sm text-red-400">{registerForm.formState.errors.email.message}</p>
+                      <p className="text-sm text-destructive">{registerForm.formState.errors.email.message}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-password" className="text-gray-300">비밀번호 *</Label>
+                    <Label htmlFor="register-password">비밀번호 *</Label>
                     <Input
                       id="register-password"
                       data-testid="input-register-password"
                       type="password"
                       placeholder="비밀번호를 입력하세요"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...registerForm.register("password")}
                     />
                     {registerForm.formState.errors.password && (
-                      <p className="text-sm text-red-400">{registerForm.formState.errors.password.message}</p>
+                      <p className="text-sm text-destructive">{registerForm.formState.errors.password.message}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-confirmPassword" className="text-gray-300">비밀번호 확인 *</Label>
+                    <Label htmlFor="register-confirmPassword">비밀번호 확인 *</Label>
                     <Input
                       id="register-confirmPassword"
                       data-testid="input-register-confirm-password"
                       type="password"
                       placeholder="비밀번호를 다시 입력하세요"
-                      className="bg-slate-700 border-slate-600 text-white"
                       {...registerForm.register("confirmPassword")}
                     />
                     {registerForm.formState.errors.confirmPassword && (
-                      <p className="text-sm text-red-400">{registerForm.formState.errors.confirmPassword.message}</p>
+                      <p className="text-sm text-destructive">{registerForm.formState.errors.confirmPassword.message}</p>
                     )}
                   </div>
 
                   <Button
                     type="submit"
                     data-testid="button-register"
-                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    className="w-full"
                     disabled={registerMutation.isPending}
                   >
                     {registerMutation.isPending ? (
@@ -264,18 +263,7 @@ export default function AuthPage() {
             </Tabs>
           </CardContent>
         </Card>
-
-        <p className="text-center text-gray-500 mt-4 text-sm">
-          계정 없이도 앱을 사용할 수 있습니다.{" "}
-          <button
-            onClick={() => navigate("/")}
-            className="text-purple-400 hover:text-purple-300 underline"
-            data-testid="link-continue-without-login"
-          >
-            로그인 없이 계속하기
-          </button>
-        </p>
-      </div>
+      </main>
     </div>
   );
 }
