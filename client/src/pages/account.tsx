@@ -101,22 +101,7 @@ export default function AccountPage() {
   const [providerModels, setProviderModels] = useState<Record<string, AIModel[]>>({});
   const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (apiKeys) {
-      setLocalApiKeys({
-        apiKeyChatgpt: apiKeys.apiKeyChatgpt || "",
-        apiKeyGrok: apiKeys.apiKeyGrok || "",
-        apiKeyClaude: apiKeys.apiKeyClaude || "",
-        apiKeyGemini: apiKeys.apiKeyGemini || "",
-        aiModelChatgpt: apiKeys.aiModelChatgpt || "gpt-4o",
-        aiModelGrok: apiKeys.aiModelGrok || "grok-beta",
-        aiModelClaude: apiKeys.aiModelClaude || "claude-3-5-sonnet-20241022",
-        aiModelGemini: apiKeys.aiModelGemini || "gemini-2.0-flash",
-      });
-    }
-  }, [apiKeys]);
-
-  const fetchModels = async (provider: string, apiKey?: string) => {
+  const fetchModels = async (provider: string, apiKey?: string, showToast = true) => {
     setLoadingModels(prev => ({ ...prev, [provider]: true }));
     try {
       const res = await fetch(`/api/ai/models/${provider}`, {
@@ -140,28 +125,57 @@ export default function AccountPage() {
           }));
         }
         
-        toast({
-          title: "모델 목록 조회 완료",
-          description: `${data.models.length}개의 모델을 불러왔습니다.`,
-        });
+        if (showToast) {
+          toast({
+            title: "모델 목록 조회 완료",
+            description: `${data.models.length}개의 모델을 불러왔습니다.`,
+          });
+        }
       } else {
         const error = await res.json();
+        if (showToast) {
+          toast({
+            title: "모델 목록 조회 실패",
+            description: error.error,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error: any) {
+      if (showToast) {
         toast({
           title: "모델 목록 조회 실패",
-          description: error.error,
+          description: error.message,
           variant: "destructive",
         });
       }
-    } catch (error: any) {
-      toast({
-        title: "모델 목록 조회 실패",
-        description: error.message,
-        variant: "destructive",
-      });
     } finally {
       setLoadingModels(prev => ({ ...prev, [provider]: false }));
     }
   };
+
+  useEffect(() => {
+    if (apiKeys) {
+      setLocalApiKeys({
+        apiKeyChatgpt: apiKeys.apiKeyChatgpt || "",
+        apiKeyGrok: apiKeys.apiKeyGrok || "",
+        apiKeyClaude: apiKeys.apiKeyClaude || "",
+        apiKeyGemini: apiKeys.apiKeyGemini || "",
+        aiModelChatgpt: apiKeys.aiModelChatgpt || "gpt-4o",
+        aiModelGrok: apiKeys.apiModelGrok || "grok-beta",
+        aiModelClaude: apiKeys.aiModelClaude || "claude-3-5-sonnet-20241022",
+        aiModelGemini: apiKeys.aiModelGemini || "gemini-2.0-flash",
+      });
+      
+      const providers = ["gemini", "chatgpt", "claude", "grok"];
+      providers.forEach((provider) => {
+        const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
+        if (apiKeys[keyField]) {
+          fetchModels(provider, undefined, false);
+        }
+      });
+    }
+  }, [apiKeys]);
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
