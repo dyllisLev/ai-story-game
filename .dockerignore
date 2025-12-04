@@ -49,3 +49,13 @@ replit.md
 # Temporary files
 tmp/
 temp/
+
+# Scripts (keep only necessary ones)
+scripts/
+
+# Cleanup summary
+CLEANUP_SUMMARY.md
+
+# Uploads (will use volume mount)
+uploads/*
+!uploads/.gitkeep
