@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,10 +44,19 @@ export default function AccountPage() {
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      displayName: user?.displayName || "",
-      email: user?.email || "",
+      displayName: "",
+      email: "",
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        displayName: user.displayName || "",
+        email: user.email || "",
+      });
+    }
+  }, [user]);
 
   const passwordForm = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),

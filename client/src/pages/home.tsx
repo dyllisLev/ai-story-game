@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, Play, Edit, Settings as SettingsIcon, Loader2, Trash2 } from "lucide-react";
+import { Plus, Play, Edit, Settings as SettingsIcon, Loader2, Trash2, User, LogIn } from "lucide-react";
+import { useAuth, useLogout } from "@/hooks/useAuth";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Story {
   id: number;
@@ -18,6 +21,8 @@ export default function Home() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
+  const { user, isAuthenticated } = useAuth();
+  const logoutMutation = useLogout();
 
   useEffect(() => {
     loadStories();
@@ -89,6 +94,10 @@ export default function Home() {
     }
   };
 
+  const handleLogout = async () => {
+    await logoutMutation.mutateAsync();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
@@ -104,6 +113,42 @@ export default function Home() {
               <SettingsIcon className="w-5 h-5" />
             </Button>
           </Link>
+          
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative" data-testid="button-user-menu">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.profileImage || undefined} alt={user?.displayName || user?.username} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                      {(user?.displayName || user?.username || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5 text-sm font-medium">
+                  {user?.displayName || user?.username}
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setLocation("/account")} data-testid="menu-account">
+                  <User className="w-4 h-4 mr-2" />
+                  계정 관리
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600" data-testid="menu-logout">
+                  로그아웃
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link href="/auth">
+              <Button variant="outline" size="sm" className="gap-2" data-testid="button-login">
+                <LogIn className="w-4 h-4" />
+                로그인
+              </Button>
+            </Link>
+          )}
         </div>
       </header>
 
