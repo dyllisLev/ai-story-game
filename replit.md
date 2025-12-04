@@ -50,11 +50,19 @@ Preferred communication style: Simple, everyday language.
 
 **Database Schema:**
 The application uses five main tables:
-- `users` - User accounts with authentication and per-user API key storage (username, email, password hash, API keys for each provider, model selections)
+- `users` - User accounts with authentication and per-user API key storage (username, email, password hash, API keys for each provider, model selections, conversationProfiles JSON array for reusable profiles)
 - `settings` - Key-value store for global configuration (system prompts, fallback API keys)
 - `stories` - Story templates with metadata (title, description, genre, author, prologue, story settings, timestamps)
 - `sessions` - Individual playthroughs of stories (storyId FK, userId FK, title, conversation profile, user notes, summary memory, model/provider settings, timestamps)
 - `messages` - Chat history with session ID foreign key, role (user/assistant), content, and optional character attribution
+
+**Conversation Profile Management:**
+- Users can create, edit, and delete reusable conversation profiles in account settings ("계정 관리" → "대화 프로필" tab)
+- Profiles are stored as JSON array in users table (conversationProfiles field)
+- Each profile has: id (UUID), name, content
+- In play page session settings, users can select from saved profiles to quickly apply them
+- When a saved profile is selected, it auto-saves to the session's conversationProfile field
+- API endpoints: GET/PUT /api/auth/conversation-profiles (requires authentication)
 
 **Session System Architecture:**
 - **Stories as Templates:** Stories serve as reusable templates that define the world, characters, and starting situation
