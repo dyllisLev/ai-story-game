@@ -154,6 +154,12 @@ interface Message {
   createdAt?: string | null;
 }
 
+interface ConversationProfile {
+  id: string;
+  name: string;
+  content: string;
+}
+
 export default function PlayStory() {
   const [match, params] = useRoute("/play/:sessionId");
   const [location, setLocation] = useLocation();
@@ -181,6 +187,7 @@ export default function PlayStory() {
   const [sessionModel, setSessionModel] = useState("");
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [savedProfiles, setSavedProfiles] = useState<ConversationProfile[]>([]);
   
   // Auto-scroll to bottom
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -252,6 +259,26 @@ export default function PlayStory() {
       setEditingField(null);
     }
   };
+
+  const loadSavedProfiles = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/conversation-profiles", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSavedProfiles(data.profiles || []);
+      }
+    } catch (error) {
+      console.error("Failed to load saved profiles:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (editingField === "conversationProfile") {
+      loadSavedProfiles();
+    }
+  }, [editingField, loadSavedProfiles]);
 
   const loadMessages = useCallback(async () => {
     if (!sessionId) return;
@@ -965,6 +992,35 @@ export default function PlayStory() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {editingField === "conversationProfile" && savedProfiles.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">저장된 프로필에서 불러오기</label>
+                <Select
+                  value=""
+                  onValueChange={(profileId) => {
+                    const profile = savedProfiles.find(p => p.id === profileId);
+                    if (profile) {
+                      setConversationProfile(profile.content);
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="select-saved-profile">
+                    <SelectValue placeholder="프로필 선택..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedProfiles.map((profile) => (
+                      <SelectItem 
+                        key={profile.id} 
+                        value={profile.id}
+                        data-testid={`option-profile-${profile.id}`}
+                      >
+                        {profile.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Textarea
               className="min-h-[200px]"
               placeholder={
@@ -982,9 +1038,10 @@ export default function PlayStory() {
                 else if (editingField === "userNote") setUserNote(e.target.value);
                 else setSummaryMemory(e.target.value);
               }}
+              data-testid="textarea-session-setting"
             />
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setEditingField(null)}>
+              <Button variant="outline" onClick={() => setEditingField(null)} data-testid="button-cancel-setting">
                 <X className="w-4 h-4 mr-2" /> 취소
               </Button>
               <Button 
@@ -994,6 +1051,7 @@ export default function PlayStory() {
                   else if (editingField === "summaryMemory") saveSessionSettings("summaryMemory", summaryMemory);
                 }}
                 disabled={isSavingSettings}
+                data-testid="button-save-setting"
               >
                 {isSavingSettings ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 저장
