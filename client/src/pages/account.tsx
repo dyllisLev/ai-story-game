@@ -101,7 +101,7 @@ export default function AccountPage() {
   const [providerModels, setProviderModels] = useState<Record<string, AIModel[]>>({});
   const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
 
-  const fetchModels = async (provider: string, apiKey?: string, showToast = true) => {
+  const fetchModels = async (provider: string, apiKey?: string, showToast = true, savedModel?: string) => {
     setLoadingModels(prev => ({ ...prev, [provider]: true }));
     try {
       const res = await fetch(`/api/ai/models/${provider}`, {
@@ -115,7 +115,7 @@ export default function AccountPage() {
         setProviderModels(prev => ({ ...prev, [provider]: data.models }));
         
         const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-        const currentModel = localApiKeys[modelField];
+        const currentModel = savedModel || localApiKeys[modelField];
         const fetchedIds = data.models.map((m: AIModel) => m.id);
         
         if (!currentModel || !fetchedIds.includes(currentModel)) {
@@ -162,7 +162,7 @@ export default function AccountPage() {
         apiKeyClaude: apiKeys.apiKeyClaude || "",
         apiKeyGemini: apiKeys.apiKeyGemini || "",
         aiModelChatgpt: apiKeys.aiModelChatgpt || "gpt-4o",
-        aiModelGrok: apiKeys.apiModelGrok || "grok-beta",
+        aiModelGrok: apiKeys.aiModelGrok || "grok-beta",
         aiModelClaude: apiKeys.aiModelClaude || "claude-3-5-sonnet-20241022",
         aiModelGemini: apiKeys.aiModelGemini || "gemini-2.0-flash",
       });
@@ -170,8 +170,9 @@ export default function AccountPage() {
       const providers = ["gemini", "chatgpt", "claude", "grok"];
       providers.forEach((provider) => {
         const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
+        const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
         if (apiKeys[keyField]) {
-          fetchModels(provider, undefined, false);
+          fetchModels(provider, undefined, false, apiKeys[modelField] as string);
         }
       });
     }
