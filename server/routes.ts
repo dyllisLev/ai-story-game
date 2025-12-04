@@ -1,11 +1,34 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertSessionSchema, insertMessageSchema } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, type SafeUser } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import session from "express-session";
+import MemoryStore from "memorystore";
+
+declare module "express-session" {
+  interface SessionData {
+    userId: number;
+  }
+}
+
+const SessionStore = MemoryStore(session);
+
+function excludePassword(user: any): SafeUser {
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
+
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.session?.userId) {
+    next();
+  } else {
+    res.status(401).json({ error: "로그인이 필요합니다" });
+  }
+}
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -42,6 +65,191 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  // ==================== SESSION SETUP ====================
+  app.use(session({
+    secret: process.env.SESSION_SECRET || "ai-story-game-secret-key-2024",
+    store: new SessionStore({
+      checkPeriod: 86400000
+    }),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    }
+  }));
+
+  // ==================== AUTH API ====================
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const parsed = registerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const { username, email, password, displayName } = parsed.data;
+
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "이미 사용 중인 사용자명입니다" });
+      }
+
+      if (email) {
+        const existingEmail = await storage.getUserByEmail(email);
+        if (existingEmail) {
+          return res.status(400).json({ error: "이미 사용 중인 이메일입니다" });
+        }
+      }
+
+      const user = await storage.createUser({
+        username,
+        email: email || null,
+        password,
+        displayName: displayName || username,
+      });
+
+      req.session.userId = user.id;
+      res.status(201).json(excludePassword(user));
+    } catch (error: any) {
+      console.error("Register error:", error);
+      res.status(500).json({ error: "회원가입에 실패했습니다" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const parsed = loginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const { username, password } = parsed.data;
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: "사용자명 또는 비밀번호가 올바르지 않습니다" });
+      }
+
+      const isValid = storage.validatePassword(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "사용자명 또는 비밀번호가 올바르지 않습니다" });
+      }
+
+      req.session.userId = user.id;
+      res.json(excludePassword(user));
+    } catch (error: any) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "로그인에 실패했습니다" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: "로그아웃에 실패했습니다" });
+      }
+      res.clearCookie("connect.sid");
+      res.json({ message: "로그아웃되었습니다" });
+    });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "로그인이 필요합니다" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        req.session.destroy(() => {});
+        return res.status(401).json({ error: "사용자를 찾을 수 없습니다" });
+      }
+
+      res.json(excludePassword(user));
+    } catch (error) {
+      res.status(500).json({ error: "사용자 정보를 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.put("/api/auth/profile", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = updateProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const { displayName, email, profileImage } = parsed.data;
+      const userId = req.session.userId!;
+
+      if (email) {
+        const existingEmail = await storage.getUserByEmail(email);
+        if (existingEmail && existingEmail.id !== userId) {
+          return res.status(400).json({ error: "이미 사용 중인 이메일입니다" });
+        }
+      }
+
+      const user = await storage.updateUser(userId, {
+        displayName,
+        email: email || null,
+        profileImage,
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
+      }
+
+      res.json(excludePassword(user));
+    } catch (error) {
+      res.status(500).json({ error: "프로필 업데이트에 실패했습니다" });
+    }
+  });
+
+  app.put("/api/auth/password", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = changePasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const { currentPassword, newPassword } = parsed.data;
+      const userId = req.session.userId!;
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
+      }
+
+      const isValid = storage.validatePassword(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "현재 비밀번호가 올바르지 않습니다" });
+      }
+
+      await storage.updateUser(userId, { password: newPassword });
+      res.json({ message: "비밀번호가 변경되었습니다" });
+    } catch (error) {
+      res.status(500).json({ error: "비밀번호 변경에 실패했습니다" });
+    }
+  });
+
+  app.delete("/api/auth/account", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const deleted = await storage.deleteUser(userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
+      }
+
+      req.session.destroy(() => {});
+      res.clearCookie("connect.sid");
+      res.json({ message: "계정이 삭제되었습니다" });
+    } catch (error) {
+      res.status(500).json({ error: "계정 삭제에 실패했습니다" });
+    }
+  });
+
   // ==================== IMAGE UPLOAD API ====================
 
   app.use("/uploads", (await import("express")).default.static(uploadDir));
