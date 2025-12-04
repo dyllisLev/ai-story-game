@@ -112,6 +112,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   // ==================== SESSION SETUP ====================
+  // Trust proxy for Replit's reverse proxy environment
+  app.set("trust proxy", 1);
+  
   app.use(session({
     secret: process.env.SESSION_SECRET || "ai-story-game-secret-key-2024",
     store: new SessionStore({
@@ -122,7 +125,8 @@ export async function registerRoutes(
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
     }
   }));
 
