@@ -1,82 +1,26 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
-
-interface ApiKeys {
-  chatgpt: string;
-  grok: string;
-  claude: string;
-  gemini: string;
-}
-
-interface AiModels {
-  chatgpt: string;
-  grok: string;
-  claude: string;
-  gemini: string;
-}
-
-interface ModelOption {
-  id: string;
-  name: string;
-}
-
-interface AvailableModels {
-  chatgpt: ModelOption[];
-  grok: ModelOption[];
-  claude: ModelOption[];
-  gemini: ModelOption[];
-}
-
-interface LoadingModels {
-  chatgpt: boolean;
-  grok: boolean;
-  claude: boolean;
-  gemini: boolean;
-}
-
-const AI_PROVIDERS = [
-  { id: "chatgpt", name: "ChatGPT", color: "bg-green-50 border-green-200" },
-  { id: "grok", name: "Grok", color: "bg-blue-50 border-blue-200" },
-  { id: "claude", name: "Claude", color: "bg-orange-50 border-orange-200" },
-  { id: "gemini", name: "Gemini", color: "bg-purple-50 border-purple-200" },
-];
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Settings() {
-  const [apiKeys, setApiKeys] = useState<ApiKeys>({
-    chatgpt: "",
-    grok: "",
-    claude: "",
-    gemini: "",
-  });
-  const [aiModels, setAiModels] = useState<AiModels>({
-    chatgpt: "gpt-4o",
-    grok: "grok-beta",
-    claude: "claude-3-5-sonnet-20241022",
-    gemini: "gemini-2.0-flash",
-  });
-  const [availableModels, setAvailableModels] = useState<AvailableModels>({
-    chatgpt: [],
-    grok: [],
-    claude: [],
-    gemini: [],
-  });
-  const [loadingModels, setLoadingModels] = useState<LoadingModels>({
-    chatgpt: false,
-    grok: false,
-    claude: false,
-    gemini: false,
-  });
+  const [, navigate] = useLocation();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [commonPrompt, setCommonPrompt] = useState("");
   const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
   const [prologueGeneratePrompt, setPrologueGeneratePrompt] = useState("");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate("/auth");
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   useEffect(() => {
     loadSettings();
@@ -87,37 +31,15 @@ export default function Settings() {
       const response = await fetch("/api/settings");
       const settings = await response.json();
       
-      const loadedKeys: ApiKeys = {
-        chatgpt: "",
-        grok: "",
-        claude: "",
-        gemini: "",
-      };
-      let loadedPrompt = "";
-      
       for (const setting of settings) {
-        if (setting.key.startsWith("apiKey_")) {
-          const provider = setting.key.replace("apiKey_", "") as keyof ApiKeys;
-          if (provider in loadedKeys) {
-            loadedKeys[provider] = setting.value;
-          }
-        } else if (setting.key === "commonPrompt") {
-          loadedPrompt = setting.value;
+        if (setting.key === "commonPrompt") {
+          setCommonPrompt(setting.value);
         } else if (setting.key === "storyGeneratePrompt") {
           setStoryGeneratePrompt(setting.value);
         } else if (setting.key === "prologueGeneratePrompt") {
           setPrologueGeneratePrompt(setting.value);
-        } else if (setting.key.startsWith("aiModel_")) {
-          const provider = setting.key.replace("aiModel_", "") as keyof AiModels;
-          setAiModels(prev => ({
-            ...prev,
-            [provider]: setting.value
-          }));
         }
       }
-      
-      setApiKeys(loadedKeys);
-      setCommonPrompt(loadedPrompt);
     } catch (error) {
       console.error("Failed to load settings:", error);
     } finally {
@@ -125,64 +47,10 @@ export default function Settings() {
     }
   };
 
-  const handleApiKeyChange = (provider: keyof ApiKeys, value: string) => {
-    setApiKeys((prev) => ({
-      ...prev,
-      [provider]: value,
-    }));
-  };
-
-  const handleModelChange = (provider: keyof AiModels, value: string) => {
-    setAiModels((prev) => ({
-      ...prev,
-      [provider]: value,
-    }));
-  };
-
-  const fetchModels = async (provider: keyof ApiKeys, apiKey: string) => {
-    if (!apiKey.trim()) {
-      setAvailableModels(prev => ({ ...prev, [provider]: [] }));
-      return;
-    }
-
-    setLoadingModels(prev => ({ ...prev, [provider]: true }));
-    try {
-      const response = await fetch("/api/ai/models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey }),
-      });
-
-      const data = await response.json();
-      if (response.ok && data.models) {
-        setAvailableModels(prev => ({ ...prev, [provider]: data.models }));
-        // Select first model if current selection is not in the list
-        if (data.models.length > 0 && !data.models.find((m: ModelOption) => m.id === aiModels[provider])) {
-          setAiModels(prev => ({ ...prev, [provider]: data.models[0].id }));
-        }
-      } else {
-        setAvailableModels(prev => ({ ...prev, [provider]: [] }));
-      }
-    } catch (error) {
-      console.error(`Failed to fetch models for ${provider}:`, error);
-      setAvailableModels(prev => ({ ...prev, [provider]: [] }));
-    } finally {
-      setLoadingModels(prev => ({ ...prev, [provider]: false }));
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
       const settingsData = [
-        ...Object.entries(apiKeys).map(([provider, key]) => ({
-          key: `apiKey_${provider}`,
-          value: key,
-        })),
-        ...Object.entries(aiModels).map(([provider, model]) => ({
-          key: `aiModel_${provider}`,
-          value: model,
-        })),
         { key: "commonPrompt", value: commonPrompt },
         { key: "storyGeneratePrompt", value: storyGeneratePrompt },
         { key: "prologueGeneratePrompt", value: prologueGeneratePrompt },
@@ -203,7 +71,7 @@ export default function Settings() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -213,7 +81,6 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4 max-w-2xl flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -224,101 +91,20 @@ export default function Settings() {
             </Link>
             <div>
               <h1 className="text-2xl font-bold">설정</h1>
-              <p className="text-muted-foreground text-sm">AI 설정 및 공통 프롬프트 관리</p>
+              <p className="text-muted-foreground text-sm">시스템 프롬프트 관리</p>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-6 py-8 max-w-2xl">
         <div className="space-y-8">
-          {/* API Key Section */}
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-2">AI API 키 설정</h2>
-              <p className="text-sm text-muted-foreground">각 AI 서비스의 API 키를 입력하세요. (선택사항)</p>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {AI_PROVIDERS.map((provider) => {
-                const providerId = provider.id as keyof ApiKeys;
-                const hasApiKey = apiKeys[providerId].trim().length > 0;
-                const models = availableModels[providerId];
-                const isLoadingModels = loadingModels[providerId];
-                
-                return (
-                  <div key={provider.id} className={`p-4 rounded-lg border ${provider.color}`}>
-                    <label className="text-sm font-medium mb-2 block">{provider.name}</label>
-                    <Input
-                      type="password"
-                      placeholder={`${provider.name} API Key`}
-                      value={apiKeys[providerId]}
-                      onChange={(e) => handleApiKeyChange(providerId, e.target.value)}
-                      className="font-mono text-sm bg-white mb-2"
-                      data-testid={`input-api-key-${provider.id}`}
-                    />
-                    
-                    <div className="flex items-center gap-2 mb-1">
-                      <label className="text-xs text-muted-foreground">모델 선택</label>
-                      {hasApiKey && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => fetchModels(providerId, apiKeys[providerId])}
-                          disabled={isLoadingModels}
-                          className="h-5 text-xs px-2"
-                          data-testid={`button-fetch-models-${provider.id}`}
-                        >
-                          {isLoadingModels ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            "모델 조회"
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {!hasApiKey ? (
-                      <div className="w-full p-2 rounded-md border bg-muted/50 text-sm text-muted-foreground">
-                        API 키를 입력하세요
-                      </div>
-                    ) : isLoadingModels ? (
-                      <div className="w-full p-2 rounded-md border bg-muted/50 text-sm text-muted-foreground">
-                        모델 조회 중...
-                      </div>
-                    ) : models.length === 0 ? (
-                      <div className="w-full p-2 rounded-md border bg-white text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{aiModels[providerId]}</span>
-                          <span className="text-xs text-muted-foreground">(저장됨)</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <select
-                        value={aiModels[providerId]}
-                        onChange={(e) => handleModelChange(providerId, e.target.value)}
-                        className="w-full p-2 rounded-md border bg-white text-sm"
-                        data-testid={`select-model-${provider.id}`}
-                      >
-                        {models.map((model) => (
-                          <option key={model.id} value={model.id}>{model.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            
-            <p className="text-xs text-muted-foreground">
-              🔒 API 키는 서버의 SQLite 데이터베이스에 안전하게 저장됩니다.
+          <div className="bg-muted/50 border border-muted/80 rounded-lg p-4">
+            <p className="text-sm text-muted-foreground">
+              💡 AI API 키 설정은 <Link href="/account"><span className="text-primary hover:underline font-medium cursor-pointer">계정 관리</span></Link> 페이지에서 할 수 있습니다.
             </p>
           </div>
 
-          <Separator />
-
-          {/* System Prompt Section */}
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold mb-2">AI 페르소나 설정 (채팅용 시스템 프롬프트)</h2>
@@ -378,7 +164,6 @@ export default function Settings() {
 
           <Separator />
 
-          {/* Story Generate Prompt Section */}
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold mb-2">스토리 자동 생성 프롬프트</h2>
@@ -415,7 +200,6 @@ export default function Settings() {
 
           <Separator />
 
-          {/* Prologue Generate Prompt Section */}
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold mb-2">프롤로그/시작 상황 자동 생성 프롬프트</h2>
@@ -453,7 +237,6 @@ export default function Settings() {
 
           <Separator />
 
-          {/* Save Button */}
           <div className="flex gap-3 justify-end pt-4">
             <Link href="/">
               <Button variant="outline">취소</Button>
@@ -473,7 +256,6 @@ export default function Settings() {
             </Button>
           </div>
 
-          {/* Save Confirmation */}
           {saved && (
             <div className="fixed bottom-4 right-4 bg-green-500/90 text-white px-4 py-3 rounded-lg flex items-center gap-2 animate-in slide-in-from-bottom">
               <span>✓ 설정이 저장되었습니다.</span>
