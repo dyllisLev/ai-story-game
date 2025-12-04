@@ -37,30 +37,6 @@ interface AIModel {
   name: string;
 }
 
-const GEMINI_MODELS: AIModel[] = [
-  { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
-  { id: "gemini-2.5-flash-preview-04-17", name: "Gemini 2.5 Flash" },
-  { id: "gemini-2.5-pro-preview-05-06", name: "Gemini 2.5 Pro" },
-  { id: "gemini-3.0-pro-preview-04-29", name: "Gemini 3.0 Pro" },
-];
-
-const CHATGPT_MODELS: AIModel[] = [
-  { id: "gpt-4o", name: "GPT-4o" },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini" },
-  { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-];
-
-const CLAUDE_MODELS: AIModel[] = [
-  { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
-  { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
-  { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
-];
-
-const GROK_MODELS: AIModel[] = [
-  { id: "grok-beta", name: "Grok Beta" },
-  { id: "grok-2-1212", name: "Grok 2" },
-];
-
 interface UserApiKeys {
   apiKeyChatgpt: string | null;
   apiKeyGrok: string | null;
@@ -122,6 +98,8 @@ export default function AccountPage() {
   });
 
   const [localApiKeys, setLocalApiKeys] = useState<Partial<UserApiKeys>>({});
+  const [providerModels, setProviderModels] = useState<Record<string, AIModel[]>>({});
+  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (apiKeys) {
@@ -137,6 +115,53 @@ export default function AccountPage() {
       });
     }
   }, [apiKeys]);
+
+  const fetchModels = async (provider: string, apiKey?: string) => {
+    setLoadingModels(prev => ({ ...prev, [provider]: true }));
+    try {
+      const res = await fetch(`/api/ai/models/${provider}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ apiKey }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProviderModels(prev => ({ ...prev, [provider]: data.models }));
+        
+        const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
+        const currentModel = localApiKeys[modelField];
+        const fetchedIds = data.models.map((m: AIModel) => m.id);
+        
+        if (!currentModel || !fetchedIds.includes(currentModel)) {
+          setLocalApiKeys(prev => ({
+            ...prev,
+            [modelField]: data.models[0]?.id || ""
+          }));
+        }
+        
+        toast({
+          title: "모델 목록 조회 완료",
+          description: `${data.models.length}개의 모델을 불러왔습니다.`,
+        });
+      } else {
+        const error = await res.json();
+        toast({
+          title: "모델 목록 조회 실패",
+          description: error.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "모델 목록 조회 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingModels(prev => ({ ...prev, [provider]: false }));
+    }
+  };
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -254,48 +279,11 @@ export default function AccountPage() {
     });
   };
 
-  const handleVerifyApiKey = async (provider: string) => {
+  const handleVerifyAndLoadModels = async (provider: string) => {
     const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-    const apiKey = localApiKeys[keyField];
+    const apiKey = (localApiKeys[keyField] as string) || undefined;
     
-    if (!apiKey) {
-      toast({
-        title: "API 키가 없습니다",
-        description: "먼저 API 키를 입력하세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setVerifyingProvider(provider);
-    
-    try {
-      const res = await fetch("/api/ai/models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey }),
-        credentials: "include",
-      });
-      
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || "API 키 검증 실패");
-      }
-      
-      toast({
-        title: "API 키 검증 성공",
-        description: `${data.models?.length || 0}개의 모델을 사용할 수 있습니다.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "API 키 검증 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setVerifyingProvider(null);
-    }
+    await fetchModels(provider, apiKey);
   };
 
   const toggleShowApiKey = (provider: string) => {
@@ -352,39 +340,48 @@ export default function AccountPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`model-${provider}`}>기본 모델</Label>
-            <Select
-              value={(localApiKeys[modelField] as string) || models[0]?.id}
-              onValueChange={(value) => setLocalApiKeys(prev => ({ ...prev, [modelField]: value }))}
-            >
-              <SelectTrigger id={`model-${provider}`} data-testid={`select-model-${provider}`}>
-                <SelectValue placeholder="모델 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    {model.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex justify-between items-center">
+              <Label htmlFor={`model-${provider}`}>기본 모델</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleVerifyAndLoadModels(provider)}
+                disabled={loadingModels[provider]}
+                data-testid={`button-load-models-${provider}`}
+                className="h-6 text-xs"
+              >
+                {loadingModels[provider] ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                )}
+                모델 조회
+              </Button>
+            </div>
+            {models.length > 0 ? (
+              <Select
+                value={(localApiKeys[modelField] as string) || models[0]?.id}
+                onValueChange={(value) => setLocalApiKeys(prev => ({ ...prev, [modelField]: value }))}
+              >
+                <SelectTrigger id={`model-${provider}`} data-testid={`select-model-${provider}`}>
+                  <SelectValue placeholder="모델 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                API 키를 저장한 후 "모델 조회" 버튼을 클릭하여 사용 가능한 모델 목록을 불러오세요.
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleVerifyApiKey(provider)}
-              disabled={verifyingProvider === provider || !localApiKeys[keyField]}
-              data-testid={`button-verify-${provider}`}
-            >
-              {verifyingProvider === provider ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              검증
-            </Button>
             <Button
               size="sm"
               onClick={() => handleSaveApiKey(provider)}
@@ -504,10 +501,10 @@ export default function AccountPage() {
                   </CardContent>
                 </Card>
 
-                {renderApiKeySection("gemini", "Google Gemini", GEMINI_MODELS, "apiKeyGemini", "aiModelGemini")}
-                {renderApiKeySection("chatgpt", "OpenAI ChatGPT", CHATGPT_MODELS, "apiKeyChatgpt", "aiModelChatgpt")}
-                {renderApiKeySection("claude", "Anthropic Claude", CLAUDE_MODELS, "apiKeyClaude", "aiModelClaude")}
-                {renderApiKeySection("grok", "xAI Grok", GROK_MODELS, "apiKeyGrok", "aiModelGrok")}
+                {renderApiKeySection("gemini", "Google Gemini", providerModels["gemini"] || [], "apiKeyGemini", "aiModelGemini")}
+                {renderApiKeySection("chatgpt", "OpenAI ChatGPT", providerModels["chatgpt"] || [], "apiKeyChatgpt", "aiModelChatgpt")}
+                {renderApiKeySection("claude", "Anthropic Claude", providerModels["claude"] || [], "apiKeyClaude", "aiModelClaude")}
+                {renderApiKeySection("grok", "xAI Grok", providerModels["grok"] || [], "apiKeyGrok", "aiModelGrok")}
               </div>
             )}
           </TabsContent>

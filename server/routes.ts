@@ -334,6 +334,109 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/ai/models/:provider", isAuthenticated, async (req, res) => {
+    try {
+      const { provider } = req.params;
+      const { apiKey: providedApiKey } = req.body;
+      const userId = req.session.userId!;
+      
+      const validProviders = ["gemini", "chatgpt", "claude", "grok"];
+      if (!validProviders.includes(provider)) {
+        return res.status(400).json({ error: "지원하지 않는 제공자입니다" });
+      }
+      
+      let apiKey = providedApiKey;
+      if (!apiKey) {
+        apiKey = await getUserApiKeyForProvider(userId, provider);
+      }
+      
+      if (!apiKey) {
+        return res.status(400).json({ error: "API 키를 먼저 입력해주세요" });
+      }
+
+      let models: { id: string; name: string }[] = [];
+
+      if (provider === "gemini") {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+        );
+        const data = await response.json();
+        
+        if (data.error) {
+          return res.status(400).json({ error: "Gemini API 키가 유효하지 않습니다" });
+        }
+
+        models = (data.models || [])
+          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+          .map((m: any) => ({
+            id: m.name.replace("models/", ""),
+            name: m.displayName || m.name.replace("models/", "")
+          }))
+          .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      } else if (provider === "chatgpt") {
+        const response = await fetch("https://api.openai.com/v1/models", {
+          headers: {
+            "Authorization": `Bearer ${apiKey}`
+          }
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+          return res.status(400).json({ error: "OpenAI API 키가 유효하지 않습니다" });
+        }
+
+        models = (data.data || [])
+          .filter((m: any) => m.id.startsWith("gpt-") && !m.id.includes("instruct"))
+          .map((m: any) => ({
+            id: m.id,
+            name: m.id.toUpperCase().replace(/-/g, " ").replace(/GPT /g, "GPT-")
+          }))
+          .sort((a: any, b: any) => {
+            const order = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4"];
+            const aIndex = order.findIndex(o => a.id.startsWith(o));
+            const bIndex = order.findIndex(o => b.id.startsWith(o));
+            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            return a.name.localeCompare(b.name);
+          });
+      } else if (provider === "claude") {
+        models = [
+          { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
+          { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+          { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+          { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
+        ];
+      } else if (provider === "grok") {
+        const response = await fetch("https://api.x.ai/v1/models", {
+          headers: {
+            "Authorization": `Bearer ${apiKey}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          models = (data.data || []).map((m: any) => ({
+            id: m.id,
+            name: m.id.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+          }));
+        } else {
+          models = [
+            { id: "grok-beta", name: "Grok Beta" },
+            { id: "grok-2-1212", name: "Grok 2" },
+          ];
+        }
+      } else {
+        return res.status(400).json({ error: "지원하지 않는 제공자입니다" });
+      }
+
+      res.json({ models });
+    } catch (error: any) {
+      console.error("Error fetching models:", error);
+      res.status(500).json({ error: "모델 목록을 가져오는데 실패했습니다" });
+    }
+  });
+
   // ==================== IMAGE UPLOAD API ====================
 
   app.use("/uploads", (await import("express")).default.static(uploadDir));
