@@ -9,11 +9,15 @@ import CreateStory from "@/pages/create";
 import EditStory from "@/pages/edit";
 import PlayStory from "@/pages/play";
 import Settings from "@/pages/settings";
+import AuthPage from "@/pages/auth";
+import AccountPage from "@/pages/account";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/auth" component={AuthPage} />
+      <Route path="/account" component={AccountPage} />
       <Route path="/create" component={CreateStory} />
       <Route path="/edit/:id" component={EditStory} />
       <Route path="/play/:sessionId" component={PlayStory} />
