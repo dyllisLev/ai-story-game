@@ -87,19 +87,27 @@ ALTER TABLE stories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow all on settings" ON settings;
+DROP POLICY IF EXISTS "Allow read stories" ON stories;
+DROP POLICY IF EXISTS "Allow all on stories" ON stories;
+DROP POLICY IF EXISTS "Allow all on users" ON users;
+DROP POLICY IF EXISTS "Allow all on sessions" ON sessions;
+DROP POLICY IF EXISTS "Allow all on messages" ON messages;
+
 -- RLS Policies (서버에서 관리하므로 모두 허용)
 -- Settings: 모두 접근 가능
-CREATE POLICY IF NOT EXISTS "Allow all on settings" ON settings FOR ALL USING (true);
+CREATE POLICY "Allow all on settings" ON settings FOR ALL USING (true);
 
 -- Stories: 모두 조회 가능, 생성/수정/삭제는 인증 필요
-CREATE POLICY IF NOT EXISTS "Allow read stories" ON stories FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all on stories" ON stories FOR ALL USING (true);
+CREATE POLICY "Allow read stories" ON stories FOR SELECT USING (true);
+CREATE POLICY "Allow all on stories" ON stories FOR ALL USING (true);
 
 -- Users: 서버에서 관리
-CREATE POLICY IF NOT EXISTS "Allow all on users" ON users FOR ALL USING (true);
+CREATE POLICY "Allow all on users" ON users FOR ALL USING (true);
 
 -- Sessions: 서버에서 관리
-CREATE POLICY IF NOT EXISTS "Allow all on sessions" ON sessions FOR ALL USING (true);
+CREATE POLICY "Allow all on sessions" ON sessions FOR ALL USING (true);
 
 -- Messages: 서버에서 관리
-CREATE POLICY IF NOT EXISTS "Allow all on messages" ON messages FOR ALL USING (true);
+CREATE POLICY "Allow all on messages" ON messages FOR ALL USING (true);
