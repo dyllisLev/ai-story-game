@@ -211,7 +211,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "로그인이 필요합니다" });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUserById(req.session.userId);
       if (!user) {
         req.session.destroy(() => {});
         return res.status(401).json({ error: "사용자를 찾을 수 없습니다" });
@@ -266,7 +266,7 @@ export async function registerRoutes(
       const { currentPassword, newPassword } = parsed.data;
       const userId = req.session.userId!;
 
-      const user = await storage.getUser(userId);
+      const user = await storage.getUserById(userId);
       if (!user) {
         return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
       }
