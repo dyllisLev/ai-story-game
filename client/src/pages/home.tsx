@@ -187,16 +187,16 @@ export default function Home() {
                     <div className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
                       {story.genre || "일반"}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <Link href={`/edit/${story.id}`}>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" title="수정" data-testid={`button-edit-${story.id}`}>
-                          <Edit className="w-4 h-4" />
+                        <Button variant="outline" size="sm" className="h-9 w-9 p-0 text-muted-foreground hover:text-primary hover:border-primary" title="수정" data-testid={`button-edit-${story.id}`}>
+                          <Edit className="w-5 h-5" />
                         </Button>
                       </Link>
                       <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6 text-muted-foreground hover:text-red-500" 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500 hover:border-red-500" 
                         title="삭제"
                         data-testid={`button-delete-${story.id}`}
                         onClick={async (e) => {
@@ -211,7 +211,7 @@ export default function Home() {
                           }
                         }}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
                   </div>
