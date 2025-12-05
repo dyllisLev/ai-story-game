@@ -88,14 +88,18 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
     let generatedText = "";
     
     if (provider === "gemini") {
-      const isThinkingOnlyModel = model.includes("gemini-3-pro") || model.includes("gemini-2.5-pro");
+      // Apply thinking config based on model version
+      const isGemini3Model = model.includes("gemini-3");
+      const isGemini25Model = model.includes("gemini-2.5");
       const generationConfig: Record<string, any> = { 
         temperature: 0.5, 
         maxOutputTokens: 2048
       };
       
-      if (!isThinkingOnlyModel) {
-        generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      if (isGemini3Model) {
+        generationConfig.thinkingConfig = { thinkingLevel: "low" };
+      } else if (isGemini25Model) {
+        generationConfig.thinkingConfig = { thinkingBudget: 1024 };
       }
 
       const response = await fetch(

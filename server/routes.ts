@@ -916,14 +916,17 @@ export async function registerRoutes(
       const selectedModel = await getUserModelForProvider(userId, selectedProvider);
 
       if (selectedProvider === "gemini") {
-        // Gemini 3 Pro requires thinking mode, other models can disable it
-        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
+        // Apply thinking config based on model version
+        const isGemini3Model = selectedModel.includes("gemini-3");
+        const isGemini25Model = selectedModel.includes("gemini-2.5");
         const generationConfig: Record<string, any> = { 
           temperature: 0.8, 
           maxOutputTokens: 8192
         };
-        if (!isThinkingOnlyModel) {
-          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        if (isGemini3Model) {
+          generationConfig.thinkingConfig = { thinkingLevel: "low" };
+        } else if (isGemini25Model) {
+          generationConfig.thinkingConfig = { thinkingBudget: 1024 };
         }
 
         const response = await fetch(
@@ -1059,14 +1062,17 @@ export async function registerRoutes(
       let generatedText = "";
 
       if (selectedProvider === "gemini") {
-        // Gemini 3 Pro requires thinking mode, other models can disable it
-        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
+        // Apply thinking config based on model version
+        const isGemini3Model = selectedModel.includes("gemini-3");
+        const isGemini25Model = selectedModel.includes("gemini-2.5");
         const generationConfig: Record<string, any> = { 
           temperature: 0.8, 
           maxOutputTokens: 8192
         };
-        if (!isThinkingOnlyModel) {
-          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        if (isGemini3Model) {
+          generationConfig.thinkingConfig = { thinkingLevel: "low" };
+        } else if (isGemini25Model) {
+          generationConfig.thinkingConfig = { thinkingBudget: 1024 };
         }
 
         const response = await fetch(
@@ -1315,16 +1321,18 @@ nextStrory 구성:
           }))
         ];
 
-        // Gemini 3 Pro requires thinking mode, other models can disable it
-        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
+        // Apply thinking config based on model version
+        const isGemini3Model = selectedModel.includes("gemini-3");
+        const isGemini25Model = selectedModel.includes("gemini-2.5");
         const generationConfig: Record<string, any> = { 
           temperature: 0.9, 
           maxOutputTokens: 65536
         };
         
-        // Only add thinkingConfig to disable thinking for non-thinking-only models
-        if (!isThinkingOnlyModel) {
-          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        if (isGemini3Model) {
+          generationConfig.thinkingConfig = { thinkingLevel: "low" };
+        } else if (isGemini25Model) {
+          generationConfig.thinkingConfig = { thinkingBudget: 1024 };
         }
 
         const response = await fetch(
@@ -1598,14 +1606,20 @@ nextStrory 구성:
           }))
         ];
 
-        const isThinkingOnlyModel = selectedModel.includes("gemini-3-pro") || selectedModel.includes("gemini-2.5-pro");
+        const isGemini3Model = selectedModel.includes("gemini-3");
+        const isGemini25Model = selectedModel.includes("gemini-2.5");
         const generationConfig: Record<string, any> = { 
           temperature: 0.9, 
           maxOutputTokens: 65536
         };
         
-        if (!isThinkingOnlyModel) {
-          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        // Apply thinking config based on model version
+        if (isGemini3Model) {
+          // Gemini 3 uses thinkingLevel: "low" or "high"
+          generationConfig.thinkingConfig = { thinkingLevel: "low" };
+        } else if (isGemini25Model) {
+          // Gemini 2.5 uses thinkingBudget: 0 (disabled), 1024 (low), 8192 (high), -1 (dynamic)
+          generationConfig.thinkingConfig = { thinkingBudget: 1024 };
         }
 
         // Use streaming endpoint
