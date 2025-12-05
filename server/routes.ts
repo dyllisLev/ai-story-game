@@ -1789,6 +1789,7 @@ nextStrory 구성:
         console.log("╚════════════════════════════════════════════════════════════\n");
 
       } else if (selectedProvider === "claude") {
+        console.log("Claude API 요청 시작 - Model:", selectedModel);
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
@@ -1807,7 +1808,8 @@ nextStrory 구성:
 
         if (!response.ok) {
           const errorData = await response.json();
-          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || "Streaming failed" })}\n\n`);
+          console.error("Claude API Error:", response.status, errorData);
+          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || `Claude API 오류 (${response.status})` })}\n\n`);
           res.end();
           return;
         }
