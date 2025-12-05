@@ -14,10 +14,11 @@ RUN npm ci
 # Copy necessary files for client build
 COPY client ./client
 COPY shared ./shared
+COPY attached_assets ./attached_assets
 COPY vite.config.ts tsconfig.json postcss.config.js components.json vite-plugin-meta-images.ts ./
 
-# Build client (Vite)
-RUN npx vite build --outDir dist/public
+# Build client (Vite) - uses vite.config.ts settings
+RUN NODE_ENV=production npx vite build
 
 # Stage 2: Build server
 FROM node:20-alpine AS server-builder
