@@ -1,0 +1,83 @@
+#25 [linux/amd64 server-builder 9/9] RUN npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --external:express --external:better-sqlite3 --external:@neondatabase/serverless --external:express-session --external:memorystore --external:multer
+#25 0.865 ✘ [ERROR] Could not resolve "../vite.config"
+#25 0.865 
+#25 0.865     server/vite.ts:4:23:
+#25 0.865       4 │ import viteConfig from "../vite.config";
+#25 0.865         ╵                        ~~~~~~~~~~~~~~~~
+#25 0.865 
+#25 0.930 ▲ [WARNING] "esbuild" should be marked as external for use with "require.resolve" [require-resolve-not-external]
+#25 0.930 
+#25 0.930     node_modules/esbuild/lib/main.js:1656:36:
+#25 0.930       1656 │   const libMainJS = require.resolve("esbuild");
+#25 0.930            ╵                                     ~~~~~~~~~
+#25 0.930 
+#25 1.109 ✘ [ERROR] Could not resolve "../pkg"
+#25 1.109 
+#25 1.109     node_modules/lightningcss/node/index.js:17:27:
+#25 1.109       17 │   module.exports = require(`../pkg`);
+#25 1.109          ╵                            ~~~~~~~~
+#25 1.109 
+#25 1.228 ▲ [WARNING] The glob pattern require("../lightningcss.*.node") did not match any files [empty-glob]
+#25 1.228 
+#25 1.228     node_modules/lightningcss/node/index.js:22:29:
+#25 1.228       22 │ ...dule.exports = require(`../lightningcss.${parts.join('-')}.node`);
+#25 1.228          ╵                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#25 1.228 
+#25 1.228 2 warnings and 2 errors
+#25 ERROR: process "/bin/sh -c npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --external:express --external:better-sqlite3 --external:@neondatabase/serverless --external:express-session --external:memorystore --external:multer" did not complete successfully: exit code: 1
+
+#26 [linux/amd64 client-builder 8/8] RUN npm run build -- --client-only || (cd client && npx vite build --outDir ../dist/public)
+#26 0.351 
+#26 0.351 > rest-express@1.0.0 build
+#26 0.351 > tsx script/build.ts --client-only
+#26 0.351 
+#26 1.068 
+#26 1.068 node:internal/modules/run_main:123
+#26 1.068     triggerUncaughtException(
+#26 1.068     ^
+#26 1.078 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/app/script/build.ts' imported from /app/
+#26 1.078     at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+#26 1.078     at moduleResolve (node:internal/modules/esm/resolve:952:10)
+#26 1.078     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+#26 1.078     at nextResolve (node:internal/modules/esm/hooks:864:28)
+#26 1.078     at resolveBase (file:///app/node_modules/tsx/dist/esm/index.mjs?1764899904508:2:3744)
+#26 1.078     at resolveDirectory (file:///app/node_modules/tsx/dist/esm/index.mjs?1764899904508:2:4243)
+#26 1.078     at resolveTsPaths (file:///app/node_modules/tsx/dist/esm/index.mjs?1764899904508:2:4984)
+#26 1.078     at resolve (file:///app/node_modules/tsx/dist/esm/index.mjs?1764899904508:2:5361)
+#26 1.078     at nextResolve (node:internal/modules/esm/hooks:864:28)
+#26 1.078     at Hooks.resolve (node:internal/modules/esm/hooks:306:30) {
+#26 1.078   code: 'ERR_MODULE_NOT_FOUND',
+#26 1.078   url: 'file:///app/script/build.ts'
+#26 1.078 }
+#26 1.078 
+#26 1.078 Node.js v20.19.6
+#26 CANCELED
+
+#15 [linux/arm64 server-builder 4/9] RUN npm ci
+#15 CANCELED
+
+#14 [linux/arm64 stage-2 4/9] RUN npm ci --only=production &&     npm cache clean --force
+#14 CANCELED
+------
+ > [linux/amd64 server-builder 9/9] RUN npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --external:express --external:better-sqlite3 --external:@neondatabase/serverless --external:express-session --external:memorystore --external:multer:
+1.109       17 │   module.exports = require(`../pkg`);
+1.109          ╵                            ~~~~~~~~
+1.109 
+Warning: WARNING] The glob pattern require("../lightningcss.*.node") did not match any files [empty-glob]
+1.228 
+1.228     node_modules/lightningcss/node/index.js:22:29:
+1.228       22 │ ...dule.exports = require(`../lightningcss.${parts.join('-')}.node`);
+1.228          ╵                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1.228 
+1.228 2 warnings and 2 errors
+------
+Dockerfile:38
+--------------------
+  36 |     
+  37 |     # Build server
+  38 | >>> RUN npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --external:express --external:better-sqlite3 --external:@neondatabase/serverless --external:express-session --external:memorystore --external:multer
+  39 |     
+  40 |     # Production stage
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --external:express --external:better-sqlite3 --external:@neondatabase/serverless --external:express-session --external:memorystore --external:multer" did not complete successfully: exit code: 1
+Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --external:express --external:better-sqlite3 --external:@neondatabase/serverless --external:express-session --external:memorystore --external:multer" did not complete successfully: exit code: 1
