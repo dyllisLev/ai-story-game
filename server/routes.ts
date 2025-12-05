@@ -969,7 +969,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 8192
+            max_completion_tokens: 8192
           })
         });
         const data = await response.json();
@@ -1115,7 +1115,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 8192
+            max_completion_tokens: 8192
           })
         });
         const data = await response.json();
@@ -1403,7 +1403,7 @@ nextStrory 구성:
               ...conversationHistory
             ],
             temperature: 0.9,
-            max_tokens: 8192
+            max_completion_tokens: 8192
           })
         });
         const data = await response.json();
@@ -1725,7 +1725,7 @@ nextStrory 구성:
               ...conversationHistory
             ],
             temperature: 0.9,
-            max_tokens: 8192,
+            max_completion_tokens: 8192,
             stream: true
           })
         });
