@@ -604,6 +604,20 @@ export default function PlayStory() {
                       setMessages(prev => [...prev, aiMsg]);
                     }
                     setLastError(null);
+                    
+                    // Refresh session data after a delay to catch any auto-summary updates
+                    setTimeout(async () => {
+                      try {
+                        const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+                        if (sessionResponse.ok) {
+                          const updatedSession = await sessionResponse.json();
+                          setSession(updatedSession);
+                          setSummaryMemory(updatedSession.summaryMemory || "");
+                        }
+                      } catch (e) {
+                        console.error("Failed to refresh session:", e);
+                      }
+                    }, 3000); // 3 second delay to allow summary generation
                   }
                   
                   // Always clear streaming content when done
