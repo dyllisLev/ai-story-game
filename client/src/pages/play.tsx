@@ -885,14 +885,7 @@ export default function PlayStory() {
                <Textarea 
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                     // 한글 조합 중이면 엔터 무시
-                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        handleSendMessage();
-                     }
-                  }}
-                  placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요..."} 
+                  placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요 (버튼 클릭으로 전송)..."} 
                   disabled={isGenerating}
                   className="min-h-[50px] pl-4 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
                />
