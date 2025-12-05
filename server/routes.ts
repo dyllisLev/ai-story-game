@@ -1964,46 +1964,60 @@ nextStrory 구성:
 
       const message = await storage.createMessage(parsed.data);
       
+      // Auto-summary logic runs in background (don't block response)
       if (message.role === "assistant") {
-        try {
-          const newCount = await storage.incrementAIMessageCount(sessionId);
-          
-          if (newCount > 0 && newCount % 20 === 0) {
-            const session = await storage.getSession(sessionId);
-            if (!session) throw new Error("Session not found");
+        console.log(`[AUTO-SUMMARY] Starting background task for session ${sessionId}`);
+        (async () => {
+          try {
+            const newCount = await storage.incrementAIMessageCount(sessionId);
+            console.log(`[AUTO-SUMMARY] AI message count incremented to ${newCount} for session ${sessionId}`);
             
-            const recentMessages = await storage.getRecentAIMessages(sessionId, 20);
-            
-            const summaryProvider = session.sessionProvider || "gemini";
-            const summaryModel = session.sessionModel || "gemini-2.0-flash";
-            const apiKey = await getUserApiKeyForProvider(session.userId, summaryProvider);
-            
-            if (!apiKey) {
-              console.error(`No API key found for provider ${summaryProvider}, skipping auto-summary`);
-              return;
+            if (newCount > 0 && newCount % 20 === 0) {
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount}`);
+              const session = await storage.getSession(sessionId);
+              if (!session) throw new Error("Session not found");
+              
+              const recentMessages = await storage.getRecentAIMessages(sessionId, 20);
+              console.log(`[AUTO-SUMMARY] Got ${recentMessages.length} recent messages`);
+              
+              const summaryProvider = session.sessionProvider || "gemini";
+              const summaryModel = session.sessionModel || "gemini-2.0-flash";
+              console.log(`[AUTO-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
+              
+              const apiKey = await getUserApiKeyForProvider(session.userId, summaryProvider);
+              
+              if (!apiKey) {
+                console.error(`[AUTO-SUMMARY] No API key found for provider ${summaryProvider}, skipping`);
+                return;
+              }
+              
+              console.log(`[AUTO-SUMMARY] Calling generateSummary...`);
+              const { generateSummary } = await import("./summary-helper");
+              const result = await generateSummary({
+                messages: recentMessages,
+                existingSummary: session.summaryMemory,
+                existingPlotPoints: session.keyPlotPoints,
+                provider: summaryProvider,
+                model: summaryModel,
+                apiKey
+              });
+              
+              console.log(`[AUTO-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
+              console.log(`[AUTO-SUMMARY] Plot points: ${JSON.stringify(result.keyPlotPoints)}`);
+              
+              await storage.updateSession(sessionId, {
+                summaryMemory: result.summary,
+                keyPlotPoints: JSON.stringify(result.keyPlotPoints),
+                lastSummaryTurn: newCount
+              });
+              
+              console.log(`[AUTO-SUMMARY] Successfully saved to database for session ${sessionId}`);
             }
-            
-            const { generateSummary } = await import("./summary-helper");
-            const result = await generateSummary({
-              messages: recentMessages,
-              existingSummary: session.summaryMemory,
-              existingPlotPoints: session.keyPlotPoints,
-              provider: summaryProvider,
-              model: summaryModel,
-              apiKey
-            });
-            
-            await storage.updateSession(sessionId, {
-              summaryMemory: result.summary,
-              keyPlotPoints: JSON.stringify(result.keyPlotPoints),
-              lastSummaryTurn: newCount
-            });
-            
-            console.log(`Auto-summary generated for session ${sessionId} at turn ${newCount}, plot points: ${result.keyPlotPoints.length}`);
+          } catch (summaryError: any) {
+            console.error("[AUTO-SUMMARY] Failed:", summaryError?.message || summaryError);
+            console.error("[AUTO-SUMMARY] Stack:", summaryError?.stack);
           }
-        } catch (summaryError) {
-          console.error("Failed to generate auto-summary:", summaryError);
-        }
+        })();
       }
       
       res.status(201).json(message);

@@ -233,6 +233,7 @@ export class Storage implements IStorage {
       ...(session.conversationProfile !== undefined && { conversation_profile: session.conversationProfile }),
       ...(session.userNote !== undefined && { user_note: session.userNote }),
       ...(session.summaryMemory !== undefined && { summary_memory: session.summaryMemory }),
+      ...(session.keyPlotPoints !== undefined && { key_plot_points: session.keyPlotPoints }),
       ...(session.sessionModel !== undefined && { session_model: session.sessionModel }),
       ...(session.sessionProvider !== undefined && { session_provider: session.sessionProvider }),
       ...(session.aiMessageCount !== undefined && { ai_message_count: session.aiMessageCount }),
