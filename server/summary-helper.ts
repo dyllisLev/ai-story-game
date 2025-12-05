@@ -92,7 +92,7 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       const isGemini3Model = model.includes("gemini-3");
       const isGemini25Model = model.includes("gemini-2.5");
       const generationConfig: Record<string, any> = { 
-        temperature: 0.5, 
+        temperature: isGemini3Model ? 1.0 : 0.5,
         maxOutputTokens: 2048
       };
       

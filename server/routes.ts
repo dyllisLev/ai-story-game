@@ -1325,7 +1325,7 @@ nextStrory 구성:
         const isGemini3Model = selectedModel.includes("gemini-3");
         const isGemini25Model = selectedModel.includes("gemini-2.5");
         const generationConfig: Record<string, any> = { 
-          temperature: 0.9, 
+          temperature: isGemini3Model ? 1.0 : 0.9,
           maxOutputTokens: 65536
         };
         
@@ -1609,7 +1609,7 @@ nextStrory 구성:
         const isGemini3Model = selectedModel.includes("gemini-3");
         const isGemini25Model = selectedModel.includes("gemini-2.5");
         const generationConfig: Record<string, any> = { 
-          temperature: 0.9, 
+          temperature: isGemini3Model ? 1.0 : 0.9,
           maxOutputTokens: 65536
         };
         
