@@ -118,7 +118,7 @@ export function dbSessionToSession(dbSession: DbSession): Session {
 }
 
 export function sessionToDbSessionInsert(session: InsertSession): DbSessionInsert {
-  return {
+  const dbSession: any = {
     story_id: session.storyId,
     user_id: session.userId,
     title: session.title,
@@ -127,9 +127,17 @@ export function sessionToDbSessionInsert(session: InsertSession): DbSessionInser
     summary_memory: session.summaryMemory,
     session_model: session.sessionModel,
     session_provider: session.sessionProvider,
-    ai_message_count: session.aiMessageCount,
-    last_summary_turn: session.lastSummaryTurn,
   };
+  
+  // Only include count fields if explicitly provided
+  if (session.aiMessageCount !== undefined) {
+    dbSession.ai_message_count = session.aiMessageCount;
+  }
+  if (session.lastSummaryTurn !== undefined) {
+    dbSession.last_summary_turn = session.lastSummaryTurn;
+  }
+  
+  return dbSession;
 }
 
 // Message mappers

@@ -5,16 +5,15 @@ interface SummaryRequest {
   existingSummary: string | null;
   provider: string;
   model: string;
-  apiKeys: {
-    chatgpt?: string;
-    grok?: string;
-    claude?: string;
-    gemini?: string;
-  };
+  apiKey: string;
 }
 
 export async function generateSummary(request: SummaryRequest): Promise<string> {
-  const { messages, existingSummary, provider, model, apiKeys } = request;
+  const { messages, existingSummary, provider, model, apiKey } = request;
+  
+  if (!apiKey) {
+    throw new Error("API key is required for summary generation");
+  }
   
   const aiMessages = messages
     .filter(m => m.role === "assistant")
@@ -33,30 +32,50 @@ export async function generateSummary(request: SummaryRequest): Promise<string> 
   const summaryPrompt = promptParts.join("\n");
   
   try {
-    const response = await fetch(`${process.env.REPL_HOME || ''}/api/ai/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider,
-        model,
-        messages: [
-          {
-            role: "user",
-            content: summaryPrompt
-          }
-        ],
-        apiKeys
-      }),
-    });
+    let generatedText = "";
     
-    if (!response.ok) {
-      throw new Error(`Summary API request failed: ${response.statusText}`);
+    if (provider === "gemini") {
+      const isThinkingOnlyModel = model.includes("gemini-3-pro") || model.includes("gemini-2.5-pro");
+      const generationConfig: Record<string, any> = { 
+        temperature: 0.7, 
+        maxOutputTokens: 1024
+      };
+      
+      if (!isThinkingOnlyModel) {
+        generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              { role: "user", parts: [{ text: summaryPrompt }] }
+            ],
+            generationConfig
+          })
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(`Gemini API Error: ${data.error.message}`);
+      }
+      
+      const candidate = data.candidates?.[0];
+      if (!candidate || !candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+        throw new Error(`Gemini API returned empty content`);
+      }
+      
+      generatedText = candidate.content.parts.map((p: any) => p.text).join("");
+    } else {
+      throw new Error(`Provider ${provider} not supported for summary generation yet`);
     }
     
-    const data = await response.json();
-    return data.response || data.content || "";
+    return generatedText.trim();
   } catch (error) {
     console.error("Failed to generate summary:", error);
     throw error;

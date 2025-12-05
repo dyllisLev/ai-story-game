@@ -1974,21 +1974,22 @@ nextStrory 구성:
             
             const recentMessages = await storage.getRecentAIMessages(sessionId, 20);
             
-            const user = session.userId ? await storage.getUserById(session.userId) : null;
-            const apiKeys = user ? {
-              chatgpt: user.apiKeyChatgpt || undefined,
-              grok: user.apiKeyGrok || undefined,
-              claude: user.apiKeyClaude || undefined,
-              gemini: user.apiKeyGemini || undefined,
-            } : {};
+            const summaryProvider = session.sessionProvider || "gemini";
+            const summaryModel = session.sessionModel || "gemini-2.0-flash";
+            const apiKey = await getUserApiKeyForProvider(session.userId, summaryProvider);
+            
+            if (!apiKey) {
+              console.error(`No API key found for provider ${summaryProvider}, skipping auto-summary`);
+              return;
+            }
             
             const { generateSummary } = await import("./summary-helper");
             const summary = await generateSummary({
               messages: recentMessages,
               existingSummary: session.summaryMemory,
-              provider: session.sessionProvider || "gemini",
-              model: session.sessionModel || "gemini-2.0-flash",
-              apiKeys
+              provider: summaryProvider,
+              model: summaryModel,
+              apiKey
             });
             
             await storage.updateSession(sessionId, {
