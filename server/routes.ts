@@ -1954,6 +1954,8 @@ nextStrory 구성:
   app.post("/api/sessions/:sessionId/messages", async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
+      console.log(`[MESSAGE-SAVE] Received message for session ${sessionId}, role: ${req.body.role}`);
+      
       if (isNaN(sessionId)) {
         return res.status(400).json({ error: "Invalid session ID" });
       }
@@ -1961,10 +1963,12 @@ nextStrory 구성:
       const messageData = { ...req.body, sessionId };
       const parsed = insertMessageSchema.safeParse(messageData);
       if (!parsed.success) {
+        console.error(`[MESSAGE-SAVE] Parse error:`, parsed.error);
         return res.status(400).json({ error: "Invalid message data", details: parsed.error });
       }
 
       const message = await storage.createMessage(parsed.data);
+      console.log(`[MESSAGE-SAVE] Message created with id ${message.id}, role: ${message.role}`);
       
       // Auto-summary logic runs in background (don't block response)
       if (message.role === "assistant") {
