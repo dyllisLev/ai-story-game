@@ -1,211 +1,162 @@
-# AI Story Game (Crack AI)
+# Crack AI - AI 스토리 롤플레이 게임
 
-Interactive Korean AI story/roleplay platform with multiple AI models.
+한국어 기반 AI 인터랙티브 스토리/롤플레이 플랫폼. 여러 AI 모델로 자신만의 스토리를 만들고 플레이하세요.
 
-## Features
+## ✨ 주요 기능
 
-- 🎭 **Interactive Story Creation**: Create custom story templates with comprehensive settings
-- 🤖 **Multiple AI Models**: Support for ChatGPT, Claude, Gemini, and Grok
-- 💬 **Real-time Chat**: Stream AI responses with markdown rendering
-- 📝 **Session Management**: Multiple independent playthroughs per story
-- 🎨 **Beautiful UI**: Modern, responsive design with dark mode support
-- 🔧 **Flexible Configuration**: Customizable prompts, conversation profiles, and model settings
+- 🎭 **인터랙티브 스토리 생성**: 상세한 설정으로 스토리 템플릿 제작
+- 🤖 **다중 AI 모델 지원**: ChatGPT, Claude, Gemini, Grok 지원
+- 💬 **실시간 채팅**: 스트리밍 AI 응답 및 마크다운 렌더링
+- 📝 **세션 관리**: 스토리별 독립적인 플레이스루 저장
+- 👤 **계정별 API 키 관리**: 사용자마다 개별 AI API 키 설정 가능
+- 🎨 **모던 UI**: 반응형 디자인 및 다크 모드 지원
+- 🔧 **유연한 설정**: 대화 프로필, 프롬프트 커스터마이징
 
-## Tech Stack
+## 🚀 빠른 시작 (3단계)
+
+```bash
+# 1. 저장소 클론
+git clone https://github.com/dyllisLev/ai-story-game.git
+cd ai-story-game
+
+# 2. 환경 변수 설정
+cp .env.example .env
+nano .env  # SESSION_SECRET만 랜덤 값으로 변경
+
+# 3. 설치 및 실행
+npm install
+npm run dev
+```
+
+브라우저에서 **http://localhost:5000** 접속!
+
+## 📝 환경 변수 설정
+
+`.env` 파일에서 **SESSION_SECRET만 변경**하면 됩니다:
+
+```bash
+# 랜덤 SECRET 생성
+openssl rand -base64 32
+
+# .env 파일의 SESSION_SECRET에 붙여넣기
+SESSION_SECRET=생성된랜덤값
+```
+
+**Supabase 연결 정보는 이미 설정되어 있어 변경 불필요**합니다.
+
+## 🛠️ 기술 스택
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend**: Express.js, Node.js
-- **Database**: SQLite with Drizzle ORM
+- **Database**: Supabase PostgreSQL
 - **Build Tool**: Vite
 - **AI APIs**: OpenAI, Anthropic, Google Gemini, xAI (Grok)
 
-## Quick Start (Recommended)
+## 📦 프로젝트 구조
 
-**Easiest method** - Use the pre-configured example database:
+```
+ai-story-game/
+├── client/                 # React 프론트엔드
+│   ├── src/
+│   │   ├── pages/         # 페이지 컴포넌트
+│   │   ├── components/    # UI 컴포넌트
+│   │   └── lib/           # 유틸리티 및 API 클라이언트
+│   └── index.html
+├── server/                # Express 백엔드
+│   ├── index.ts           # 메인 서버
+│   ├── routes.ts          # API 라우트
+│   ├── storage.ts         # DB 레이어
+│   ├── supabase.ts        # Supabase 클라이언트
+│   └── supabase-mappers.ts  # snake_case ↔ camelCase 매퍼
+├── shared/                # 공유 타입 및 스키마
+│   └── schema.ts          # 타입 정의
+├── supabase-schema.sql    # DB 스키마 (참고용)
+└── package.json
+```
+
+## 💻 개발 명령어
 
 ```bash
-# Clone the repository
-git clone https://github.com/dyllisLev/ai-story-game.git
-cd ai-story-game
-
-# Copy example database (includes sample story)
-cp app.example.db app.db
-
-# Install dependencies and start
-npm install
+# 개발 모드
 npm run dev
+
+# 프로덕션 빌드
+npm run build
+
+# 프로덕션 실행
+npm start
+
+# 타입 체크
+npm run check
 ```
 
-Then open Settings page and add your API keys!
+## 🔑 AI API 키 설정
 
-## Quick Start (Fresh Linux Server)
+회원가입 후 **계정 관리** 페이지에서 각자의 API 키를 설정하세요:
 
-For a **brand new server** with nothing installed, use the automated bootstrap script:
+- **OpenAI API Key**: https://platform.openai.com/api-keys
+- **Anthropic API Key**: https://console.anthropic.com/
+- **Google AI API Key**: https://aistudio.google.com/apikey
+- **xAI API Key**: https://console.x.ai/
+
+각 사용자는 자신만의 API 키를 사용하며, 앱 설정에서 언제든지 변경 가능합니다.
+
+## 🗄️ 데이터베이스 스키마
+
+- **users**: 사용자 계정 및 개별 API 키 저장
+- **stories**: 스토리 템플릿 및 메타데이터
+- **sessions**: 스토리별 플레이스루 (사용자별)
+- **messages**: 세션별 대화 기록
+- **settings**: 전역 설정 (시스템 프롬프트 등)
+
+## 🐳 Docker 배포 (선택사항)
 
 ```bash
-# Clone the repository
-git clone https://github.com/dyllisLev/ai-story-game.git
-cd ai-story-game
+# Docker 이미지 빌드
+docker build -t crack-ai .
 
-# Run automated setup (checks Node.js, installs deps, initializes DB, configures system)
-chmod +x bootstrap.sh
-./bootstrap.sh
+# 실행
+docker run -d \
+  -p 5000:5000 \
+  -e SESSION_SECRET=your-secret-here \
+  --name crack-ai \
+  crack-ai
 ```
 
-The bootstrap script will:
-1. ✅ Check Node.js v20.x installation
-2. ✅ Install all dependencies (`npm install`)
-3. ✅ Initialize database with sample data
-4. ✅ Configure Linux inotify limits (if needed)
-5. ✅ Start the development server
+## 🚨 문제 해결
 
-## Manual Installation
+### "Missing Supabase environment variables" 오류
 
-If you prefer step-by-step installation:
-
-### 1. Prerequisites
-
-**Node.js v20.x** (recommended: v20.19.3)
+`.env` 파일이 있는지 확인하세요:
 
 ```bash
-# Using nvm (recommended)
-nvm install 20.19.3
-nvm use 20.19.3
-
-# Or download from https://nodejs.org/
+cp .env.example .env
 ```
 
-### 2. Install Dependencies
+### 포트 5000이 이미 사용 중
+
+다른 포트로 실행:
 
 ```bash
-npm install
+PORT=8080 npm run dev
 ```
-
-### 3. Initialize Database
-
-```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-Or directly:
-```bash
-npx tsx scripts/setup-db.ts
-```
-
-This creates `app.db` with default settings and a sample story.
-
-### 4. Start Development Server
-
-```bash
-npm run dev
-```
-
-Open http://localhost:5000
-
-### 5. Configure API Keys
-
-Go to **Settings** and enter your API keys:
-- **OpenAI API Key** - For ChatGPT (gpt-4o)
-- **Anthropic API Key** - For Claude (claude-3-5-sonnet)
-- **Google AI API Key** - For Gemini (gemini-3-pro, gemini-2.5-flash)
-- **xAI API Key** - For Grok (grok-beta)
-
-## Get API Keys
-
-- OpenAI: https://platform.openai.com/api-keys
-- Anthropic: https://console.anthropic.com/
-- Google AI: https://aistudio.google.com/apikey
-- xAI: https://console.x.ai/
-
-## Troubleshooting
 
 ### EMFILE: too many open files (Linux)
 
-If you see this error on Linux servers:
-
 ```bash
-# Increase inotify watch limit
 sudo sysctl fs.inotify.max_user_watches=524288
-
-# Make it permanent
 echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 ```
 
-> **Note:** The bootstrap script handles this automatically!
+## 📚 상세 설치 가이드
 
-### Development vs Production
+완전히 새로운 서버에서 설치하는 방법은 **COMPLETE_SETUP_GUIDE.md**를 참고하세요.
 
-This project is optimized for **Replit** as the primary development environment. 
-
-For deployment on external servers:
-- Use the `bootstrap.sh` script for initial setup
-- Ensure Node.js v20.x is installed
-- Configure system limits as shown above
-
-## Database Schema
-
-- **stories**: Story templates with settings and metadata
-- **sessions**: Individual playthroughs with session-specific settings
-- **messages**: Chat history for each session
-- **settings**: Application configuration and API keys
-
-## Development Commands
-
-```bash
-# Development mode
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Type checking
-npm run check
-
-# Database schema push
-npm run db:push
-
-# Reset database (WARNING: Deletes all data)
-rm app.db && npx tsx scripts/setup-db.ts
-```
-
-## Project Structure
-
-```
-ai-story-game/
-├── client/           # React frontend
-│   ├── src/
-│   │   ├── pages/   # Route pages
-│   │   ├── components/  # UI components
-│   │   └── lib/     # Utils & API client
-│   └── index.html
-├── server/          # Express backend
-│   ├── index.ts     # Main server
-│   ├── routes.ts    # API routes
-│   └── storage.ts   # Database layer
-├── shared/          # Shared types & schema
-│   └── schema.ts    # Drizzle schema
-├── scripts/         # Utility scripts
-│   ├── setup-db.ts  # DB initialization
-│   └── export-init-db.ts  # DB export
-├── init-db.sql      # DB initialization SQL
-├── setup.sh         # DB setup script
-├── bootstrap.sh     # Complete server setup
-└── package.json
-```
-
-## Environment
-
-No environment variables needed! All configuration is done through the web interface Settings page.
-
-## License
+## 📄 라이선스
 
 MIT
 
 ---
 
-Built with ❤️ on Replit
+Made with ❤️ by Crack AI Team
