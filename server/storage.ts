@@ -48,6 +48,8 @@ export interface IStorage {
   getUserApiKeys(userId: number): Promise<UserApiKeys | null>;
   updateUserConversationProfiles(userId: number, profiles: ConversationProfile[]): Promise<User>;
   getUserConversationProfiles(userId: number): Promise<ConversationProfile[]>;
+  validatePassword(inputPassword: string, storedHash: string): boolean;
+  hashPassword(password: string): string;
 }
 
 export class Storage implements IStorage {
@@ -437,6 +439,14 @@ export class Storage implements IStorage {
     } catch {
       return [];
     }
+  }
+
+  hashPassword(password: string): string {
+    return crypto.createHash("sha256").update(password).digest("hex");
+  }
+
+  validatePassword(inputPassword: string, storedHash: string): boolean {
+    return this.hashPassword(inputPassword) === storedHash;
   }
 }
 
