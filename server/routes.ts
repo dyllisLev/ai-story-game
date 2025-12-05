@@ -2077,6 +2077,20 @@ nextStrory 구성:
     }
   });
 
+  app.delete("/api/messages/:messageId", async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.messageId);
+      if (isNaN(messageId)) {
+        return res.status(400).json({ error: "Invalid message ID" });
+      }
+
+      await storage.deleteMessage(messageId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete message" });
+    }
+  });
+
   // ==================== HEALTH CHECK ====================
   
   app.get("/api/health", (req, res) => {

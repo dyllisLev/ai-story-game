@@ -647,6 +647,31 @@ export default function PlayStory() {
     }
   };
 
+  const handleDeleteLastMessages = async () => {
+    if (messages.length === 0 || isGenerating) return;
+    
+    try {
+      const lastMsg = messages[messages.length - 1];
+      
+      if (lastMsg.role === "assistant" && messages.length >= 2) {
+        const secondLastMsg = messages[messages.length - 2];
+        if (secondLastMsg.role === "user") {
+          await fetch(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
+          await fetch(`/api/messages/${secondLastMsg.id}`, { method: "DELETE" });
+          setMessages(prev => prev.slice(0, -2));
+          setLastError(null);
+          return;
+        }
+      }
+      
+      await fetch(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
+      setMessages(prev => prev.slice(0, -1));
+      setLastError(null);
+    } catch (error) {
+      console.error("Failed to delete messages:", error);
+    }
+  };
+
   if (loading && !session) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -854,20 +879,49 @@ export default function PlayStory() {
                          {lastError}
                        </p>
                      </div>
-                     <Button
-                       onClick={handleRetry}
-                       disabled={isGenerating}
-                       size="sm"
-                       variant="outline"
-                       className="border-red-300 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
-                       data-testid="button-retry-message"
-                     >
-                       {isGenerating ? (
-                         <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                       ) : null}
-                       재시도
-                     </Button>
+                     <div className="flex gap-2">
+                       <Button
+                         onClick={handleDeleteLastMessages}
+                         disabled={isGenerating || messages.length === 0}
+                         size="sm"
+                         variant="outline"
+                         className="border-red-300 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
+                         data-testid="button-delete-last-message"
+                       >
+                         <Trash2 className="w-4 h-4 mr-1" />
+                         삭제
+                       </Button>
+                       <Button
+                         onClick={handleRetry}
+                         disabled={isGenerating}
+                         size="sm"
+                         variant="outline"
+                         className="border-red-300 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
+                         data-testid="button-retry-message"
+                       >
+                         {isGenerating ? (
+                           <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                         ) : null}
+                         재시도
+                       </Button>
+                     </div>
                    </div>
+                 </div>
+               )}
+               
+               {/* Delete Last Message Button (when no error) */}
+               {!lastError && messages.length > 0 && !isGenerating && (
+                 <div className="flex justify-end">
+                   <Button
+                     onClick={handleDeleteLastMessages}
+                     size="sm"
+                     variant="ghost"
+                     className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                     data-testid="button-delete-last-message-normal"
+                   >
+                     <Trash2 className="w-4 h-4 mr-1" />
+                     마지막 대화 삭제
+                   </Button>
                  </div>
                )}
                
