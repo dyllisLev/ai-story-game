@@ -91,6 +91,25 @@ The application uses five main tables:
 - Server bundled as single CJS file with selective dependency bundling
 - Optimized for cold start performance on Replit deployments
 
+**Build Configuration:**
+- **esbuild Tree-Shaking:** Both Dockerfile and `script/build.ts` use `--define:process.env.NODE_ENV='"production"'` to enable tree-shaking of development-only code (e.g., Vite middleware)
+- **Critical Rationale:** Without the NODE_ENV define, esbuild attempts to bundle `server/vite.ts` → `vite.config.ts`, which contains top-level await incompatible with CJS format, causing build failures
+- **Client Build:** Uses dynamic import of `vite.config.js` in `script/build.ts` to preserve alias configuration while preventing config from being bundled into server output
+- **External Dependencies:** Express, Supabase, bcryptjs, dotenv, @octokit/rest, and database drivers are marked as external to avoid bundling runtime-only dependencies
+
+## GitHub Integration
+
+**Repository Management:**
+- GitHub integration via Octokit REST API (`@octokit/rest` package)
+- Authentication through `GITHUB_PERSONAL_ACCESS_TOKEN` secret (stored in Replit Secrets)
+- Helper module: `server/github-helper.ts` provides `getUncachableGitHubClient()` function
+- Deployment script: `scripts/init-and-push.ts` automates repository initialization and file pushing
+
+**Security:**
+- GitHub token stored exclusively in Replit Secrets (not in environment variables)
+- No hardcoded credentials in codebase
+- Replit GUI Git integration available for manual commits and pushes
+
 ## External Dependencies
 
 **AI Service Integrations:**
