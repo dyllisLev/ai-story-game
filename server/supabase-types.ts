@@ -149,6 +149,8 @@ export interface Database {
           summary_memory: string | null
           session_model: string | null
           session_provider: string | null
+          ai_message_count: number | null
+          last_summary_turn: number | null
           created_at: string | null
           updated_at: string | null
         }
@@ -162,6 +164,8 @@ export interface Database {
           summary_memory?: string | null
           session_model?: string | null
           session_provider?: string | null
+          ai_message_count?: number | null
+          last_summary_turn?: number | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -175,6 +179,8 @@ export interface Database {
           summary_memory?: string | null
           session_model?: string | null
           session_provider?: string | null
+          ai_message_count?: number | null
+          last_summary_turn?: number | null
           created_at?: string | null
           updated_at?: string | null
         }
