@@ -57,6 +57,8 @@ export const sessions = pgTable("sessions", {
   summaryMemory: text("summary_memory"),
   sessionModel: text("session_model"),
   sessionProvider: text("session_provider"),
+  aiMessageCount: integer("ai_message_count").default(0).notNull(),
+  lastSummaryTurn: integer("last_summary_turn").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

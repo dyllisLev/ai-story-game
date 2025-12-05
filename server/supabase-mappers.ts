@@ -110,6 +110,8 @@ export function dbSessionToSession(dbSession: DbSession): Session {
     summaryMemory: dbSession.summary_memory,
     sessionModel: dbSession.session_model,
     sessionProvider: dbSession.session_provider,
+    aiMessageCount: dbSession.ai_message_count || 0,
+    lastSummaryTurn: dbSession.last_summary_turn || 0,
     createdAt: dbSession.created_at ? new Date(dbSession.created_at) : null,
     updatedAt: dbSession.updated_at ? new Date(dbSession.updated_at) : null,
   };
@@ -125,6 +127,8 @@ export function sessionToDbSessionInsert(session: InsertSession): DbSessionInser
     summary_memory: session.summaryMemory,
     session_model: session.sessionModel,
     session_provider: session.sessionProvider,
+    ai_message_count: session.aiMessageCount,
+    last_summary_turn: session.lastSummaryTurn,
   };
 }
 

@@ -1963,6 +1963,46 @@ nextStrory 구성:
       }
 
       const message = await storage.createMessage(parsed.data);
+      
+      if (message.role === "assistant") {
+        try {
+          const newCount = await storage.incrementAIMessageCount(sessionId);
+          
+          if (newCount > 0 && newCount % 20 === 0) {
+            const session = await storage.getSession(sessionId);
+            if (!session) throw new Error("Session not found");
+            
+            const recentMessages = await storage.getRecentAIMessages(sessionId, 20);
+            
+            const user = session.userId ? await storage.getUserById(session.userId) : null;
+            const apiKeys = user ? {
+              chatgpt: user.apiKeyChatgpt || undefined,
+              grok: user.apiKeyGrok || undefined,
+              claude: user.apiKeyClaude || undefined,
+              gemini: user.apiKeyGemini || undefined,
+            } : {};
+            
+            const { generateSummary } = await import("./summary-helper");
+            const summary = await generateSummary({
+              messages: recentMessages,
+              existingSummary: session.summaryMemory,
+              provider: session.sessionProvider || "gemini",
+              model: session.sessionModel || "gemini-2.0-flash",
+              apiKeys
+            });
+            
+            await storage.updateSession(sessionId, {
+              summaryMemory: summary,
+              lastSummaryTurn: newCount
+            });
+            
+            console.log(`Auto-summary generated for session ${sessionId} at turn ${newCount}`);
+          }
+        } catch (summaryError) {
+          console.error("Failed to generate auto-summary:", summaryError);
+        }
+      }
+      
       res.status(201).json(message);
     } catch (error) {
       res.status(500).json({ error: "Failed to create message" });

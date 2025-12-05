@@ -36,6 +36,8 @@ export interface IStorage {
   getMessage(id: number): Promise<Message | undefined>;
   getMessagesBySession(sessionId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  incrementAIMessageCount(sessionId: number): Promise<number>;
+  getRecentAIMessages(sessionId: number, limit: number): Promise<Message[]>;
   deleteMessage(id: number): Promise<void>;
   deleteAllSessionMessages(sessionId: number): Promise<void>;
   
@@ -233,6 +235,8 @@ export class Storage implements IStorage {
       ...(session.summaryMemory !== undefined && { summary_memory: session.summaryMemory }),
       ...(session.sessionModel !== undefined && { session_model: session.sessionModel }),
       ...(session.sessionProvider !== undefined && { session_provider: session.sessionProvider }),
+      ...(session.aiMessageCount !== undefined && { ai_message_count: session.aiMessageCount }),
+      ...(session.lastSummaryTurn !== undefined && { last_summary_turn: session.lastSummaryTurn }),
       updated_at: new Date().toISOString()
     };
 
@@ -288,6 +292,39 @@ export class Storage implements IStorage {
     
     if (error) throw error;
     return dbMessageToMessage(data);
+  }
+
+  async incrementAIMessageCount(sessionId: number): Promise<number> {
+    const session = await this.getSession(sessionId);
+    if (!session) throw new Error("Session not found");
+    
+    const newCount = (session.aiMessageCount || 0) + 1;
+    
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ 
+        ai_message_count: newCount,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return newCount;
+  }
+
+  async getRecentAIMessages(sessionId: number, limit: number): Promise<Message[]> {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .eq('role', 'assistant')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return (data || []).reverse().map(dbMessageToMessage);
   }
 
   async deleteMessage(id: number): Promise<void> {
