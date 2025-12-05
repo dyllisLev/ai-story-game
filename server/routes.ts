@@ -454,8 +454,11 @@ export async function registerRoutes(
           }));
         } else {
           models = [
+            { id: "grok-3", name: "Grok 3" },
+            { id: "grok-3-mini", name: "Grok 3 Mini" },
+            { id: "grok-2", name: "Grok 2" },
+            { id: "grok-2-mini", name: "Grok 2 Mini" },
             { id: "grok-beta", name: "Grok Beta" },
-            { id: "grok-2-1212", name: "Grok 2" },
           ];
         }
       } else {
@@ -839,8 +842,11 @@ export async function registerRoutes(
       } else if (provider === "grok") {
         // xAI doesn't have a models list API, return hardcoded list
         models = [
+          { id: "grok-3", name: "Grok 3" },
+          { id: "grok-3-mini", name: "Grok 3 Mini" },
+          { id: "grok-2", name: "Grok 2" },
+          { id: "grok-2-mini", name: "Grok 2 Mini" },
           { id: "grok-beta", name: "Grok Beta" },
-          { id: "grok-2-1212", name: "Grok 2" },
         ];
         // Verify API key works
         const testResponse = await fetch("https://api.x.ai/v1/models", {
@@ -1857,6 +1863,7 @@ nextStrory 구성:
         console.log("╚════════════════════════════════════════════════════════════\n");
 
       } else if (selectedProvider === "grok") {
+        console.log("Grok API 요청 시작 - Model:", selectedModel);
         const response = await fetch("https://api.x.ai/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -1877,7 +1884,8 @@ nextStrory 구성:
 
         if (!response.ok) {
           const errorData = await response.json();
-          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || "Streaming failed" })}\n\n`);
+          console.error("Grok API Error:", response.status, errorData);
+          res.write(`data: ${JSON.stringify({ error: errorData.error?.message || `Grok API 오류 (${response.status})` })}\n\n`);
           res.end();
           return;
         }
