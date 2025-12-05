@@ -11,7 +11,7 @@ async function resetPassword(username: string, newPassword: string) {
   // Supabase에서 업데이트
   const { data, error } = await supabase
     .from("users")
-    .update({ password: hashedPassword })
+    .update({ password: hashedPassword } as any)
     .eq("username", username)
     .select();
   
