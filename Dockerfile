@@ -42,6 +42,7 @@ RUN npx esbuild server/index.ts \
   --target=node20 \
   --format=cjs \
   --outfile=dist/index.cjs \
+  --define:process.env.NODE_ENV='"production"' \
   --external:express \
   --external:@supabase/supabase-js \
   --external:@neondatabase/serverless \
