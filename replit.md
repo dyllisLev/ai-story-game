@@ -37,8 +37,8 @@ Preferred communication style: Simple, everyday language.
 
 **Technology Stack:**
 - Express.js with TypeScript
-- SQLite via better-sqlite3 for local database
-- Drizzle ORM for type-safe database queries
+- Self-hosted Supabase PostgreSQL for database
+- Supabase JS Client for type-safe database queries
 - Custom static file serving in production
 
 **API Design:**
@@ -73,8 +73,8 @@ The application uses five main tables:
 - **Safe Data Migration:** Existing story-based messages are automatically migrated to session-based storage with backup preservation; existing sessions are assigned to the first user during schema migration
 
 **Architectural Choices:**
-- **SQLite over PostgreSQL initially:** Uses better-sqlite3 for local development simplicity, though the drizzle config references PostgreSQL (prepared for future migration)
-- **WAL mode enabled:** Write-Ahead Logging for better concurrent read performance
+- **Supabase PostgreSQL:** Uses self-hosted Supabase instance at `supa.nuc.hmini.me` with Supabase JS Client for database access
+- **API-based Access:** Database operations through Supabase REST API (PostgreSQL port not externally exposed)
 - **Shared schema:** `/shared/schema.ts` provides type definitions used by both client and server
 - **Build-time bundling:** Selected dependencies are bundled with esbuild to reduce cold start syscalls
 
@@ -116,9 +116,10 @@ The application supports multiple AI language model providers with per-user API 
 - **JSON Response Parsing:** AI responses in `{"nextStrory": "..."}` format are automatically parsed
 
 **Database:**
-- SQLite (better-sqlite3) for local storage
-- Drizzle ORM with PostgreSQL dialect configured (suggesting future migration path)
-- Neon serverless driver available as dependency
+- Self-hosted Supabase PostgreSQL at `supa.nuc.hmini.me`
+- Supabase JS Client (@supabase/supabase-js) for database operations
+- Connection via REST API (no direct PostgreSQL port access)
+- Row Level Security (RLS) enabled with permissive policies for server-side access
 
 **UI Component Libraries:**
 - Radix UI primitives for accessible components
@@ -171,3 +172,10 @@ The application supports multiple AI language model providers with per-user API 
 - Session deletion requires ownership verification
 
 **Input Validation:** Drizzle-zod schemas provide runtime validation for database inserts, ensuring type safety between client and server.
+
+**Supabase Configuration:**
+- Base URL: `https://supa.nuc.hmini.me` (self-hosted instance)
+- Authentication: API Key-based (SUPABASE_ANON_KEY)
+- Tables: users, settings, stories, sessions, messages
+- RLS: Enabled with server-side permissive policies
+- Schema file: `supabase-schema.sql` for database initialization
