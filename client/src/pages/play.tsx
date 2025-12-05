@@ -342,59 +342,67 @@ export default function PlayStory() {
   }, [messages, loading, scrollToBottom]);
 
 
-  // Render AI response with special styling
-  const renderAIContent = (content: string) => {
+  // Helper function to extract story content from JSON (complete or incomplete)
+  const extractStoryFromJSON = (text: string): string => {
     // First convert HTML entities to actual characters
-    let processedContent = content
+    let processedText = text
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>');
     
-    // Then try to parse JSON if the content looks like JSON
-    try {
-      // Remove only the outer markdown code blocks (```json at start and ``` at end)
-      let cleanedText = processedContent;
-      
-      // Remove opening ```json
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/^```json\n?/, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/^```\n?/, '');
+    // Remove markdown code blocks
+    processedText = processedText
+      .replace(/^```json\n?/, '')
+      .replace(/^```\n?/, '')
+      .replace(/\n?```$/, '')
+      .trim();
+    
+    // Check if it looks like JSON with nextStory
+    if (processedText.startsWith('{') && (processedText.includes('nextStory') || processedText.includes('nextStrory'))) {
+      // Try regex extraction first (works for both complete and incomplete JSON)
+      const storyMatch = processedText.match(/"next(?:Story|Strory)"\s*:\s*"((?:[^"\\]|\\.)*)(")?/);
+      if (storyMatch && storyMatch[1]) {
+        return storyMatch[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\"/g, '"')
+          .replace(/\\'/g, "'")
+          .replace(/\\t/g, '\t');
       }
       
-      // Remove closing ``` only at the very end
-      if (cleanedText.endsWith('```')) {
-        cleanedText = cleanedText.replace(/\n?```$/, '');
-      }
-      
-      cleanedText = cleanedText.trim();
-      
-      // Try to parse as JSON
-      if (cleanedText.startsWith('{') && cleanedText.includes('nextStory')) {
-        // Try to fix incomplete JSON by adding missing closing quotes and braces
-        if (!cleanedText.endsWith('}')) {
-          const quoteCount = (cleanedText.match(/"/g) || []).length;
+      // Try full JSON parse as fallback
+      try {
+        // Fix incomplete JSON
+        let fixedText = processedText;
+        if (!fixedText.endsWith('}')) {
+          const quoteCount = (fixedText.match(/"/g) || []).length;
           if (quoteCount % 2 === 1) {
-            cleanedText += '"';
+            fixedText += '"';
           }
-          if (!cleanedText.includes('"aiAnswer"')) {
-            cleanedText += ',\n  "aiAnswer": ""';
+          if (!fixedText.includes('"aiAnswer"')) {
+            fixedText += ',\n  "aiAnswer": ""';
           }
-          cleanedText += '\n}';
+          fixedText += '\n}';
         }
         
-        const parsed = JSON.parse(cleanedText);
-        
-        if (parsed.nextStory) {
-          // Unescape the content
-          processedContent = parsed.nextStory
+        const parsed = JSON.parse(fixedText);
+        const storyContent = parsed.nextStory || parsed.nextStrory;
+        if (storyContent) {
+          return storyContent
             .replace(/\\n/g, '\n')
             .replace(/\\"/g, '"')
-            .replace(/\\'/g, "'");
+            .replace(/\\'/g, "'")
+            .replace(/\\t/g, '\t');
         }
+      } catch (e) {
+        // JSON parse failed, fall through
       }
-    } catch (parseError) {
-      // If parsing fails, use the processed content with HTML entities converted
     }
+    
+    return processedText;
+  };
+
+  // Render AI response with special styling
+  const renderAIContent = (content: string) => {
+    const processedContent = extractStoryFromJSON(content);
     
     const parts = parseAIResponse(processedContent);
     
@@ -587,34 +595,8 @@ export default function PlayStory() {
                   const textToSave = data.fullText || fullText;
                   
                   if (textToSave) {
-                    // Parse JSON response if needed
-                    let finalResponse = textToSave;
-                    try {
-                      let cleanedText = textToSave.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-                      if (cleanedText.startsWith('{') && cleanedText.includes('nextStrory')) {
-                        const nextStroryMatch = cleanedText.match(/"nextStrory"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-                        if (nextStroryMatch && nextStroryMatch[1]) {
-                          finalResponse = nextStroryMatch[1]
-                            .replace(/\\n/g, '\n')
-                            .replace(/\\"/g, '"')
-                            .replace(/\\'/g, "'")
-                            .replace(/&lt;/g, '<')
-                            .replace(/&gt;/g, '>');
-                        } else {
-                          const parsed = JSON.parse(cleanedText);
-                          if (parsed.nextStrory) {
-                            finalResponse = parsed.nextStrory
-                              .replace(/\\n/g, '\n')
-                              .replace(/\\"/g, '"')
-                              .replace(/\\'/g, "'")
-                              .replace(/&lt;/g, '<')
-                              .replace(/&gt;/g, '>');
-                          }
-                        }
-                      }
-                    } catch (parseError) {
-                      // Use raw text if parsing fails
-                    }
+                    // Use the shared helper function to extract story content
+                    const finalResponse = extractStoryFromJSON(textToSave);
                     
                     // Save the final message
                     const aiMsg = await saveMessage("assistant", finalResponse, "AI");
