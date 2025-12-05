@@ -516,9 +516,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Key and value required" });
       }
 
-      const setting = await storage.setSetting(key, value);
+      const setting = await storage.setSetting({ key, value });
       res.json(setting);
     } catch (error) {
+      console.error("Failed to save setting:", error);
       res.status(500).json({ error: "Failed to save setting" });
     }
   });
@@ -534,12 +535,13 @@ export async function registerRoutes(
       const results = [];
       for (const { key, value } of settingsData) {
         if (key && value !== undefined) {
-          const setting = await storage.setSetting(key, value);
+          const setting = await storage.setSetting({ key, value });
           results.push(setting);
         }
       }
       res.json(results);
     } catch (error) {
+      console.error("Failed to save settings:", error);
       res.status(500).json({ error: "Failed to save settings" });
     }
   });
