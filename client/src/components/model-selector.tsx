@@ -52,35 +52,19 @@ export function ModelSelector({
   const loadModels = async (providerName: string) => {
     setLoadingModels(true);
     try {
-      // First, get the API key from settings
-      const settingsResponse = await fetch("/api/settings");
-      if (!settingsResponse.ok) {
-        console.error("Failed to load settings");
-        setModels([]);
-        return;
-      }
-      
-      const settings = await settingsResponse.json();
-      const apiKeySetting = settings.find((s: any) => s.key === `apiKey_${providerName}`);
-      const apiKey = apiKeySetting?.value || "";
-      
-      if (!apiKey) {
-        console.warn(`No API key found for ${providerName}`);
-        setModels([]);
-        return;
-      }
-      
-      // Fetch models using the API key
-      const response = await fetch("/api/ai/models", {
+      const response = await fetch(`/api/ai/models/${providerName}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: providerName, apiKey }),
+        credentials: "include",
+        body: JSON.stringify({}),
       });
       
       if (response.ok) {
         const data = await response.json();
         setModels(data.models || []);
       } else {
+        const error = await response.json();
+        console.warn(`Failed to load models for ${providerName}:`, error.error);
         setModels([]);
       }
     } catch (error) {
