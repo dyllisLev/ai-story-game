@@ -1,4 +1,11 @@
 import { supabase } from "./supabase";
+import {
+  dbUserToUser, userToDbUserInsert,
+  dbStoryToStory, storyToDbStoryInsert,
+  dbSessionToSession, sessionToDbSessionInsert,
+  dbMessageToMessage, messageToDbMessageInsert,
+  dbSettingToSetting, settingToDbSettingInsert
+} from "./supabase-mappers";
 import { 
   type InsertSetting, type Setting,
   type InsertStory, type Story,
@@ -44,6 +51,7 @@ export interface IStorage {
 }
 
 export class Storage implements IStorage {
+  // Settings
   async getSetting(key: string): Promise<Setting | undefined> {
     const { data, error } = await supabase
       .from('settings')
@@ -52,7 +60,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    return data ? dbSettingToSetting(data) : undefined;
   }
 
   async setSetting(setting: InsertSetting): Promise<Setting> {
@@ -67,17 +75,17 @@ export class Storage implements IStorage {
         .single();
       
       if (error) throw error;
-      return data;
+      return dbSettingToSetting(data);
     }
     
     const { data, error } = await supabase
       .from('settings')
-      .insert(setting)
+      .insert(settingToDbSettingInsert(setting))
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbSettingToSetting(data);
   }
 
   async getAllSettings(): Promise<Setting[]> {
@@ -86,9 +94,10 @@ export class Storage implements IStorage {
       .select('*');
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(dbSettingToSetting);
   }
 
+  // Stories
   async getStory(id: number): Promise<Story | undefined> {
     const { data, error } = await supabase
       .from('stories')
@@ -97,7 +106,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    return data ? dbStoryToStory(data) : undefined;
   }
 
   async getAllStories(): Promise<Story[]> {
@@ -107,30 +116,56 @@ export class Storage implements IStorage {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(dbStoryToStory);
   }
 
   async createStory(story: InsertStory): Promise<Story> {
     const { data, error } = await supabase
       .from('stories')
-      .insert(story)
+      .insert(storyToDbStoryInsert(story))
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbStoryToStory(data);
   }
 
   async updateStory(id: number, story: Partial<InsertStory>): Promise<Story> {
+    const dbUpdate = story.storySettings !== undefined || story.promptTemplate !== undefined || 
+                     story.exampleUserInput !== undefined || story.exampleAiResponse !== undefined ||
+                     story.startingSituation !== undefined
+      ? {
+          ...(story.title && { title: story.title }),
+          ...(story.description !== undefined && { description: story.description }),
+          ...(story.image !== undefined && { image: story.image }),
+          ...(story.genre !== undefined && { genre: story.genre }),
+          ...(story.author !== undefined && { author: story.author }),
+          ...(story.storySettings !== undefined && { story_settings: story.storySettings }),
+          ...(story.prologue !== undefined && { prologue: story.prologue }),
+          ...(story.promptTemplate !== undefined && { prompt_template: story.promptTemplate }),
+          ...(story.exampleUserInput !== undefined && { example_user_input: story.exampleUserInput }),
+          ...(story.exampleAiResponse !== undefined && { example_ai_response: story.exampleAiResponse }),
+          ...(story.startingSituation !== undefined && { starting_situation: story.startingSituation }),
+          updated_at: new Date().toISOString()
+        }
+      : {
+          ...(story.title && { title: story.title }),
+          ...(story.description !== undefined && { description: story.description }),
+          ...(story.image !== undefined && { image: story.image }),
+          ...(story.genre !== undefined && { genre: story.genre }),
+          ...(story.author !== undefined && { author: story.author }),
+          updated_at: new Date().toISOString()
+        };
+
     const { data, error } = await supabase
       .from('stories')
-      .update({ ...story, updated_at: new Date().toISOString() })
+      .update(dbUpdate)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbStoryToStory(data);
   }
 
   async deleteStory(id: number): Promise<void> {
@@ -142,6 +177,7 @@ export class Storage implements IStorage {
     if (error) throw error;
   }
 
+  // Sessions
   async getSession(id: number): Promise<Session | undefined> {
     const { data, error } = await supabase
       .from('sessions')
@@ -150,7 +186,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    return data ? dbSessionToSession(data) : undefined;
   }
 
   async getSessionsByStory(storyId: number, userId: number): Promise<Session[]> {
@@ -162,7 +198,7 @@ export class Storage implements IStorage {
       .order('updated_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(dbSessionToSession);
   }
 
   async getUserSessions(userId: number): Promise<Session[]> {
@@ -173,30 +209,40 @@ export class Storage implements IStorage {
       .order('updated_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(dbSessionToSession);
   }
 
   async createSession(session: InsertSession): Promise<Session> {
     const { data, error } = await supabase
       .from('sessions')
-      .insert(session)
+      .insert(sessionToDbSessionInsert(session))
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbSessionToSession(data);
   }
 
   async updateSession(id: number, session: Partial<InsertSession>): Promise<Session> {
+    const dbUpdate = {
+      ...(session.title && { title: session.title }),
+      ...(session.conversationProfile !== undefined && { conversation_profile: session.conversationProfile }),
+      ...(session.userNote !== undefined && { user_note: session.userNote }),
+      ...(session.summaryMemory !== undefined && { summary_memory: session.summaryMemory }),
+      ...(session.sessionModel !== undefined && { session_model: session.sessionModel }),
+      ...(session.sessionProvider !== undefined && { session_provider: session.sessionProvider }),
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('sessions')
-      .update({ ...session, updated_at: new Date().toISOString() })
+      .update(dbUpdate)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbSessionToSession(data);
   }
 
   async deleteSession(id: number): Promise<void> {
@@ -208,6 +254,7 @@ export class Storage implements IStorage {
     if (error) throw error;
   }
 
+  // Messages
   async getMessage(id: number): Promise<Message | undefined> {
     const { data, error } = await supabase
       .from('messages')
@@ -216,7 +263,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    return data ? dbMessageToMessage(data) : undefined;
   }
 
   async getMessagesBySession(sessionId: number): Promise<Message[]> {
@@ -227,18 +274,18 @@ export class Storage implements IStorage {
       .order('created_at', { ascending: true });
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(dbMessageToMessage);
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
     const { data, error } = await supabase
       .from('messages')
-      .insert(message)
+      .insert(messageToDbMessageInsert(message))
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbMessageToMessage(data);
   }
 
   async deleteMessage(id: number): Promise<void> {
@@ -259,6 +306,7 @@ export class Storage implements IStorage {
     if (error) throw error;
   }
 
+  // Users
   async getUserById(id: number): Promise<User | undefined> {
     const { data, error } = await supabase
       .from('users')
@@ -267,7 +315,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    return data ? dbUserToUser(data) : undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -278,7 +326,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    return data ? dbUserToUser(data) : undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -289,42 +337,64 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data || undefined;
+    return data ? dbUserToUser(data) : undefined;
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const { data, error} = await supabase
+    const { data, error } = await supabase
       .from('users')
-      .insert(user)
+      .insert(userToDbUserInsert(user))
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbUserToUser(data);
   }
 
   async updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>): Promise<User> {
+    const dbUpdate = {
+      ...(updates.username && { username: updates.username }),
+      ...(updates.email !== undefined && { email: updates.email }),
+      ...(updates.password && { password: updates.password }),
+      ...(updates.displayName !== undefined && { display_name: updates.displayName }),
+      ...(updates.profileImage !== undefined && { profile_image: updates.profileImage }),
+      ...(updates.role !== undefined && { role: updates.role }),
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('users')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(dbUpdate)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbUserToUser(data);
   }
 
   async updateUserApiKeys(userId: number, apiKeys: Partial<UserApiKeys>): Promise<User> {
+    const dbUpdate = {
+      ...(apiKeys.apiKeyChatgpt !== undefined && { api_key_chatgpt: apiKeys.apiKeyChatgpt }),
+      ...(apiKeys.apiKeyGrok !== undefined && { api_key_grok: apiKeys.apiKeyGrok }),
+      ...(apiKeys.apiKeyClaude !== undefined && { api_key_claude: apiKeys.apiKeyClaude }),
+      ...(apiKeys.apiKeyGemini !== undefined && { api_key_gemini: apiKeys.apiKeyGemini }),
+      ...(apiKeys.aiModelChatgpt !== undefined && { ai_model_chatgpt: apiKeys.aiModelChatgpt }),
+      ...(apiKeys.aiModelGrok !== undefined && { ai_model_grok: apiKeys.aiModelGrok }),
+      ...(apiKeys.aiModelClaude !== undefined && { ai_model_claude: apiKeys.aiModelClaude }),
+      ...(apiKeys.aiModelGemini !== undefined && { ai_model_gemini: apiKeys.aiModelGemini }),
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('users')
-      .update({ ...apiKeys, updated_at: new Date().toISOString() })
+      .update(dbUpdate)
       .eq('id', userId)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return dbUserToUser(data);
   }
 
   async getUserApiKeys(userId: number): Promise<UserApiKeys | null> {
@@ -355,7 +425,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error) throw error;
-    return data;
+    return dbUserToUser(data);
   }
 
   async getUserConversationProfiles(userId: number): Promise<ConversationProfile[]> {
