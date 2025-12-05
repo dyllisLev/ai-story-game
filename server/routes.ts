@@ -1984,20 +1984,22 @@ nextStrory 구성:
             }
             
             const { generateSummary } = await import("./summary-helper");
-            const summary = await generateSummary({
+            const result = await generateSummary({
               messages: recentMessages,
               existingSummary: session.summaryMemory,
+              existingPlotPoints: session.keyPlotPoints,
               provider: summaryProvider,
               model: summaryModel,
               apiKey
             });
             
             await storage.updateSession(sessionId, {
-              summaryMemory: summary,
+              summaryMemory: result.summary,
+              keyPlotPoints: JSON.stringify(result.keyPlotPoints),
               lastSummaryTurn: newCount
             });
             
-            console.log(`Auto-summary generated for session ${sessionId} at turn ${newCount}`);
+            console.log(`Auto-summary generated for session ${sessionId} at turn ${newCount}, plot points: ${result.keyPlotPoints.length}`);
           }
         } catch (summaryError) {
           console.error("Failed to generate auto-summary:", summaryError);

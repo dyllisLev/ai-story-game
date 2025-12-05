@@ -147,6 +147,7 @@ export interface Database {
           conversation_profile: string | null
           user_note: string | null
           summary_memory: string | null
+          key_plot_points: string | null
           session_model: string | null
           session_provider: string | null
           ai_message_count: number | null
@@ -162,6 +163,7 @@ export interface Database {
           conversation_profile?: string | null
           user_note?: string | null
           summary_memory?: string | null
+          key_plot_points?: string | null
           session_model?: string | null
           session_provider?: string | null
           ai_message_count?: number | null
@@ -177,6 +179,7 @@ export interface Database {
           conversation_profile?: string | null
           user_note?: string | null
           summary_memory?: string | null
+          key_plot_points?: string | null
           session_model?: string | null
           session_provider?: string | null
           ai_message_count?: number | null

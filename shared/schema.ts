@@ -55,6 +55,7 @@ export const sessions = pgTable("sessions", {
   conversationProfile: text("conversation_profile"),
   userNote: text("user_note"),
   summaryMemory: text("summary_memory"),
+  keyPlotPoints: text("key_plot_points"),
   sessionModel: text("session_model"),
   sessionProvider: text("session_provider"),
   aiMessageCount: integer("ai_message_count").default(0).notNull(),

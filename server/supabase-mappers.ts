@@ -108,6 +108,7 @@ export function dbSessionToSession(dbSession: DbSession): Session {
     conversationProfile: dbSession.conversation_profile,
     userNote: dbSession.user_note,
     summaryMemory: dbSession.summary_memory,
+    keyPlotPoints: dbSession.key_plot_points,
     sessionModel: dbSession.session_model,
     sessionProvider: dbSession.session_provider,
     aiMessageCount: dbSession.ai_message_count || 0,
@@ -125,6 +126,7 @@ export function sessionToDbSessionInsert(session: InsertSession): DbSessionInser
     conversation_profile: session.conversationProfile,
     user_note: session.userNote,
     summary_memory: session.summaryMemory,
+    key_plot_points: session.keyPlotPoints,
     session_model: session.sessionModel,
     session_provider: session.sessionProvider,
   };
