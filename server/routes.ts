@@ -434,10 +434,13 @@ export async function registerRoutes(
           });
       } else if (provider === "claude") {
         models = [
+          { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
+          { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
+          { id: "claude-haiku-4-20250514", name: "Claude Haiku 4" },
+          { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
           { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
           { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
           { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
-          { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
         ];
       } else if (provider === "grok") {
         const response = await fetch("https://api.x.ai/v1/models", {
