@@ -49,7 +49,8 @@ RUN npx esbuild server/index.ts \
   --external:memorystore \
   --external:multer \
   --external:bcryptjs \
-  --external:dotenv
+  --external:dotenv \
+  --external:@octokit/rest
 
 # Stage 3: Production
 FROM node:20-alpine
