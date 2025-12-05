@@ -1,12 +1,12 @@
 import "dotenv/config";
 import { supabase } from "./server/supabase";
-import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 async function resetPassword(username: string, newPassword: string) {
   console.log(`Resetting password for ${username}...`);
   
-  // 비밀번호 해시 생성
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  // 비밀번호 해시 생성 (SHA256)
+  const hashedPassword = crypto.createHash("sha256").update(newPassword).digest("hex");
   
   // Supabase에서 업데이트
   const { data, error } = await supabase
