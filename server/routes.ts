@@ -454,11 +454,13 @@ export async function registerRoutes(
           }));
         } else {
           models = [
+            { id: "grok-4", name: "Grok 4" },
+            { id: "grok-4-fast", name: "Grok 4 Fast" },
             { id: "grok-3", name: "Grok 3" },
-            { id: "grok-3-mini", name: "Grok 3 Mini" },
-            { id: "grok-2", name: "Grok 2" },
-            { id: "grok-2-mini", name: "Grok 2 Mini" },
+            { id: "grok-2-latest", name: "Grok 2" },
+            { id: "grok-2-mini-latest", name: "Grok 2 Mini" },
             { id: "grok-beta", name: "Grok Beta" },
+            { id: "grok-vision-beta", name: "Grok Vision Beta" },
           ];
         }
       } else {
@@ -842,11 +844,13 @@ export async function registerRoutes(
       } else if (provider === "grok") {
         // xAI doesn't have a models list API, return hardcoded list
         models = [
+          { id: "grok-4", name: "Grok 4" },
+          { id: "grok-4-fast", name: "Grok 4 Fast" },
           { id: "grok-3", name: "Grok 3" },
-          { id: "grok-3-mini", name: "Grok 3 Mini" },
-          { id: "grok-2", name: "Grok 2" },
-          { id: "grok-2-mini", name: "Grok 2 Mini" },
+          { id: "grok-2-latest", name: "Grok 2" },
+          { id: "grok-2-mini-latest", name: "Grok 2 Mini" },
           { id: "grok-beta", name: "Grok Beta" },
+          { id: "grok-vision-beta", name: "Grok Vision Beta" },
         ];
         // Verify API key works
         const testResponse = await fetch("https://api.x.ai/v1/models", {
