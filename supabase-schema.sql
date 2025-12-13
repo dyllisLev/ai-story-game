@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
   ai_model_claude TEXT DEFAULT 'claude-3-5-sonnet-20241022',
   ai_model_gemini TEXT DEFAULT 'gemini-2.0-flash',
   conversation_profiles TEXT,
+  selected_models TEXT,
+  default_model TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
