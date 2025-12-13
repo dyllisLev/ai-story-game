@@ -181,7 +181,23 @@ The application supports multiple AI language model providers with per-user API 
 
 ## Security Considerations
 
-**API Key Storage:** API keys for AI services are stored per-user in the SQLite database users table. Each user's keys are isolated and only accessible through authenticated API requests. Global fallback keys remain in the settings table for unauthenticated requests.
+**API Key Storage:** API keys for AI services are stored per-user in the PostgreSQL database users table. Each user's keys are isolated and only accessible through authenticated API requests. Global fallback keys remain in the settings table for unauthenticated requests.
+
+**Group-Based Story Access Control:**
+- Stories are protected by group-based permissions (stored in `story_groups` table)
+- **Admin Users:** Members of admin-type groups can access all stories
+- **Regular Users:** Can only access stories assigned to their groups
+- **Permission Levels:**
+  - `read`: Can view and play stories
+  - `write`: Can view, play, edit, and delete stories
+- **Enforcement Points:**
+  - GET /api/stories - Filters stories based on user's group memberships
+  - GET /api/stories/:id - Requires read permission
+  - PUT /api/stories/:id - Requires write permission
+  - DELETE /api/stories/:id - Requires write permission
+  - POST /api/stories/:id/sessions - Requires read permission
+- **Implementation:** `storage.checkStoryAccess(userId, storyId, permission)` validates access
+- **UI Integration:** Story creation/editing pages include "권한 설정" tab for assigning group permissions
 
 **Session Access Control:**
 - All session endpoints require authentication (401 if not authenticated)
