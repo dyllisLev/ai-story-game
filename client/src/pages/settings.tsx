@@ -163,15 +163,31 @@ export default function Settings() {
   const handleSaveModels = async () => {
     setSavingModels(true);
     try {
-      await fetch("/api/auth/selected-models", {
+      console.log("[DEBUG] 저장할 모델:", JSON.stringify(selectedModels, null, 2));
+      
+      const response = await fetch("/api/auth/selected-models", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ models: selectedModels }),
       });
+      
+      console.log("[DEBUG] 응답 상태:", response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[DEBUG] 저장 실패:", errorData);
+        alert(`모델 저장 실패: ${errorData.error || '알 수 없는 오류'}`);
+        return;
+      }
+      
+      const result = await response.json();
+      console.log("[DEBUG] 저장 성공:", result);
+      
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
-      console.error("Failed to save selected models:", error);
+      console.error("[DEBUG] 모델 저장 중 에러:", error);
+      alert(`모델 저장 중 오류가 발생했습니다: ${error}`);
     } finally {
       setSavingModels(false);
     }
