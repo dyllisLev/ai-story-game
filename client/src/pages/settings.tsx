@@ -5,15 +5,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-
-interface SelectedModels {
-  gemini: string[];
-  chatgpt: string[];
-  claude: string[];
-  grok: string[];
-}
+import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
 
 interface ModelInfo {
   id: string;
@@ -36,18 +30,6 @@ export default function Settings() {
     chatgpt: [],
     claude: [],
     grok: []
-  });
-  const [availableModels, setAvailableModels] = useState<Record<string, ModelInfo[]>>({
-    gemini: [],
-    chatgpt: [],
-    claude: [],
-    grok: []
-  });
-  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({
-    gemini: false,
-    chatgpt: false,
-    claude: false,
-    grok: false
   });
   const [savingModels, setSavingModels] = useState(false);
 
@@ -121,25 +103,6 @@ export default function Settings() {
     }
   };
 
-  const fetchModelsForProvider = async (provider: string) => {
-    setLoadingModels(prev => ({ ...prev, [provider]: true }));
-    try {
-      const response = await fetch(`/api/ai/models/${provider}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({})
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableModels(prev => ({ ...prev, [provider]: data.models || [] }));
-      }
-    } catch (error) {
-      console.error(`Failed to fetch ${provider} models:`, error);
-    } finally {
-      setLoadingModels(prev => ({ ...prev, [provider]: false }));
-    }
-  };
-
   const toggleModelSelection = (provider: keyof SelectedModels, modelId: string) => {
     setSelectedModels(prev => {
       const current = prev[provider];
@@ -166,13 +129,6 @@ export default function Settings() {
     } finally {
       setSavingModels(false);
     }
-  };
-
-  const providerLabels: Record<string, string> = {
-    gemini: "Gemini",
-    chatgpt: "ChatGPT",
-    claude: "Claude",
-    grok: "Grok"
   };
 
   if (loading || authLoading) {
@@ -434,53 +390,30 @@ export default function Settings() {
             {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => (
               <Card key={provider}>
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">{providerLabels[provider]}</h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchModelsForProvider(provider)}
-                      disabled={loadingModels[provider]}
-                      className="gap-2"
-                      data-testid={`button-fetch-${provider}`}
-                    >
-                      {loadingModels[provider] ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3 h-3" />
-                      )}
-                      모델 목록 조회
-                    </Button>
-                  </div>
+                  <h3 className="font-semibold">{PROVIDER_LABELS[provider]}</h3>
 
-                  {availableModels[provider].length > 0 ? (
-                    <div className="space-y-2">
-                      {availableModels[provider].map((model) => (
-                        <div 
-                          key={model.id} 
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                  <div className="space-y-2">
+                    {MODEL_CATALOG[provider].map((model) => (
+                      <div 
+                        key={model.id} 
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          id={`model-${provider}-${model.id}`}
+                          checked={selectedModels[provider].includes(model.id)}
+                          onCheckedChange={() => toggleModelSelection(provider, model.id)}
+                          data-testid={`checkbox-${provider}-${model.id}`}
+                        />
+                        <label 
+                          htmlFor={`model-${provider}-${model.id}`}
+                          className="flex-1 cursor-pointer"
                         >
-                          <Checkbox
-                            id={`model-${provider}-${model.id}`}
-                            checked={selectedModels[provider].includes(model.id)}
-                            onCheckedChange={() => toggleModelSelection(provider, model.id)}
-                            data-testid={`checkbox-${provider}-${model.id}`}
-                          />
-                          <label 
-                            htmlFor={`model-${provider}-${model.id}`}
-                            className="flex-1 cursor-pointer"
-                          >
-                            <span className="font-medium text-sm">{model.name}</span>
-                            <span className="text-xs text-muted-foreground ml-2">({model.id})</span>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-2">
-                      모델 목록 조회 버튼을 클릭하여 사용 가능한 모델을 확인하세요.
-                    </p>
-                  )}
+                          <span className="font-medium text-sm">{model.name}</span>
+                          <span className="text-xs text-muted-foreground ml-2">({model.id})</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
 
                   {selectedModels[provider].length > 0 && (
                     <div className="pt-2 border-t border-muted">
