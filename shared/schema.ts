@@ -30,6 +30,22 @@ export const settings = pgTable("settings", {
   value: text("value").notNull(),
 });
 
+export const groups = pgTable("groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  type: text("type").notNull(), // 'user' or 'admin'
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userGroups = pgTable("user_groups", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const stories = pgTable("stories", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -45,6 +61,14 @@ export const stories = pgTable("stories", {
   startingSituation: text("starting_situation"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const storyGroups = pgTable("story_groups", {
+  id: serial("id").primaryKey(),
+  storyId: integer("story_id").notNull().references(() => stories.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
+  permission: text("permission").notNull(), // 'read' or 'write'
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const sessions = pgTable("sessions", {
@@ -183,3 +207,28 @@ export const conversationProfileSchema = z.object({
 export const updateConversationProfilesSchema = z.object({
   profiles: z.array(conversationProfileSchema),
 });
+
+export const insertGroupSchema = createInsertSchema(groups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserGroupSchema = createInsertSchema(userGroups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStoryGroupSchema = createInsertSchema(storyGroups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+export type Group = typeof groups.$inferSelect;
+
+export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
+export type UserGroup = typeof userGroups.$inferSelect;
+
+export type InsertStoryGroup = z.infer<typeof insertStoryGroupSchema>;
+export type StoryGroup = typeof storyGroups.$inferSelect;
