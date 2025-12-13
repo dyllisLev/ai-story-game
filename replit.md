@@ -120,10 +120,11 @@ The application supports multiple AI language model providers with per-user API 
 - Grok (xAI)
 
 **Per-User API Key Architecture:**
-- Each user can configure their own API keys via the Account Management page ("계정 관리" → "API 키" tab)
+- Each user can configure their own API keys via the Settings page ("설정" → "모델 관리" tab)
 - API keys are stored per-user in the users table (apiKeyChatgpt, apiKeyGrok, apiKeyClaude, apiKeyGemini)
 - Model selections are also stored per-user (aiModelChatgpt, aiModelGrok, aiModelClaude, aiModelGemini)
 - AI endpoints use user-specific keys when available, with fallback to global settings for unauthenticated requests
+- The Model Management tab integrates API key input/saving functionality with model selection for each provider
 
 **AI API Implementation:**
 - **Streaming Responses:** Real-time text streaming using Server-Sent Events (SSE)
