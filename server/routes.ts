@@ -427,13 +427,29 @@ export async function registerRoutes(
           return res.status(400).json({ error: "Gemini API 키가 유효하지 않습니다" });
         }
 
+        const excludePatterns = ["imagen", "nano", "embedding", "aqa", "learnlm", "text-", "gemma"];
         models = (data.models || [])
-          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+          .filter((m: any) => {
+            const modelId = m.name.replace("models/", "").toLowerCase();
+            if (!m.supportedGenerationMethods?.includes("generateContent")) return false;
+            if (!modelId.includes("gemini")) return false;
+            if (excludePatterns.some(p => modelId.includes(p))) return false;
+            return true;
+          })
           .map((m: any) => ({
             id: m.name.replace("models/", ""),
             name: m.displayName || m.name.replace("models/", "")
           }))
-          .sort((a: any, b: any) => a.name.localeCompare(b.name));
+          .sort((a: any, b: any) => {
+            const order = ["gemini-2.5", "gemini-3", "gemini-2.0", "gemini-1.5-pro", "gemini-1.5-flash"];
+            const aIndex = order.findIndex(o => a.id.includes(o));
+            const bIndex = order.findIndex(o => b.id.includes(o));
+            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            return a.name.localeCompare(b.name);
+          })
+          .slice(0, 3);
       } else if (provider === "chatgpt") {
         const response = await fetch("https://api.openai.com/v1/models", {
           headers: {
@@ -447,29 +463,23 @@ export async function registerRoutes(
         }
 
         models = (data.data || [])
-          .filter((m: any) => m.id.startsWith("gpt-") && !m.id.includes("instruct"))
+          .filter((m: any) => {
+            const id = m.id.toLowerCase();
+            if (!id.startsWith("gpt-")) return false;
+            if (id.includes("instruct") || id.includes("realtime") || id.includes("audio")) return false;
+            return true;
+          })
+          .sort((a: any, b: any) => (b.created || 0) - (a.created || 0))
+          .slice(0, 3)
           .map((m: any) => ({
             id: m.id,
             name: m.id.toUpperCase().replace(/-/g, " ").replace(/GPT /g, "GPT-")
-          }))
-          .sort((a: any, b: any) => {
-            const order = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4"];
-            const aIndex = order.findIndex(o => a.id.startsWith(o));
-            const bIndex = order.findIndex(o => b.id.startsWith(o));
-            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-            if (aIndex !== -1) return -1;
-            if (bIndex !== -1) return 1;
-            return a.name.localeCompare(b.name);
-          });
+          }));
       } else if (provider === "claude") {
         models = [
           { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
           { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
-          { id: "claude-haiku-4-20250514", name: "Claude Haiku 4" },
           { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
-          { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
-          { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
-          { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
         ];
       } else if (provider === "grok") {
         const response = await fetch("https://api.x.ai/v1/models", {
@@ -480,19 +490,19 @@ export async function registerRoutes(
         
         if (response.ok) {
           const data = await response.json();
-          models = (data.data || []).map((m: any) => ({
-            id: m.id,
-            name: m.id.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
-          }));
+          const excludePatterns = ["vision", "image", "embedding"];
+          models = (data.data || [])
+            .filter((m: any) => !excludePatterns.some(p => m.id.toLowerCase().includes(p)))
+            .map((m: any) => ({
+              id: m.id,
+              name: m.id.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+            }))
+            .slice(0, 3);
         } else {
           models = [
             { id: "grok-4", name: "Grok 4" },
             { id: "grok-4-fast", name: "Grok 4 Fast" },
             { id: "grok-3", name: "Grok 3" },
-            { id: "grok-2-latest", name: "Grok 2" },
-            { id: "grok-2-mini-latest", name: "Grok 2 Mini" },
-            { id: "grok-beta", name: "Grok Beta" },
-            { id: "grok-vision-beta", name: "Grok Vision Beta" },
           ];
         }
       } else {
