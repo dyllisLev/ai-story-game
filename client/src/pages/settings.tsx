@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,25 +53,7 @@ export default function Settings() {
     claude: "",
     grok: ""
   });
-  const [aiModels, setAiModels] = useState<Record<string, string>>({
-    gemini: "gemini-2.0-flash",
-    chatgpt: "gpt-4o",
-    claude: "claude-3-5-sonnet-20241022",
-    grok: "grok-beta"
-  });
   const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
-  const [providerModels, setProviderModels] = useState<Record<string, ModelInfo[]>>({
-    gemini: [],
-    chatgpt: [],
-    claude: [],
-    grok: []
-  });
-  const [loadingModelsProvider, setLoadingModelsProvider] = useState<Record<string, boolean>>({
-    gemini: false,
-    chatgpt: false,
-    claude: false,
-    grok: false
-  });
   const [savingApiKeys, setSavingApiKeys] = useState(false);
 
   useEffect(() => {
@@ -268,7 +249,6 @@ export default function Settings() {
     try {
       const settingsData = [
         { key: `apiKey_${provider}`, value: apiKeys[provider] || "" },
-        { key: `aiModel_${provider}`, value: aiModels[provider] || "" },
       ];
 
       await fetch("/api/settings/batch", {
@@ -284,35 +264,6 @@ export default function Settings() {
       alert("API 키 저장에 실패했습니다.");
     } finally {
       setSavingApiKeys(false);
-    }
-  };
-
-  const handleVerifyAndLoadModels = async (provider: string) => {
-    setLoadingModelsProvider(prev => ({ ...prev, [provider]: true }));
-    try {
-      const response = await fetch(`/api/ai/models/${provider}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: apiKeys[provider] })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProviderModels(prev => ({ ...prev, [provider]: data.models || [] }));
-        
-        if (data.models.length > 0 && !aiModels[provider]) {
-          setAiModels(prev => ({ ...prev, [provider]: data.models[0].id }));
-        }
-        
-        alert(`${data.models.length}개의 모델을 불러왔습니다.`);
-      } else {
-        const error = await response.json();
-        alert(`모델 목록 조회 실패: ${error.error}`);
-      }
-    } catch (error: any) {
-      alert(`모델 목록 조회 실패: ${error.message}`);
-    } finally {
-      setLoadingModelsProvider(prev => ({ ...prev, [provider]: false }));
     }
   };
 
@@ -569,7 +520,6 @@ export default function Settings() {
             {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => {
               const label = PROVIDER_LABELS[provider];
               const models = availableModels[provider].length > 0 ? availableModels[provider] : MODEL_CATALOG[provider];
-              const providerModelsForSelect = providerModels[provider].length > 0 ? providerModels[provider] : MODEL_CATALOG[provider];
               
               return (
               <Card key={provider}>
@@ -622,48 +572,6 @@ export default function Settings() {
                         저장
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor={`model-${provider}`}>기본 모델</Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleVerifyAndLoadModels(provider)}
-                        disabled={loadingModelsProvider[provider]}
-                        data-testid={`button-load-models-${provider}`}
-                        className="h-7 text-xs gap-1"
-                      >
-                        {loadingModelsProvider[provider] ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-3 w-3" />
-                        )}
-                        모델 조회
-                      </Button>
-                    </div>
-                    {providerModelsForSelect.length > 0 ? (
-                      <Select
-                        value={aiModels[provider] || providerModelsForSelect[0]?.id}
-                        onValueChange={(value) => setAiModels(prev => ({ ...prev, [provider]: value }))}
-                      >
-                        <SelectTrigger id={`model-${provider}`} data-testid={`select-model-${provider}`}>
-                          <SelectValue placeholder="모델 선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {providerModelsForSelect.map((model) => (
-                            <SelectItem key={model.id} value={model.id}>
-                              {model.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        API 키를 저장한 후 "모델 조회" 버튼을 클릭하여 사용 가능한 모델 목록을 불러오세요.
-                      </p>
-                    )}
                   </div>
 
                   <div className="pt-4 border-t border-muted space-y-2">
