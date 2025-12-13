@@ -185,18 +185,22 @@ The application supports multiple AI language model providers with per-user API 
 
 **Group-Based Story Access Control:**
 - Stories are protected by group-based permissions (stored in `story_groups` table)
+- **Story Creators:** Users who create a story (stored in `stories.created_by`) always have full read/write access regardless of group permissions
 - **Admin Users:** Members of admin-type groups can access all stories
-- **Regular Users:** Can only access stories assigned to their groups
+- **Regular Users:** Can access stories they created + stories assigned to their groups
 - **Permission Levels:**
-  - `read`: Can view and play stories
-  - `write`: Can view, play, edit, and delete stories
+  - `read`: Can view and play stories (labeled as "플레이 전용" in UI)
+  - `write`: Can view, play, edit, and delete stories (labeled as "플레이 + 수정" in UI)
 - **Enforcement Points:**
-  - GET /api/stories - Filters stories based on user's group memberships
-  - GET /api/stories/:id - Requires read permission
-  - PUT /api/stories/:id - Requires write permission
-  - DELETE /api/stories/:id - Requires write permission
-  - POST /api/stories/:id/sessions - Requires read permission
-- **Implementation:** `storage.checkStoryAccess(userId, storyId, permission)` validates access
+  - GET /api/stories - Returns stories created by user + stories accessible through group memberships
+  - GET /api/stories/:id - Requires read permission (creators always have access)
+  - PUT /api/stories/:id - Requires write permission (creators always have access)
+  - DELETE /api/stories/:id - Requires write permission (creators always have access)
+  - POST /api/stories/:id/sessions - Requires read permission (creators always have access)
+- **Implementation:** 
+  - `storage.checkStoryAccess(userId, storyId, permission)` validates access with creator check priority
+  - `storage.getStoriesForUser(userId)` returns union of created stories and group-accessible stories
+  - Story creation automatically sets `createdBy` to authenticated user's ID
 - **UI Integration:** Story creation/editing pages include "권한 설정" tab for assigning group permissions
 
 **Session Access Control:**

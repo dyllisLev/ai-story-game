@@ -159,26 +159,35 @@ export class Storage implements IStorage {
       return this.getAllStories();
     }
 
+    // Get stories created by the user
+    const { data: createdStories, error: createdError } = await supabase
+      .from('stories')
+      .select('*')
+      .eq('created_by', userId);
+    
+    if (createdError) throw createdError;
+    const createdStoryIds = new Set((createdStories || []).map((s: any) => s.id));
+
     // Get user's groups
     const userGroups = await this.getUserGroups(userId);
     const userGroupIds = userGroups.map(g => g.id);
 
-    if (userGroupIds.length === 0) {
-      // User has no groups, return empty array
-      return [];
+    let groupStoryIds: number[] = [];
+    if (userGroupIds.length > 0) {
+      // Get stories that have at least one group the user belongs to
+      const { data, error } = await supabase
+        .from('story_groups')
+        .select('story_id')
+        .in('group_id', userGroupIds);
+
+      if (error) throw error;
+      groupStoryIds = (data || []).map((sg: any) => sg.story_id);
     }
 
-    // Get stories that have at least one group the user belongs to
-    const { data, error } = await supabase
-      .from('story_groups')
-      .select('story_id')
-      .in('group_id', userGroupIds);
+    // Combine created stories and group stories (remove duplicates)
+    const allStoryIds = [...new Set([...createdStoryIds, ...groupStoryIds])];
 
-    if (error) throw error;
-
-    const storyIds = [...new Set((data || []).map((sg: any) => sg.story_id))];
-
-    if (storyIds.length === 0) {
+    if (allStoryIds.length === 0) {
       return [];
     }
 
@@ -186,7 +195,7 @@ export class Storage implements IStorage {
     const { data: storiesData, error: storiesError } = await supabase
       .from('stories')
       .select('*')
-      .in('id', storyIds)
+      .in('id', allStoryIds)
       .order('created_at', { ascending: false });
 
     if (storiesError) throw storiesError;
