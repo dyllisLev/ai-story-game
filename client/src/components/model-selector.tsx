@@ -15,6 +15,13 @@ interface ModelSelectorProps {
   onModelChange?: (model: string) => void;
 }
 
+interface ModelWithProvider {
+  id: string;
+  name: string;
+  provider: Provider;
+  displayName: string;
+}
+
 const PROVIDERS: Provider[] = ["gemini", "chatgpt", "claude", "grok"];
 
 export function ModelSelector({ 
@@ -24,10 +31,8 @@ export function ModelSelector({
   onProviderChange,
   onModelChange
 }: ModelSelectorProps) {
-  const [provider, setProvider] = useState(sessionProvider || "auto");
-  const [model, setModel] = useState(sessionModel || "");
-  const [allModels, setAllModels] = useState<{id: string, name: string}[]>([]);
-  const [models, setModels] = useState<{id: string, name: string}[]>([]);
+  const [selectedValue, setSelectedValue] = useState("");
+  const [availableModels, setAvailableModels] = useState<ModelWithProvider[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
   // Fetch user's default models
@@ -40,97 +45,106 @@ export function ModelSelector({
     queryKey: ["/api/auth/selected-models"],
   });
 
+  // Set initial selected value from session
   useEffect(() => {
-    setProvider(sessionProvider || "auto");
-    setModel(sessionModel || "");
+    if (sessionProvider && sessionModel) {
+      setSelectedValue(`${sessionProvider}:${sessionModel}`);
+    }
   }, [sessionProvider, sessionModel]);
 
+  // Load all selected models when selectedModelsData is available
   useEffect(() => {
-    if (provider && provider !== "auto") {
-      loadModels(provider);
-    } else {
-      setAllModels([]);
-      setModels([]);
-      if (provider === "auto") {
-        setModel("");
-      }
+    if (selectedModelsData?.models) {
+      loadAllSelectedModels();
     }
-  }, [provider]);
-
-  // Filter models based on admin's selected models
-  useEffect(() => {
-    if (provider === "auto") {
-      setModels([]);
-      return;
-    }
-
-    if (allModels.length === 0) {
-      setModels([]);
-      return;
-    }
-
-    const selectedModelIds = selectedModelsData?.models?.[provider as Provider];
-    if (selectedModelIds && selectedModelIds.length > 0) {
-      // Show only models selected by admin
-      const filteredModels = allModels.filter((m) => selectedModelIds.includes(m.id));
-      setModels(filteredModels);
-    } else {
-      // If no models selected by admin, show all available models
-      setModels(allModels);
-    }
-  }, [allModels, selectedModelsData, provider]);
+  }, [selectedModelsData]);
 
   // Set default model when models load and no session model exists
   useEffect(() => {
-    if (!sessionModel && models.length > 0 && provider !== "auto" && defaultModelsData?.models) {
-      const defaultModel = defaultModelsData.models[provider as Provider];
-      if (defaultModel && models.some((m: any) => m.id === defaultModel)) {
-        setModel(defaultModel);
-        onModelChange?.(defaultModel);
-      } else if (!model) {
-        setModel(models[0].id);
-        onModelChange?.(models[0].id);
+    if (!sessionProvider && !sessionModel && availableModels.length > 0 && defaultModelsData?.models) {
+      // Try to find user's default model
+      for (const provider of PROVIDERS) {
+        const defaultModel = defaultModelsData.models[provider];
+        if (defaultModel) {
+          const found = availableModels.find(m => m.provider === provider && m.id === defaultModel);
+          if (found) {
+            const value = `${provider}:${defaultModel}`;
+            setSelectedValue(value);
+            onProviderChange?.(provider);
+            onModelChange?.(defaultModel);
+            return;
+          }
+        }
+      }
+      // If no default found, select first available model
+      if (availableModels.length > 0) {
+        const first = availableModels[0];
+        const value = `${first.provider}:${first.id}`;
+        setSelectedValue(value);
+        onProviderChange?.(first.provider);
+        onModelChange?.(first.id);
       }
     }
-  }, [models, defaultModelsData, provider, sessionModel]);
+  }, [availableModels, defaultModelsData, sessionProvider, sessionModel]);
 
-  const loadModels = async (providerName: string) => {
+  const loadAllSelectedModels = async () => {
+    if (!selectedModelsData?.models) return;
+
     setLoadingModels(true);
+    const allModels: ModelWithProvider[] = [];
+
     try {
-      const response = await fetch(`/api/ai/models/${providerName}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({}),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const fetchedModels = data.models || [];
-        setAllModels(fetchedModels);
-      } else {
-        const error = await response.json();
-        console.warn(`Failed to load models for ${providerName}:`, error.error);
-        setAllModels([]);
+      // Load models for each provider that has selected models
+      for (const provider of PROVIDERS) {
+        const selectedModelIds = selectedModelsData.models[provider];
+        if (!selectedModelIds || selectedModelIds.length === 0) {
+          continue;
+        }
+
+        try {
+          const response = await fetch(`/api/ai/models/${provider}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({}),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const providerModels = data.models || [];
+            
+            // Filter to only include selected models
+            const filtered = providerModels
+              .filter((m: any) => selectedModelIds.includes(m.id))
+              .map((m: any) => ({
+                id: m.id,
+                name: m.name,
+                provider,
+                displayName: `${PROVIDER_LABELS[provider]} - ${m.name}`
+              }));
+            
+            allModels.push(...filtered);
+          } else {
+            console.warn(`Failed to load models for ${provider}`);
+          }
+        } catch (error) {
+          console.error(`Failed to load models for ${provider}:`, error);
+        }
       }
+
+      setAvailableModels(allModels);
     } catch (error) {
       console.error("Failed to load models:", error);
-      setAllModels([]);
     } finally {
       setLoadingModels(false);
     }
   };
 
-  const handleProviderChange = (newProvider: string) => {
-    setProvider(newProvider);
-    setModel("");
-    onProviderChange?.(newProvider === "auto" ? "" : newProvider);
-    onModelChange?.("");
-  };
-
-  const handleModelChange = (newModel: string) => {
-    setModel(newModel);
-    onModelChange?.(newModel);
+  const handleModelChange = (value: string) => {
+    setSelectedValue(value);
+    const [provider, modelId] = value.split(":");
+    onProviderChange?.(provider);
+    onModelChange?.(modelId);
   };
 
   return (
@@ -138,57 +152,38 @@ export function ModelSelector({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
-          <Label className="text-sm font-semibold">AI 제공자</Label>
-        </div>
-        <RadioGroup value={provider} onValueChange={handleProviderChange}>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="auto" id="provider-auto" data-testid="radio-provider-auto" />
-            <Label htmlFor="provider-auto" className="font-normal cursor-pointer text-sm">
-              자동 선택
-            </Label>
-          </div>
-          {PROVIDERS.map((p) => (
-            <div key={p} className="flex items-center space-x-2">
-              <RadioGroupItem value={p} id={`provider-${p}`} data-testid={`radio-provider-${p}`} />
-              <Label htmlFor={`provider-${p}`} className="font-normal cursor-pointer text-sm">
-                {PROVIDER_LABELS[p]}
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
-      </div>
-      
-      {provider && provider !== "auto" && (
-        <div className="space-y-3 pl-1">
           <Label className="text-sm font-semibold">모델 선택</Label>
-          {loadingModels ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>모델 로딩 중...</span>
-            </div>
-          ) : models.length > 0 ? (
-            <RadioGroup value={model} onValueChange={handleModelChange}>
-              {models.map((m) => (
-                <div key={m.id} className="flex items-center space-x-2">
+        </div>
+        {loadingModels ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>모델 로딩 중...</span>
+          </div>
+        ) : availableModels.length > 0 ? (
+          <RadioGroup value={selectedValue} onValueChange={handleModelChange}>
+            {availableModels.map((m) => {
+              const value = `${m.provider}:${m.id}`;
+              return (
+                <div key={value} className="flex items-center space-x-2">
                   <RadioGroupItem 
-                    value={m.id} 
-                    id={`model-${provider}-${m.id}`}
-                    data-testid={`radio-model-${provider}-${m.id}`}
+                    value={value} 
+                    id={`model-${value}`}
+                    data-testid={`radio-model-${m.provider}-${m.id}`}
                   />
                   <Label 
-                    htmlFor={`model-${provider}-${m.id}`}
+                    htmlFor={`model-${value}`}
                     className="font-normal cursor-pointer text-sm"
                   >
-                    {m.name}
+                    {m.displayName}
                   </Label>
                 </div>
-              ))}
-            </RadioGroup>
-          ) : (
-            <p className="text-sm text-muted-foreground">사용 가능한 모델이 없습니다.</p>
-          )}
-        </div>
-      )}
+              );
+            })}
+          </RadioGroup>
+        ) : (
+          <p className="text-sm text-muted-foreground">사용 가능한 모델이 없습니다.</p>
+        )}
+      </div>
     </div>
   );
 }
