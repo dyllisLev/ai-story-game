@@ -180,7 +180,7 @@ export const updateApiKeysSchema = z.object({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
-export type SafeUser = Omit<User, "password">;
+export type SafeUser = Omit<User, "password"> & { isAdmin?: boolean };
 export type UserApiKeys = {
   apiKeyChatgpt: string | null;
   apiKeyGrok: string | null;

@@ -178,7 +178,8 @@ export async function registerRoutes(
       });
 
       req.session.userId = user.id;
-      res.status(201).json(excludePassword(user));
+      const isAdmin = await storage.isUserAdmin(user.id);
+      res.status(201).json({ ...excludePassword(user), isAdmin });
     } catch (error: any) {
       console.error("Register error:", error);
       res.status(500).json({ error: "회원가입에 실패했습니다" });
@@ -205,7 +206,8 @@ export async function registerRoutes(
       }
 
       req.session.userId = user.id;
-      res.json(excludePassword(user));
+      const isAdmin = await storage.isUserAdmin(user.id);
+      res.json({ ...excludePassword(user), isAdmin });
     } catch (error: any) {
       console.error("Login error:", error);
       res.status(500).json({ error: "로그인에 실패했습니다" });
@@ -234,7 +236,8 @@ export async function registerRoutes(
         return res.status(401).json({ error: "사용자를 찾을 수 없습니다" });
       }
 
-      res.json(excludePassword(user));
+      const isAdmin = await storage.isUserAdmin(req.session.userId);
+      res.json({ ...excludePassword(user), isAdmin });
     } catch (error) {
       res.status(500).json({ error: "사용자 정보를 가져오는데 실패했습니다" });
     }
@@ -267,7 +270,8 @@ export async function registerRoutes(
         return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
       }
 
-      res.json(excludePassword(user));
+      const isAdmin = await storage.isUserAdmin(userId);
+      res.json({ ...excludePassword(user), isAdmin });
     } catch (error) {
       res.status(500).json({ error: "프로필 업데이트에 실패했습니다" });
     }

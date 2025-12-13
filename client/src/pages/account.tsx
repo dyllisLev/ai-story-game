@@ -640,16 +640,14 @@ export default function AccountPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {user?.role === 'user' && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
-                        <Users className="h-4 w-4 text-primary" />
-                        <div>
-                          <p className="font-medium text-sm">사용자</p>
-                          <p className="text-xs text-muted-foreground">일반 사용자 그룹</p>
-                        </div>
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <Users className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">사용자</p>
+                        <p className="text-xs text-muted-foreground">일반 사용자 그룹</p>
                       </div>
-                    )}
-                    {user?.role === 'admin' && (
+                    </div>
+                    {user?.isAdmin && (
                       <>
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                           <Key className="h-4 w-4 text-destructive" />
