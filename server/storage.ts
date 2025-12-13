@@ -611,6 +611,65 @@ export class Storage implements IStorage {
     return dbUserToUser(data);
   }
 
+  async getGlobalSelectedModels(): Promise<SelectedModels> {
+    const defaultModels: SelectedModels = {
+      gemini: [],
+      chatgpt: [],
+      claude: [],
+      grok: []
+    };
+    
+    // First try to get from global setting
+    const setting = await this.getSetting('globalSelectedModels');
+    if (setting?.value) {
+      try {
+        const parsed = JSON.parse(setting.value);
+        // Check if any provider has models
+        if (parsed.gemini?.length > 0 || parsed.chatgpt?.length > 0 || 
+            parsed.claude?.length > 0 || parsed.grok?.length > 0) {
+          return parsed;
+        }
+      } catch {
+        // Continue to fallback
+      }
+    }
+    
+    // Fallback: Try to get from admin user's selected_models (legacy data)
+    const { data: adminGroups } = await supabase
+      .from('groups')
+      .select('id')
+      .eq('type', 'admin');
+    
+    if (adminGroups && adminGroups.length > 0) {
+      const adminGroupIds = adminGroups.map(g => g.id);
+      const { data: adminUserGroups } = await supabase
+        .from('user_groups')
+        .select('user_id')
+        .in('group_id', adminGroupIds);
+      
+      if (adminUserGroups && adminUserGroups.length > 0) {
+        const adminUserId = adminUserGroups[0].user_id;
+        const adminModels = await this.getUserSelectedModels(adminUserId);
+        
+        if (adminModels && (adminModels.gemini?.length > 0 || adminModels.chatgpt?.length > 0 || 
+            adminModels.claude?.length > 0 || adminModels.grok?.length > 0)) {
+          // Auto-migrate to global setting
+          await this.updateGlobalSelectedModels(adminModels);
+          return adminModels;
+        }
+      }
+    }
+    
+    return defaultModels;
+  }
+
+  async updateGlobalSelectedModels(models: SelectedModels): Promise<void> {
+    await this.setSetting({
+      key: 'globalSelectedModels',
+      value: JSON.stringify(models)
+    });
+  }
+
   async getUserDefaultModel(userId: number): Promise<DefaultModel | null> {
     const user = await this.getUserById(userId);
     if (!user) return null;

@@ -339,19 +339,26 @@ export async function registerRoutes(
     }
   });
 
-  // Selected Models API
+  // Selected Models API - Returns global models for all users
   app.get("/api/auth/selected-models", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const models = await storage.getUserSelectedModels(userId);
+      // Always return global selected models (set by admin)
+      const models = await storage.getGlobalSelectedModels();
       res.json({ models });
     } catch (error) {
       res.status(500).json({ error: "선택된 모델을 가져오는데 실패했습니다" });
     }
   });
 
+  // Only admin can update global selected models
   app.put("/api/auth/selected-models", isAuthenticated, async (req, res) => {
     try {
+      // Check if user is admin
+      const isAdminUser = await storage.isUserAdmin(req.session.userId!);
+      if (!isAdminUser) {
+        return res.status(403).json({ error: "관리자만 모델을 설정할 수 있습니다" });
+      }
+
       console.log("[DEBUG] 받은 요청 body:", JSON.stringify(req.body, null, 2));
       
       const parsed = updateSelectedModelsSchema.safeParse(req.body);
@@ -362,10 +369,10 @@ export async function registerRoutes(
 
       console.log("[DEBUG] 파싱된 모델:", JSON.stringify(parsed.data.models, null, 2));
 
-      const userId = req.session.userId!;
-      await storage.updateUserSelectedModels(userId, parsed.data.models);
+      // Save to global settings (not per-user)
+      await storage.updateGlobalSelectedModels(parsed.data.models);
       
-      const models = await storage.getUserSelectedModels(userId);
+      const models = await storage.getGlobalSelectedModels();
       console.log("[DEBUG] 저장 후 조회한 모델:", JSON.stringify(models, null, 2));
       
       res.json({ models });
