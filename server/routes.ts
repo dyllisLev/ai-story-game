@@ -787,7 +787,16 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const stories = await storage.getStoriesForUser(userId);
-      res.json(stories);
+      
+      // Add permission info for each story
+      const storiesWithPermissions = await Promise.all(
+        stories.map(async (story) => {
+          const canWrite = await storage.checkStoryAccess(userId, story.id, 'write');
+          return { ...story, canWrite };
+        })
+      );
+      
+      res.json(storiesWithPermissions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch stories" });
     }

@@ -15,6 +15,7 @@ interface Story {
   author: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  canWrite?: boolean;
 }
 
 export default function Home() {
@@ -189,33 +190,35 @@ export default function Home() {
                     <div className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
                       {story.genre || "일반"}
                     </div>
-                    <div className="flex gap-2">
-                      <Link href={`/edit/${story.id}`}>
-                        <Button variant="outline" size="sm" className="h-9 w-9 p-0 text-muted-foreground hover:text-primary hover:border-primary" title="수정" data-testid={`button-edit-${story.id}`}>
-                          <Edit className="w-5 h-5" />
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500 hover:border-red-500" 
-                        title="삭제"
-                        data-testid={`button-delete-${story.id}`}
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          if (confirm("정말로 이 스토리를 삭제하시겠습니까?")) {
-                            try {
-                              await fetch(`/api/stories/${story.id}`, { method: "DELETE" });
-                              loadStories();
-                            } catch (error) {
-                              console.error("Failed to delete story:", error);
+                    {story.canWrite && (
+                      <div className="flex gap-2">
+                        <Link href={`/edit/${story.id}`}>
+                          <Button variant="outline" size="sm" className="h-9 w-9 p-0 text-muted-foreground hover:text-primary hover:border-primary" title="수정" data-testid={`button-edit-${story.id}`}>
+                            <Edit className="w-5 h-5" />
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500 hover:border-red-500" 
+                          title="삭제"
+                          data-testid={`button-delete-${story.id}`}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (confirm("정말로 이 스토리를 삭제하시겠습니까?")) {
+                              try {
+                                await fetch(`/api/stories/${story.id}`, { method: "DELETE" });
+                                loadStories();
+                              } catch (error) {
+                                console.error("Failed to delete story:", error);
+                              }
                             }
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </Button>
-                    </div>
+                          }}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">{story.title}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{story.description}</p>
