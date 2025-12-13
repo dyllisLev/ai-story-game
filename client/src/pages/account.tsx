@@ -11,9 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, User, Lock, Trash2, Key, Users, Plus, Pencil, X, Check } from "lucide-react";
+import { ArrowLeft, Loader2, User, Lock, Trash2, Key, Users, Plus, Pencil, X, Check, Cpu } from "lucide-react";
+import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
+import { type DefaultModels } from "@shared/schema";
 
 const profileSchema = z.object({
   displayName: z.string().optional(),
@@ -159,7 +162,64 @@ export default function AccountPage() {
 
   const handleCancelEdit = () => {
     setEditingProfileId(null);
-    setIsAddingProfile(false);
+  };
+
+  // Model Selection
+  const [defaultModels, setDefaultModels] = useState<DefaultModels>({
+    gemini: "gemini-2.0-flash",
+    chatgpt: "gpt-4o",
+    claude: "claude-3-5-sonnet-20241022",
+    grok: "grok-beta"
+  });
+
+  const { data: selectedModelsData, isLoading: selectedModelsLoading } = useQuery<{ models: SelectedModels }>({
+    queryKey: ["/api/auth/selected-models"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: defaultModelsData, isLoading: defaultModelsLoading } = useQuery<{ models: DefaultModels }>({
+    queryKey: ["/api/auth/default-models"],
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (defaultModelsData?.models) {
+      setDefaultModels(defaultModelsData.models);
+    }
+  }, [defaultModelsData]);
+
+  const updateDefaultModelsMutation = useMutation({
+    mutationFn: async (models: DefaultModels) => {
+      const res = await fetch("/api/auth/default-models", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ models }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update default models");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/default-models"] });
+      toast({
+        title: "기본 모델 저장 완료",
+        description: "기본 모델이 저장되었습니다.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "기본 모델 저장 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveDefaultModels = () => {
+    updateDefaultModelsMutation.mutate(defaultModels);
   };
 
   const profileForm = useForm<ProfileFormData>({
@@ -298,10 +358,11 @@ export default function AccountPage() {
         </Card>
 
         <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile" data-testid="tab-profile">프로필</TabsTrigger>
             <TabsTrigger value="groups" data-testid="tab-groups">그룹</TabsTrigger>
             <TabsTrigger value="conversations" data-testid="tab-conversations">대화 프로필</TabsTrigger>
+            <TabsTrigger value="models" data-testid="tab-models">모델 선택</TabsTrigger>
             <TabsTrigger value="security" data-testid="tab-security">보안</TabsTrigger>
           </TabsList>
 
@@ -569,6 +630,82 @@ export default function AccountPage() {
                 )}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="models">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cpu className="h-5 w-5" />
+                  기본 모델 선택
+                </CardTitle>
+                <CardDescription>
+                  각 AI 제공업체의 기본 모델을 선택하세요
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {selectedModelsLoading || defaultModelsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => {
+                      const label = PROVIDER_LABELS[provider];
+                      const availableModels = selectedModelsData?.models?.[provider] || [];
+                      const models = availableModels.length > 0 ? availableModels : MODEL_CATALOG[provider].map(m => m.id);
+                      
+                      return (
+                        <div key={provider} className="space-y-3">
+                          <Label className="text-base font-semibold">{label}</Label>
+                          {models.length > 0 ? (
+                            <RadioGroup
+                              value={defaultModels[provider]}
+                              onValueChange={(value) => setDefaultModels(prev => ({ ...prev, [provider]: value }))}
+                              className="space-y-2"
+                            >
+                              {models.map((modelId) => (
+                                <div key={modelId} className="flex items-center space-x-2">
+                                  <RadioGroupItem 
+                                    value={modelId} 
+                                    id={`model-${provider}-${modelId}`}
+                                    data-testid={`radio-${provider}-${modelId}`}
+                                  />
+                                  <Label 
+                                    htmlFor={`model-${provider}-${modelId}`}
+                                    className="font-normal cursor-pointer"
+                                  >
+                                    {modelId}
+                                  </Label>
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              관리자가 설정한 사용 가능한 모델이 없습니다.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                    
+                    <div className="pt-4">
+                      <Button 
+                        onClick={handleSaveDefaultModels}
+                        disabled={updateDefaultModelsMutation.isPending}
+                        className="w-full"
+                        data-testid="button-save-default-models"
+                      >
+                        {updateDefaultModelsMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : null}
+                        저장
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="security">

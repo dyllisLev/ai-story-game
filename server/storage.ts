@@ -15,7 +15,7 @@ import {
   type InsertGroup, type Group,
   type InsertUserGroup, type UserGroup,
   type InsertStoryGroup, type StoryGroup,
-  type SelectedModels
+  type SelectedModels, type DefaultModels
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -58,6 +58,8 @@ export interface IStorage {
   getUserConversationProfiles(userId: number): Promise<ConversationProfile[]>;
   getUserSelectedModels(userId: number): Promise<SelectedModels | null>;
   updateUserSelectedModels(userId: number, models: SelectedModels): Promise<User>;
+  getUserDefaultModels(userId: number): Promise<DefaultModels | null>;
+  updateUserDefaultModels(userId: number, models: DefaultModels): Promise<User>;
   validatePassword(inputPassword: string, storedHash: string): boolean;
   hashPassword(password: string): string;
   deleteUser(userId: number): Promise<boolean>;
@@ -596,6 +598,38 @@ export class Storage implements IStorage {
       .from('users')
       .update({ 
         selected_models: JSON.stringify(models),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return dbUserToUser(data);
+  }
+
+  async getUserDefaultModels(userId: number): Promise<DefaultModels | null> {
+    const user = await this.getUserById(userId);
+    if (!user) return null;
+    
+    const defaultModels: DefaultModels = {
+      gemini: user.aiModelGemini || "gemini-2.0-flash",
+      chatgpt: user.aiModelChatgpt || "gpt-4o",
+      claude: user.aiModelClaude || "claude-3-5-sonnet-20241022",
+      grok: user.aiModelGrok || "grok-beta"
+    };
+    
+    return defaultModels;
+  }
+
+  async updateUserDefaultModels(userId: number, models: DefaultModels): Promise<User> {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        ai_model_gemini: models.gemini,
+        ai_model_chatgpt: models.chatgpt,
+        ai_model_claude: models.claude,
+        ai_model_grok: models.grok,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)

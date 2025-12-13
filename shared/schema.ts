@@ -228,6 +228,24 @@ export const updateSelectedModelsSchema = z.object({
   models: selectedModelsSchema,
 });
 
+export interface DefaultModels {
+  gemini: string;
+  chatgpt: string;
+  claude: string;
+  grok: string;
+}
+
+export const defaultModelsSchema = z.object({
+  gemini: z.string(),
+  chatgpt: z.string(),
+  claude: z.string(),
+  grok: z.string(),
+});
+
+export const updateDefaultModelsSchema = z.object({
+  models: defaultModelsSchema,
+});
+
 export const insertGroupSchema = createInsertSchema(groups).omit({
   id: true,
   createdAt: true,
