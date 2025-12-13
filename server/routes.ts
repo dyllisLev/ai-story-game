@@ -509,16 +509,33 @@ export async function registerRoutes(
             name: m.id.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
           }));
       } else if (provider === "claude") {
-        models = [
-          { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
-          { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
-          { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
-          { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
-          { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
-          { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
-          { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
-          { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
-        ];
+        const response = await fetch("https://api.anthropic.com/v1/models", {
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "models-2024-10-30"
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          models = (data.data || [])
+            .map((m: any) => ({
+              id: m.id,
+              name: m.display_name || m.id
+            }));
+        } else {
+          models = [
+            { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
+            { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
+            { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
+            { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
+            { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+            { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+            { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
+            { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
+          ];
+        }
       } else if (provider === "grok") {
         const response = await fetch("https://api.x.ai/v1/models", {
           headers: {
