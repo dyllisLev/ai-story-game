@@ -390,15 +390,18 @@ export async function registerRoutes(
     try {
       const parsed = updateDefaultModelSchema.safeParse(req.body);
       if (!parsed.success) {
+        console.error("[DEBUG] 기본 모델 검증 실패:", parsed.error.errors);
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
 
       const userId = req.session.userId!;
+      console.log("[DEBUG] 기본 모델 업데이트 시도:", userId, parsed.data.model);
       await storage.updateUserDefaultModel(userId, parsed.data.model);
       
       const model = await storage.getUserDefaultModel(userId);
       res.json({ model });
     } catch (error) {
+      console.error("[DEBUG] 기본 모델 업데이트 오류:", error);
       res.status(500).json({ error: "기본 모델 업데이트에 실패했습니다" });
     }
   });
