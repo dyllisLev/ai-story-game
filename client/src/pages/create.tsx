@@ -593,8 +593,8 @@ export default function CreateStory() {
                                 className="text-sm p-1.5 rounded border bg-background"
                                 data-testid={`select-permission-${group.id}`}
                               >
-                                <option value="read">읽기 전용</option>
-                                <option value="write">읽기/쓰기</option>
+                                <option value="read">플레이 전용</option>
+                                <option value="write">플레이 + 수정</option>
                               </select>
                             )}
                           </div>
