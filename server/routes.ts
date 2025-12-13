@@ -173,7 +173,7 @@ export async function registerRoutes(
       const user = await storage.createUser({
         username,
         email: email || null,
-        password,
+        password: storage.hashPassword(password),
         displayName: displayName || username,
       });
 
@@ -200,7 +200,15 @@ export async function registerRoutes(
         return res.status(401).json({ error: "사용자명 또는 비밀번호가 올바르지 않습니다" });
       }
 
-      const isValid = storage.validatePassword(password, user.password);
+      let isValid = storage.validatePassword(password, user.password);
+      
+      // Migration: Check if password is stored as plaintext
+      if (!isValid && user.password === password) {
+        // Password is plaintext, hash it and update
+        await storage.updateUser(user.id, { password: storage.hashPassword(password) });
+        isValid = true;
+      }
+      
       if (!isValid) {
         return res.status(401).json({ error: "사용자명 또는 비밀번호가 올바르지 않습니다" });
       }
@@ -297,7 +305,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "현재 비밀번호가 올바르지 않습니다" });
       }
 
-      await storage.updateUser(userId, { password: newPassword });
+      await storage.updateUser(userId, { password: storage.hashPassword(newPassword) });
       res.json({ message: "비밀번호가 변경되었습니다" });
     } catch (error) {
       res.status(500).json({ error: "비밀번호 변경에 실패했습니다" });
