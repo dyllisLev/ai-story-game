@@ -738,6 +738,12 @@ export class Storage implements IStorage {
   }
 
   async checkStoryAccess(userId: number, storyId: number, requiredPermission: 'read' | 'write' = 'read'): Promise<boolean> {
+    // Check if user is the story creator
+    const story = await this.getStory(storyId);
+    if (story?.createdBy === userId) {
+      return true; // Creator always has full access
+    }
+
     // Check if user is admin
     const isAdmin = await this.isUserAdmin(userId);
     if (isAdmin) return true;

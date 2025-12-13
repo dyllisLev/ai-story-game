@@ -825,14 +825,16 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/stories", async (req, res) => {
+  app.post("/api/stories", isAuthenticated, async (req, res) => {
     try {
       const parsed = insertStorySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid story data", details: parsed.error });
       }
 
-      const story = await storage.createStory(parsed.data);
+      const userId = req.session.userId!;
+      const storyData = { ...parsed.data, createdBy: userId };
+      const story = await storage.createStory(storyData);
       res.status(201).json(story);
     } catch (error) {
       res.status(500).json({ error: "Failed to create story" });

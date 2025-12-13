@@ -53,6 +53,7 @@ export const stories = pgTable("stories", {
   image: text("image"),
   genre: text("genre"),
   author: text("author"),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
   storySettings: text("story_settings"),
   prologue: text("prologue"),
   promptTemplate: text("prompt_template"),
