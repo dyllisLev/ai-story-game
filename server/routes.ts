@@ -439,13 +439,17 @@ export async function registerRoutes(
         if (useAdminKey) {
           const globalSetting = await storage.getSetting(`apiKey_${provider}`);
           apiKey = globalSetting?.value || null;
+          // 글로벌 키가 없으면 사용자 키로 폴백
+          if (!apiKey) {
+            apiKey = await getUserApiKeyForProvider(userId, provider);
+          }
         } else {
           apiKey = await getUserApiKeyForProvider(userId, provider);
         }
       }
       
       if (!apiKey) {
-        return res.status(400).json({ error: useAdminKey ? "관리자 API 키가 설정되지 않았습니다" : "API 키를 먼저 입력해주세요" });
+        return res.status(400).json({ error: "API 키가 설정되지 않았습니다" });
       }
 
       let models: { id: string; name: string }[] = [];
