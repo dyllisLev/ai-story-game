@@ -11,10 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, User, Lock, Trash2, Key, Eye, EyeOff, Check, RefreshCw, Users, Plus, Pencil, X } from "lucide-react";
+import { ArrowLeft, Loader2, User, Lock, Trash2, Key, Users, Plus, Pencil, X, Check } from "lucide-react";
 
 const profileSchema = z.object({
   displayName: z.string().optional(),
@@ -33,33 +32,10 @@ const passwordSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
-interface AIModel {
-  id: string;
-  name: string;
-}
-
-interface UserApiKeys {
-  apiKeyChatgpt: string | null;
-  apiKeyGrok: string | null;
-  apiKeyClaude: string | null;
-  apiKeyGemini: string | null;
-  aiModelChatgpt: string | null;
-  aiModelGrok: string | null;
-  aiModelClaude: string | null;
-  aiModelGemini: string | null;
-}
-
 interface ConversationProfile {
   id: string;
   name: string;
   content: string;
-}
-
-interface SelectedModels {
-  gemini: string[];
-  chatgpt: string[];
-  claude: string[];
-  grok: string[];
 }
 
 export default function AccountPage() {
@@ -68,52 +44,11 @@ export default function AccountPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
-  const [verifyingProvider, setVerifyingProvider] = useState<string | null>(null);
 
   const updateProfileMutation = useUpdateProfile();
   const changePasswordMutation = useChangePassword();
   const deleteAccountMutation = useDeleteAccount();
   const logoutMutation = useLogout();
-
-  const { data: apiKeys, isLoading: apiKeysLoading } = useQuery<UserApiKeys>({
-    queryKey: ["/api/auth/api-keys"],
-    enabled: isAuthenticated,
-  });
-
-  const updateApiKeysMutation = useMutation({
-    mutationFn: async (data: Partial<UserApiKeys>) => {
-      const res = await fetch("/api/auth/api-keys", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to update API keys");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/api-keys"] });
-      toast({
-        title: "API 키 저장 완료",
-        description: "API 키가 저장되었습니다.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "API 키 저장 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const [localApiKeys, setLocalApiKeys] = useState<Partial<UserApiKeys>>({});
-  const [providerModels, setProviderModels] = useState<Record<string, AIModel[]>>({});
-  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
 
   // Conversation Profiles
   const [conversationProfiles, setConversationProfiles] = useState<ConversationProfile[]>([]);
@@ -124,11 +59,6 @@ export default function AccountPage() {
 
   const { data: profilesData, isLoading: profilesLoading } = useQuery<{ profiles: ConversationProfile[] }>({
     queryKey: ["/api/auth/conversation-profiles"],
-    enabled: isAuthenticated,
-  });
-
-  const { data: selectedModelsData } = useQuery<{ models: SelectedModels }>({
-    queryKey: ["/api/auth/selected-models"],
     enabled: isAuthenticated,
   });
 
@@ -231,83 +161,6 @@ export default function AccountPage() {
     setEditingProfileId(null);
     setIsAddingProfile(false);
   };
-
-  const fetchModels = async (provider: string, apiKey?: string, showToast = true, savedModel?: string) => {
-    setLoadingModels(prev => ({ ...prev, [provider]: true }));
-    try {
-      const res = await fetch(`/api/ai/models/${provider}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ apiKey }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProviderModels(prev => ({ ...prev, [provider]: data.models }));
-        
-        const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-        const currentModel = savedModel || localApiKeys[modelField];
-        const fetchedIds = data.models.map((m: AIModel) => m.id);
-        
-        if (!currentModel || !fetchedIds.includes(currentModel)) {
-          setLocalApiKeys(prev => ({
-            ...prev,
-            [modelField]: data.models[0]?.id || ""
-          }));
-        }
-        
-        if (showToast) {
-          toast({
-            title: "모델 목록 조회 완료",
-            description: `${data.models.length}개의 모델을 불러왔습니다.`,
-          });
-        }
-      } else {
-        const error = await res.json();
-        if (showToast) {
-          toast({
-            title: "모델 목록 조회 실패",
-            description: error.error,
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (error: any) {
-      if (showToast) {
-        toast({
-          title: "모델 목록 조회 실패",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setLoadingModels(prev => ({ ...prev, [provider]: false }));
-    }
-  };
-
-  useEffect(() => {
-    if (apiKeys) {
-      setLocalApiKeys({
-        apiKeyChatgpt: apiKeys.apiKeyChatgpt || "",
-        apiKeyGrok: apiKeys.apiKeyGrok || "",
-        apiKeyClaude: apiKeys.apiKeyClaude || "",
-        apiKeyGemini: apiKeys.apiKeyGemini || "",
-        aiModelChatgpt: apiKeys.aiModelChatgpt || "gpt-4o",
-        aiModelGrok: apiKeys.aiModelGrok || "grok-beta",
-        aiModelClaude: apiKeys.aiModelClaude || "claude-3-5-sonnet-20241022",
-        aiModelGemini: apiKeys.aiModelGemini || "gemini-2.0-flash",
-      });
-      
-      const providers = ["gemini", "chatgpt", "claude", "grok"];
-      providers.forEach((provider) => {
-        const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-        const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-        if (apiKeys[keyField]) {
-          fetchModels(provider, undefined, false, apiKeys[modelField] as string);
-        }
-      });
-    }
-  }, [apiKeys]);
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -415,146 +268,6 @@ export default function AccountPage() {
     }
   };
 
-  const handleSaveApiKey = (provider: string) => {
-    const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-    const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-    
-    updateApiKeysMutation.mutate({
-      [keyField]: localApiKeys[keyField] || "",
-      [modelField]: localApiKeys[modelField] || "",
-    });
-  };
-
-  const handleVerifyAndLoadModels = async (provider: string) => {
-    const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof UserApiKeys;
-    const apiKey = (localApiKeys[keyField] as string) || undefined;
-    
-    await fetchModels(provider, apiKey);
-  };
-
-  const toggleShowApiKey = (provider: string) => {
-    setShowApiKeys(prev => ({ ...prev, [provider]: !prev[provider] }));
-  };
-
-  const getFilteredModels = (provider: string, models: AIModel[]) => {
-    const selectedList = selectedModelsData?.models?.[provider as keyof SelectedModels] || [];
-    if (selectedList.length === 0) return models;
-    const filtered = models.filter(m => selectedList.includes(m.id));
-    return filtered.length > 0 ? filtered : models;
-  };
-
-  const renderApiKeySection = (
-    provider: string, 
-    label: string, 
-    models: AIModel[],
-    keyField: keyof UserApiKeys,
-    modelField: keyof UserApiKeys
-  ) => {
-    const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-    const filteredModels = getFilteredModels(provider, models);
-    
-    return (
-      <Card key={provider} className="mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            {label}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor={`apiKey-${provider}`}>API 키</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Input
-                  id={`apiKey-${provider}`}
-                  data-testid={`input-apikey-${provider}`}
-                  type={showApiKeys[provider] ? "text" : "password"}
-                  placeholder={`${label} API 키 입력`}
-                  value={(localApiKeys[keyField] as string) || ""}
-                  onChange={(e) => setLocalApiKeys(prev => ({ ...prev, [keyField]: e.target.value }))}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => toggleShowApiKey(provider)}
-                  data-testid={`button-toggle-apikey-${provider}`}
-                >
-                  {showApiKeys[provider] ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor={`model-${provider}`}>기본 모델</Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleVerifyAndLoadModels(provider)}
-                disabled={loadingModels[provider]}
-                data-testid={`button-load-models-${provider}`}
-                className="h-6 text-xs"
-              >
-                {loadingModels[provider] ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : (
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                )}
-                모델 조회
-              </Button>
-            </div>
-            {models.length > 0 ? (
-              <Select
-                value={(localApiKeys[modelField] as string) || models[0]?.id}
-                onValueChange={(value) => setLocalApiKeys(prev => ({ ...prev, [modelField]: value }))}
-              >
-                <SelectTrigger id={`model-${provider}`} data-testid={`select-model-${provider}`}>
-                  <SelectValue placeholder="모델 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                API 키를 저장한 후 "모델 조회" 버튼을 클릭하여 사용 가능한 모델 목록을 불러오세요.
-              </p>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => handleSaveApiKey(provider)}
-              disabled={updateApiKeysMutation.isPending}
-              data-testid={`button-save-apikey-${provider}`}
-            >
-              {updateApiKeysMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Check className="h-4 w-4 mr-2" />
-              )}
-              저장
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
@@ -585,11 +298,10 @@ export default function AccountPage() {
         </Card>
 
         <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile" data-testid="tab-profile">프로필</TabsTrigger>
             <TabsTrigger value="groups" data-testid="tab-groups">그룹</TabsTrigger>
             <TabsTrigger value="conversations" data-testid="tab-conversations">대화 프로필</TabsTrigger>
-            <TabsTrigger value="apikeys" data-testid="tab-apikeys">API 키</TabsTrigger>
             <TabsTrigger value="security" data-testid="tab-security">보안</TabsTrigger>
           </TabsList>
 
@@ -855,29 +567,6 @@ export default function AccountPage() {
                     새 프로필 추가
                   </Button>
                 )}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="apikeys">
-            {apiKeysLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <Card className="bg-muted/50 border-dashed">
-                  <CardContent className="pt-4">
-                    <p className="text-sm text-muted-foreground">
-                      AI 스토리 생성에 사용할 API 키를 설정하세요. 각 제공자의 API 키는 해당 서비스의 웹사이트에서 발급받을 수 있습니다.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {renderApiKeySection("gemini", "Google Gemini", providerModels["gemini"] || [], "apiKeyGemini", "aiModelGemini")}
-                {renderApiKeySection("chatgpt", "OpenAI ChatGPT", providerModels["chatgpt"] || [], "apiKeyChatgpt", "aiModelChatgpt")}
-                {renderApiKeySection("claude", "Anthropic Claude", providerModels["claude"] || [], "apiKeyClaude", "aiModelClaude")}
-                {renderApiKeySection("grok", "xAI Grok", providerModels["grok"] || [], "apiKeyGrok", "aiModelGrok")}
               </div>
             )}
           </TabsContent>

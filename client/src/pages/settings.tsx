@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
 
@@ -45,6 +48,33 @@ export default function Settings() {
   });
   const [savingModels, setSavingModels] = useState(false);
 
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({
+    gemini: "",
+    chatgpt: "",
+    claude: "",
+    grok: ""
+  });
+  const [aiModels, setAiModels] = useState<Record<string, string>>({
+    gemini: "gemini-2.0-flash",
+    chatgpt: "gpt-4o",
+    claude: "claude-3-5-sonnet-20241022",
+    grok: "grok-beta"
+  });
+  const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
+  const [providerModels, setProviderModels] = useState<Record<string, ModelInfo[]>>({
+    gemini: [],
+    chatgpt: [],
+    claude: [],
+    grok: []
+  });
+  const [loadingModelsProvider, setLoadingModelsProvider] = useState<Record<string, boolean>>({
+    gemini: false,
+    chatgpt: false,
+    claude: false,
+    grok: false
+  });
+  const [savingApiKeys, setSavingApiKeys] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate("/auth");
@@ -54,6 +84,7 @@ export default function Settings() {
   useEffect(() => {
     loadSettings();
     loadSelectedModels();
+    loadApiKeys();
   }, []);
 
   // 모델 탭 진입 시 자동으로 모든 제공업체 모델 조회
@@ -86,6 +117,45 @@ export default function Settings() {
       console.error("Failed to load settings:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadApiKeys = async () => {
+    try {
+      const response = await fetch("/api/settings");
+      const settings = await response.json();
+      
+      const defaultModels: Record<string, string> = {
+        gemini: "gemini-2.0-flash",
+        chatgpt: "gpt-4o",
+        claude: "claude-3-5-sonnet-20241022",
+        grok: "grok-beta"
+      };
+      
+      const newApiKeys: Record<string, string> = {
+        gemini: "",
+        chatgpt: "",
+        claude: "",
+        grok: ""
+      };
+      const newAiModels: Record<string, string> = { ...defaultModels };
+      
+      for (const setting of settings) {
+        if (setting.key.startsWith("apiKey_")) {
+          const provider = setting.key.replace("apiKey_", "");
+          newApiKeys[provider] = setting.value || "";
+        } else if (setting.key.startsWith("aiModel_")) {
+          const provider = setting.key.replace("aiModel_", "");
+          if (setting.value) {
+            newAiModels[provider] = setting.value;
+          }
+        }
+      }
+      
+      setApiKeys(newApiKeys);
+      setAiModels(newAiModels);
+    } catch (error) {
+      console.error("Failed to load API keys:", error);
     }
   };
 
@@ -133,7 +203,7 @@ export default function Settings() {
       const response = await fetch(`/api/ai/models/${provider}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ useAdminKey: true })
+        body: JSON.stringify({})
       });
       if (response.ok) {
         const data = await response.json();
@@ -193,6 +263,63 @@ export default function Settings() {
     }
   };
 
+  const handleSaveApiKey = async (provider: string) => {
+    setSavingApiKeys(true);
+    try {
+      const settingsData = [
+        { key: `apiKey_${provider}`, value: apiKeys[provider] || "" },
+        { key: `aiModel_${provider}`, value: aiModels[provider] || "" },
+      ];
+
+      await fetch("/api/settings/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: settingsData }),
+      });
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      console.error("Failed to save API key:", error);
+      alert("API 키 저장에 실패했습니다.");
+    } finally {
+      setSavingApiKeys(false);
+    }
+  };
+
+  const handleVerifyAndLoadModels = async (provider: string) => {
+    setLoadingModelsProvider(prev => ({ ...prev, [provider]: true }));
+    try {
+      const response = await fetch(`/api/ai/models/${provider}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: apiKeys[provider] })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setProviderModels(prev => ({ ...prev, [provider]: data.models || [] }));
+        
+        if (data.models.length > 0 && !aiModels[provider]) {
+          setAiModels(prev => ({ ...prev, [provider]: data.models[0].id }));
+        }
+        
+        alert(`${data.models.length}개의 모델을 불러왔습니다.`);
+      } else {
+        const error = await response.json();
+        alert(`모델 목록 조회 실패: ${error.error}`);
+      }
+    } catch (error: any) {
+      alert(`모델 목록 조회 실패: ${error.message}`);
+    } finally {
+      setLoadingModelsProvider(prev => ({ ...prev, [provider]: false }));
+    }
+  };
+
+  const toggleShowApiKey = (provider: string) => {
+    setShowApiKeys(prev => ({ ...prev, [provider]: !prev[provider] }));
+  };
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -233,19 +360,9 @@ export default function Settings() {
       </header>
 
       <main className="container mx-auto px-6 py-6 max-w-3xl flex-1">
-        <div className="mb-6">
-          <Card className="bg-muted/30 border-muted">
-            <CardContent className="p-4 flex items-start gap-3">
-              <Info className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-              <p className="text-sm text-muted-foreground">
-                AI API 키 설정은 <Link href="/account"><span className="text-primary hover:underline font-medium cursor-pointer">계정 관리</span></Link> 페이지에서 할 수 있습니다.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="chat" className="gap-2" data-testid="tab-chat">
               <MessageSquare className="w-4 h-4" />
               <span className="hidden sm:inline">채팅 프롬프트</span>
@@ -260,6 +377,11 @@ export default function Settings() {
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">프롤로그 생성</span>
               <span className="sm:hidden">프롤로그</span>
+            </TabsTrigger>
+            <TabsTrigger value="apikeys" className="gap-2" data-testid="tab-apikeys">
+              <Key className="w-4 h-4" />
+              <span className="hidden sm:inline">API 키</span>
+              <span className="sm:hidden">API 키</span>
             </TabsTrigger>
             <TabsTrigger value="models" className="gap-2" data-testid="tab-models">
               <Cpu className="w-4 h-4" />
@@ -424,6 +546,123 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="apikeys" className="space-y-4 animate-in fade-in-50 duration-300">
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">AI API 키 관리</h2>
+                  <p className="text-sm text-muted-foreground">
+                    각 AI 제공업체의 API 키와 기본 모델을 설정하세요.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => {
+              const label = PROVIDER_LABELS[provider];
+              const models = providerModels[provider].length > 0 ? providerModels[provider] : MODEL_CATALOG[provider];
+              
+              return (
+                <Card key={provider}>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Key className="h-5 w-5 text-primary" />
+                      <h3 className="text-base font-semibold">{label}</h3>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`apikey-${provider}`}>API 키</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id={`apikey-${provider}`}
+                            data-testid={`input-apikey-${provider}`}
+                            type={showApiKeys[provider] ? "text" : "password"}
+                            placeholder={`${label} API 키 입력`}
+                            value={apiKeys[provider] || ""}
+                            onChange={(e) => setApiKeys(prev => ({ ...prev, [provider]: e.target.value }))}
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                            onClick={() => toggleShowApiKey(provider)}
+                            data-testid={`button-toggle-apikey-${provider}`}
+                          >
+                            {showApiKeys[provider] ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor={`model-${provider}`}>기본 모델</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleVerifyAndLoadModels(provider)}
+                          disabled={loadingModelsProvider[provider]}
+                          data-testid={`button-load-models-${provider}`}
+                          className="h-7 text-xs gap-1"
+                        >
+                          {loadingModelsProvider[provider] ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3" />
+                          )}
+                          모델 조회
+                        </Button>
+                      </div>
+                      {models.length > 0 ? (
+                        <Select
+                          value={aiModels[provider] || models[0]?.id}
+                          onValueChange={(value) => setAiModels(prev => ({ ...prev, [provider]: value }))}
+                        >
+                          <SelectTrigger id={`model-${provider}`} data-testid={`select-model-${provider}`}>
+                            <SelectValue placeholder="모델 선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {models.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          API 키를 저장한 후 "모델 조회" 버튼을 클릭하여 사용 가능한 모델 목록을 불러오세요.
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      size="sm"
+                      onClick={() => handleSaveApiKey(provider)}
+                      disabled={savingApiKeys}
+                      data-testid={`button-save-apikey-${provider}`}
+                      className="gap-2"
+                    >
+                      {savingApiKeys ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      저장
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </TabsContent>
 
           <TabsContent value="models" className="space-y-4 animate-in fade-in-50 duration-300">

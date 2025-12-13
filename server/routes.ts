@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateApiKeysSchema, updateConversationProfilesSchema, updateSelectedModelsSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateConversationProfilesSchema, updateSelectedModelsSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -23,15 +23,6 @@ function excludePassword(user: any): SafeUser {
 }
 
 async function getUserApiKeyForProvider(userId: number | undefined, provider: string): Promise<string | null> {
-  if (userId) {
-    const apiKeys = await storage.getUserApiKeys(userId);
-    if (apiKeys) {
-      const keyField = `apiKey${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof typeof apiKeys;
-      if (apiKeys[keyField]) {
-        return apiKeys[keyField] as string;
-      }
-    }
-  }
   const globalSetting = await storage.getSetting(`apiKey_${provider}`);
   return globalSetting?.value || null;
 }
@@ -44,15 +35,6 @@ async function getUserModelForProvider(userId: number | undefined, provider: str
     grok: "grok-beta"
   };
   
-  if (userId) {
-    const apiKeys = await storage.getUserApiKeys(userId);
-    if (apiKeys) {
-      const modelField = `aiModel${provider.charAt(0).toUpperCase() + provider.slice(1)}` as keyof typeof apiKeys;
-      if (apiKeys[modelField]) {
-        return apiKeys[modelField] as string;
-      }
-    }
-  }
   const globalSetting = await storage.getSetting(`aiModel_${provider}`);
   return globalSetting?.value || defaultModels[provider] || "";
 }
@@ -329,45 +311,7 @@ export async function registerRoutes(
     }
   });
 
-  // ==================== USER API KEYS API ====================
-
-  app.get("/api/auth/api-keys", isAuthenticated, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const apiKeys = await storage.getUserApiKeys(userId);
-      
-      if (!apiKeys) {
-        return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
-      }
-
-      res.json(apiKeys);
-    } catch (error) {
-      res.status(500).json({ error: "API 키를 가져오는데 실패했습니다" });
-    }
-  });
-
-  app.put("/api/auth/api-keys", isAuthenticated, async (req, res) => {
-    try {
-      const parsed = updateApiKeysSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0].message });
-      }
-
-      const userId = req.session.userId!;
-      const user = await storage.updateUserApiKeys(userId, parsed.data);
-      
-      if (!user) {
-        return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
-      }
-
-      const apiKeys = await storage.getUserApiKeys(userId);
-      res.json(apiKeys);
-    } catch (error) {
-      res.status(500).json({ error: "API 키 업데이트에 실패했습니다" });
-    }
-  });
-
-  // Conversation Profiles API
+  // ==================== CONVERSATION PROFILES API ====================
   app.get("/api/auth/conversation-profiles", isAuthenticated, async (req, res) => {
     try {
       const userId = req.session.userId!;
@@ -434,8 +378,7 @@ export async function registerRoutes(
   app.post("/api/ai/models/:provider", isAuthenticated, async (req, res) => {
     try {
       const { provider } = req.params;
-      const { apiKey: providedApiKey, useAdminKey } = req.body;
-      const userId = req.session.userId!;
+      const { apiKey: providedApiKey } = req.body;
       
       const validProviders = ["gemini", "chatgpt", "claude", "grok"];
       if (!validProviders.includes(provider)) {
@@ -444,16 +387,8 @@ export async function registerRoutes(
       
       let apiKey = providedApiKey;
       if (!apiKey) {
-        if (useAdminKey) {
-          const globalSetting = await storage.getSetting(`apiKey_${provider}`);
-          apiKey = globalSetting?.value || null;
-          // 글로벌 키가 없으면 사용자 키로 폴백
-          if (!apiKey) {
-            apiKey = await getUserApiKeyForProvider(userId, provider);
-          }
-        } else {
-          apiKey = await getUserApiKeyForProvider(userId, provider);
-        }
+        const globalSetting = await storage.getSetting(`apiKey_${provider}`);
+        apiKey = globalSetting?.value || null;
       }
       
       if (!apiKey) {
