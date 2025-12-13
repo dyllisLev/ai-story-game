@@ -76,6 +76,23 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+async function isAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session?.userId) {
+    return res.status(401).json({ error: "로그인이 필요합니다" });
+  }
+  
+  try {
+    const isAdminUser = await storage.isUserAdmin(req.session.userId);
+    if (isAdminUser) {
+      next();
+    } else {
+      res.status(403).json({ error: "관리자 권한이 필요합니다" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: "권한 확인에 실패했습니다" });
+  }
+}
+
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -551,6 +568,192 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Failed to save settings:", error);
       res.status(500).json({ error: "Failed to save settings" });
+    }
+  });
+
+  // ==================== GROUPS API ====================
+
+  app.get("/api/groups", isAuthenticated, async (req, res) => {
+    try {
+      const groups = await storage.getAllGroups();
+      res.json(groups);
+    } catch (error) {
+      res.status(500).json({ error: "그룹 목록을 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.post("/api/groups", isAdmin, async (req, res) => {
+    try {
+      const { name, type, description } = req.body;
+      
+      if (!name || !type) {
+        return res.status(400).json({ error: "이름과 타입은 필수입니다" });
+      }
+
+      if (type !== 'user' && type !== 'admin') {
+        return res.status(400).json({ error: "타입은 'user' 또는 'admin'이어야 합니다" });
+      }
+
+      const group = await storage.createGroup({ name, type, description });
+      res.status(201).json(group);
+    } catch (error) {
+      res.status(500).json({ error: "그룹 생성에 실패했습니다" });
+    }
+  });
+
+  app.put("/api/groups/:id", isAdmin, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "잘못된 그룹 ID입니다" });
+      }
+
+      const { name, type, description } = req.body;
+
+      if (type && type !== 'user' && type !== 'admin') {
+        return res.status(400).json({ error: "타입은 'user' 또는 'admin'이어야 합니다" });
+      }
+
+      const group = await storage.updateGroup(groupId, { name, type, description });
+      res.json(group);
+    } catch (error) {
+      res.status(500).json({ error: "그룹 수정에 실패했습니다" });
+    }
+  });
+
+  app.delete("/api/groups/:id", isAdmin, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "잘못된 그룹 ID입니다" });
+      }
+
+      await storage.deleteGroup(groupId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "그룹 삭제에 실패했습니다" });
+    }
+  });
+
+  app.get("/api/users/:userId/groups", isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "잘못된 사용자 ID입니다" });
+      }
+
+      const groups = await storage.getUserGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      res.status(500).json({ error: "사용자 그룹 목록을 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.post("/api/users/:userId/groups/:groupId", isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const groupId = parseInt(req.params.groupId);
+      
+      if (isNaN(userId) || isNaN(groupId)) {
+        return res.status(400).json({ error: "잘못된 ID입니다" });
+      }
+
+      const userGroup = await storage.addUserToGroup(userId, groupId);
+      res.status(201).json(userGroup);
+    } catch (error) {
+      res.status(500).json({ error: "사용자를 그룹에 추가하는데 실패했습니다" });
+    }
+  });
+
+  app.delete("/api/users/:userId/groups/:groupId", isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const groupId = parseInt(req.params.groupId);
+      
+      if (isNaN(userId) || isNaN(groupId)) {
+        return res.status(400).json({ error: "잘못된 ID입니다" });
+      }
+
+      await storage.removeUserFromGroup(userId, groupId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "사용자를 그룹에서 제거하는데 실패했습니다" });
+    }
+  });
+
+  app.get("/api/stories/:storyId/groups", isAuthenticated, async (req, res) => {
+    try {
+      const storyId = parseInt(req.params.storyId);
+      if (isNaN(storyId)) {
+        return res.status(400).json({ error: "잘못된 스토리 ID입니다" });
+      }
+
+      const groups = await storage.getStoryGroups(storyId);
+      res.json(groups);
+    } catch (error) {
+      res.status(500).json({ error: "스토리 그룹 목록을 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.post("/api/stories/:storyId/groups", isAdmin, async (req, res) => {
+    try {
+      const storyId = parseInt(req.params.storyId);
+      if (isNaN(storyId)) {
+        return res.status(400).json({ error: "잘못된 스토리 ID입니다" });
+      }
+
+      const { groupId, permission } = req.body;
+      
+      if (!groupId || !permission) {
+        return res.status(400).json({ error: "그룹 ID와 권한은 필수입니다" });
+      }
+
+      if (permission !== 'read' && permission !== 'write') {
+        return res.status(400).json({ error: "권한은 'read' 또는 'write'여야 합니다" });
+      }
+
+      const storyGroup = await storage.addStoryGroup(storyId, groupId, permission);
+      res.status(201).json(storyGroup);
+    } catch (error) {
+      res.status(500).json({ error: "스토리에 그룹을 추가하는데 실패했습니다" });
+    }
+  });
+
+  app.put("/api/stories/:storyId/groups/:groupId", isAdmin, async (req, res) => {
+    try {
+      const storyId = parseInt(req.params.storyId);
+      const groupId = parseInt(req.params.groupId);
+      
+      if (isNaN(storyId) || isNaN(groupId)) {
+        return res.status(400).json({ error: "잘못된 ID입니다" });
+      }
+
+      const { permission } = req.body;
+
+      if (!permission || (permission !== 'read' && permission !== 'write')) {
+        return res.status(400).json({ error: "권한은 'read' 또는 'write'여야 합니다" });
+      }
+
+      const storyGroup = await storage.updateStoryGroupPermission(storyId, groupId, permission);
+      res.json(storyGroup);
+    } catch (error) {
+      res.status(500).json({ error: "스토리 그룹 권한 수정에 실패했습니다" });
+    }
+  });
+
+  app.delete("/api/stories/:storyId/groups/:groupId", isAdmin, async (req, res) => {
+    try {
+      const storyId = parseInt(req.params.storyId);
+      const groupId = parseInt(req.params.groupId);
+      
+      if (isNaN(storyId) || isNaN(groupId)) {
+        return res.status(400).json({ error: "잘못된 ID입니다" });
+      }
+
+      await storage.removeStoryGroup(storyId, groupId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "스토리에서 그룹을 제거하는데 실패했습니다" });
     }
   });
 

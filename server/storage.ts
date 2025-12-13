@@ -11,7 +11,10 @@ import {
   type InsertStory, type Story,
   type InsertSession, type Session,
   type InsertMessage, type Message,
-  type InsertUser, type User, type SafeUser, type UserApiKeys, type ConversationProfile
+  type InsertUser, type User, type SafeUser, type UserApiKeys, type ConversationProfile,
+  type InsertGroup, type Group,
+  type InsertUserGroup, type UserGroup,
+  type InsertStoryGroup, type StoryGroup
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -52,6 +55,29 @@ export interface IStorage {
   getUserConversationProfiles(userId: number): Promise<ConversationProfile[]>;
   validatePassword(inputPassword: string, storedHash: string): boolean;
   hashPassword(password: string): string;
+  deleteUser(userId: number): Promise<boolean>;
+  deleteMessagesBySession(sessionId: number): Promise<void>;
+  
+  // Groups
+  getGroup(id: number): Promise<Group | undefined>;
+  getAllGroups(): Promise<Group[]>;
+  createGroup(group: InsertGroup): Promise<Group>;
+  updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group>;
+  deleteGroup(id: number): Promise<void>;
+  
+  // User Groups
+  getUserGroups(userId: number): Promise<Group[]>;
+  addUserToGroup(userId: number, groupId: number): Promise<UserGroup>;
+  removeUserFromGroup(userId: number, groupId: number): Promise<void>;
+  isUserInGroup(userId: number, groupId: number): Promise<boolean>;
+  isUserAdmin(userId: number): Promise<boolean>;
+  
+  // Story Groups
+  getStoryGroups(storyId: number): Promise<Array<Group & { permission: string }>>;
+  addStoryGroup(storyId: number, groupId: number, permission: string): Promise<StoryGroup>;
+  removeStoryGroup(storyId: number, groupId: number): Promise<void>;
+  updateStoryGroupPermission(storyId: number, groupId: number, permission: string): Promise<StoryGroup>;
+  checkStoryAccess(userId: number, storyId: number, requiredPermission?: 'read' | 'write'): Promise<boolean>;
 }
 
 export class Storage implements IStorage {
@@ -485,6 +511,204 @@ export class Storage implements IStorage {
 
   validatePassword(inputPassword: string, storedHash: string): boolean {
     return this.hashPassword(inputPassword) === storedHash;
+  }
+
+  async deleteUser(userId: number): Promise<boolean> {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+    
+    if (error) throw error;
+    return true;
+  }
+
+  async deleteMessagesBySession(sessionId: number): Promise<void> {
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('session_id', sessionId);
+    
+    if (error) throw error;
+  }
+
+  // Groups
+  async getGroup(id: number): Promise<Group | undefined> {
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data as Group | undefined;
+  }
+
+  async getAllGroups(): Promise<Group[]> {
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (error) throw error;
+    return (data || []) as Group[];
+  }
+
+  async createGroup(group: InsertGroup): Promise<Group> {
+    const { data, error } = await supabase
+      .from('groups')
+      .insert(group)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as Group;
+  }
+
+  async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> {
+    const { data, error } = await supabase
+      .from('groups')
+      .update({ ...group, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as Group;
+  }
+
+  async deleteGroup(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('groups')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  // User Groups
+  async getUserGroups(userId: number): Promise<Group[]> {
+    const { data, error } = await supabase
+      .from('user_groups')
+      .select('group_id, groups(*)')
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    return (data || []).map((ug: any) => ug.groups as Group);
+  }
+
+  async addUserToGroup(userId: number, groupId: number): Promise<UserGroup> {
+    const { data, error } = await supabase
+      .from('user_groups')
+      .insert({ user_id: userId, group_id: groupId })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as UserGroup;
+  }
+
+  async removeUserFromGroup(userId: number, groupId: number): Promise<void> {
+    const { error } = await supabase
+      .from('user_groups')
+      .delete()
+      .eq('user_id', userId)
+      .eq('group_id', groupId);
+    
+    if (error) throw error;
+  }
+
+  async isUserInGroup(userId: number, groupId: number): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('user_groups')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('group_id', groupId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return !!data;
+  }
+
+  async isUserAdmin(userId: number): Promise<boolean> {
+    const groups = await this.getUserGroups(userId);
+    return groups.some(g => g.type === 'admin');
+  }
+
+  // Story Groups
+  async getStoryGroups(storyId: number): Promise<Array<Group & { permission: string }>> {
+    const { data, error } = await supabase
+      .from('story_groups')
+      .select('permission, groups(*)')
+      .eq('story_id', storyId);
+    
+    if (error) throw error;
+    return (data || []).map((sg: any) => ({
+      ...sg.groups,
+      permission: sg.permission
+    }));
+  }
+
+  async addStoryGroup(storyId: number, groupId: number, permission: string): Promise<StoryGroup> {
+    const { data, error } = await supabase
+      .from('story_groups')
+      .insert({ story_id: storyId, group_id: groupId, permission })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as StoryGroup;
+  }
+
+  async removeStoryGroup(storyId: number, groupId: number): Promise<void> {
+    const { error } = await supabase
+      .from('story_groups')
+      .delete()
+      .eq('story_id', storyId)
+      .eq('group_id', groupId);
+    
+    if (error) throw error;
+  }
+
+  async updateStoryGroupPermission(storyId: number, groupId: number, permission: string): Promise<StoryGroup> {
+    const { data, error } = await supabase
+      .from('story_groups')
+      .update({ permission })
+      .eq('story_id', storyId)
+      .eq('group_id', groupId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as StoryGroup;
+  }
+
+  async checkStoryAccess(userId: number, storyId: number, requiredPermission: 'read' | 'write' = 'read'): Promise<boolean> {
+    // Check if user is admin
+    const isAdmin = await this.isUserAdmin(userId);
+    if (isAdmin) return true;
+
+    // Get user's groups
+    const userGroups = await this.getUserGroups(userId);
+    const userGroupIds = userGroups.map(g => g.id);
+
+    if (userGroupIds.length === 0) return false;
+
+    // Get story groups
+    const storyGroups = await this.getStoryGroups(storyId);
+
+    // Check if any of user's groups have access
+    for (const sg of storyGroups) {
+      if (userGroupIds.includes(sg.id)) {
+        if (requiredPermission === 'read') {
+          return true; // read or write permission grants read access
+        } else if (requiredPermission === 'write' && sg.permission === 'write') {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 }
 
