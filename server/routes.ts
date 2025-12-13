@@ -441,13 +441,13 @@ export async function registerRoutes(
             name: m.displayName || m.name.replace("models/", "")
           }))
           .sort((a: any, b: any) => {
-            const order = ["gemini-2.5", "gemini-3", "gemini-2.0", "gemini-1.5-pro", "gemini-1.5-flash"];
+            const order = ["gemini-3", "gemini-2.5", "gemini-2.0", "gemini-1.5-pro", "gemini-1.5-flash"];
             const aIndex = order.findIndex(o => a.id.includes(o));
             const bIndex = order.findIndex(o => b.id.includes(o));
             if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
             if (aIndex !== -1) return -1;
             if (bIndex !== -1) return 1;
-            return a.name.localeCompare(b.name);
+            return b.id.localeCompare(a.id);
           })
           .slice(0, 3);
       } else if (provider === "chatgpt") {
