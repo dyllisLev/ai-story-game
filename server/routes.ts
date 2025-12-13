@@ -494,17 +494,19 @@ export async function registerRoutes(
           return res.status(400).json({ error: "OpenAI API 키가 유효하지 않습니다" });
         }
 
+        const excludePatterns = ["instruct", "realtime", "audio", "embedding", "tts", "whisper", "dall-e", "davinci", "babbage", "curie", "ada", "moderation", "search", "code-", "text-"];
         models = (data.data || [])
           .filter((m: any) => {
             const id = m.id.toLowerCase();
-            if (!id.startsWith("gpt-")) return false;
-            if (id.includes("instruct") || id.includes("realtime") || id.includes("audio")) return false;
+            if (excludePatterns.some(p => id.includes(p))) return false;
+            const validPrefixes = ["gpt-", "o1", "o3", "o4", "chatgpt"];
+            if (!validPrefixes.some(p => id.startsWith(p))) return false;
             return true;
           })
           .sort((a: any, b: any) => (b.created || 0) - (a.created || 0))
           .map((m: any) => ({
             id: m.id,
-            name: m.id.toUpperCase().replace(/-/g, " ").replace(/GPT /g, "GPT-")
+            name: m.id.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
           }));
       } else if (provider === "claude") {
         models = [
