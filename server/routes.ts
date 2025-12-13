@@ -408,17 +408,25 @@ export async function registerRoutes(
 
   app.put("/api/auth/selected-models", isAuthenticated, async (req, res) => {
     try {
+      console.log("[DEBUG] 받은 요청 body:", JSON.stringify(req.body, null, 2));
+      
       const parsed = updateSelectedModelsSchema.safeParse(req.body);
       if (!parsed.success) {
+        console.log("[DEBUG] 스키마 검증 실패:", parsed.error.errors);
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
+
+      console.log("[DEBUG] 파싱된 모델:", JSON.stringify(parsed.data.models, null, 2));
 
       const userId = req.session.userId!;
       await storage.updateUserSelectedModels(userId, parsed.data.models);
       
       const models = await storage.getUserSelectedModels(userId);
+      console.log("[DEBUG] 저장 후 조회한 모델:", JSON.stringify(models, null, 2));
+      
       res.json({ models });
     } catch (error) {
+      console.error("[DEBUG] 모델 업데이트 에러:", error);
       res.status(500).json({ error: "선택된 모델 업데이트에 실패했습니다" });
     }
   });
