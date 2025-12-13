@@ -565,8 +565,9 @@ export default function AccountPage() {
         </Card>
 
         <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile" data-testid="tab-profile">프로필</TabsTrigger>
+            <TabsTrigger value="groups" data-testid="tab-groups">그룹</TabsTrigger>
             <TabsTrigger value="conversations" data-testid="tab-conversations">대화 프로필</TabsTrigger>
             <TabsTrigger value="apikeys" data-testid="tab-apikeys">API 키</TabsTrigger>
             <TabsTrigger value="security" data-testid="tab-security">보안</TabsTrigger>
@@ -617,6 +618,59 @@ export default function AccountPage() {
                     프로필 저장
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="groups">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  내 그룹
+                </CardTitle>
+                <CardDescription>
+                  소속된 그룹 정보를 확인하세요
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {user?.role === 'user' && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <Users className="h-4 w-4 text-primary" />
+                        <div>
+                          <p className="font-medium text-sm">사용자</p>
+                          <p className="text-xs text-muted-foreground">일반 사용자 그룹</p>
+                        </div>
+                      </div>
+                    )}
+                    {user?.role === 'admin' && (
+                      <>
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                          <Key className="h-4 w-4 text-destructive" />
+                          <div>
+                            <p className="font-medium text-sm">관리자</p>
+                            <p className="text-xs text-muted-foreground">시스템 관리자 그룹</p>
+                          </div>
+                        </div>
+                        <Button
+                          className="w-full"
+                          variant="outline"
+                          onClick={() => navigate("/admin/users")}
+                          data-testid="button-manage-users"
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          유저 관리
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

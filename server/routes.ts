@@ -571,6 +571,18 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== USERS API ====================
+
+  app.get("/api/users", isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const safeUsers = users.map(excludePassword);
+      res.json(safeUsers);
+    } catch (error) {
+      res.status(500).json({ error: "사용자 목록을 가져오는데 실패했습니다" });
+    }
+  });
+
   // ==================== GROUPS API ====================
 
   app.get("/api/groups", isAuthenticated, async (req, res) => {

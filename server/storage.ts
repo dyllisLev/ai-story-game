@@ -47,6 +47,7 @@ export interface IStorage {
   getUserById(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>): Promise<User>;
   updateUserApiKeys(userId: number, apiKeys: Partial<UserApiKeys>): Promise<User>;
@@ -404,6 +405,16 @@ export class Storage implements IStorage {
     
     if (error && error.code !== 'PGRST116') throw error;
     return data ? dbUserToUser(data) : undefined;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return (data || []).map(dbUserToUser);
   }
 
   async createUser(user: InsertUser): Promise<User> {

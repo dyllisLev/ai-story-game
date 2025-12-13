@@ -11,6 +11,7 @@ import PlayStory from "@/pages/play";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth";
 import AccountPage from "@/pages/account";
+import UserManagementPage from "@/pages/user-management";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/account" component={AccountPage} />
+      <Route path="/admin/users" component={UserManagementPage} />
       <Route path="/create" component={CreateStory} />
       <Route path="/edit/:id" component={EditStory} />
       <Route path="/play/:sessionId" component={PlayStory} />
