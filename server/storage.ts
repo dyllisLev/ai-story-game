@@ -25,6 +25,7 @@ export interface IStorage {
   
   getStory(id: number): Promise<Story | undefined>;
   getAllStories(): Promise<Story[]>;
+  getStoriesForUser(userId: number): Promise<Story[]>;
   createStory(story: InsertStory): Promise<Story>;
   updateStory(id: number, story: Partial<InsertStory>): Promise<Story>;
   deleteStory(id: number): Promise<void>;
@@ -148,6 +149,48 @@ export class Storage implements IStorage {
     
     if (error) throw error;
     return (data || []).map(dbStoryToStory);
+  }
+
+  async getStoriesForUser(userId: number): Promise<Story[]> {
+    // Check if user is admin
+    const isAdmin = await this.isUserAdmin(userId);
+    if (isAdmin) {
+      // Admins can see all stories
+      return this.getAllStories();
+    }
+
+    // Get user's groups
+    const userGroups = await this.getUserGroups(userId);
+    const userGroupIds = userGroups.map(g => g.id);
+
+    if (userGroupIds.length === 0) {
+      // User has no groups, return empty array
+      return [];
+    }
+
+    // Get stories that have at least one group the user belongs to
+    const { data, error } = await supabase
+      .from('story_groups')
+      .select('story_id')
+      .in('group_id', userGroupIds);
+
+    if (error) throw error;
+
+    const storyIds = [...new Set((data || []).map((sg: any) => sg.story_id))];
+
+    if (storyIds.length === 0) {
+      return [];
+    }
+
+    // Fetch the actual stories
+    const { data: storiesData, error: storiesError } = await supabase
+      .from('stories')
+      .select('*')
+      .in('id', storyIds)
+      .order('created_at', { ascending: false });
+
+    if (storiesError) throw storiesError;
+    return (storiesData || []).map(dbStoryToStory);
   }
 
   async createStory(story: InsertStory): Promise<Story> {
@@ -712,7 +755,10 @@ export class Storage implements IStorage {
     for (const sg of storyGroups) {
       if (userGroupIds.includes(sg.id)) {
         if (requiredPermission === 'read') {
-          return true; // read or write permission grants read access
+          // Both 'read' and 'write' permissions grant read access
+          if (sg.permission === 'read' || sg.permission === 'write') {
+            return true;
+          }
         } else if (requiredPermission === 'write' && sg.permission === 'write') {
           return true;
         }

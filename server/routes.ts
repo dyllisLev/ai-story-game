@@ -775,20 +775,27 @@ export async function registerRoutes(
 
   // ==================== STORIES API ====================
 
-  app.get("/api/stories", async (req, res) => {
+  app.get("/api/stories", isAuthenticated, async (req, res) => {
     try {
-      const allStories = await storage.getAllStories();
-      res.json(allStories);
+      const userId = req.session.userId!;
+      const stories = await storage.getStoriesForUser(userId);
+      res.json(stories);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch stories" });
     }
   });
 
-  app.get("/api/stories/:id", async (req, res) => {
+  app.get("/api/stories/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid story ID" });
+      }
+      
+      const userId = req.session.userId!;
+      const hasAccess = await storage.checkStoryAccess(userId, id, 'read');
+      if (!hasAccess) {
+        return res.status(403).json({ error: "이 스토리에 접근할 권한이 없습니다" });
       }
       
       const story = await storage.getStory(id);
@@ -815,11 +822,17 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/stories/:id", async (req, res) => {
+  app.put("/api/stories/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid story ID" });
+      }
+
+      const userId = req.session.userId!;
+      const hasAccess = await storage.checkStoryAccess(userId, id, 'write');
+      if (!hasAccess) {
+        return res.status(403).json({ error: "이 스토리를 수정할 권한이 없습니다" });
       }
 
       const story = await storage.updateStory(id, req.body);
@@ -832,17 +845,20 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/stories/:id", async (req, res) => {
+  app.delete("/api/stories/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid story ID" });
       }
 
-      const deleted = await storage.deleteStory(id);
-      if (!deleted) {
-        return res.status(404).json({ error: "Story not found" });
+      const userId = req.session.userId!;
+      const hasAccess = await storage.checkStoryAccess(userId, id, 'write');
+      if (!hasAccess) {
+        return res.status(403).json({ error: "이 스토리를 삭제할 권한이 없습니다" });
       }
+
+      await storage.deleteStory(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete story" });
@@ -873,12 +889,16 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid story ID" });
       }
 
+      const userId = req.session.userId!;
+      const hasAccess = await storage.checkStoryAccess(userId, storyId, 'read');
+      if (!hasAccess) {
+        return res.status(403).json({ error: "이 스토리를 플레이할 권한이 없습니다" });
+      }
+
       const story = await storage.getStory(storyId);
       if (!story) {
         return res.status(404).json({ error: "Story not found" });
       }
-
-      const userId = req.session.userId!;
 
       // Get default provider and model from settings
       const providerSetting = await storage.getSetting("aiProvider");

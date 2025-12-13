@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ChevronLeft, 
   Wand2, 
@@ -17,7 +18,8 @@ import {
   Book,
   Plus,
   Loader2,
-  Upload
+  Upload,
+  Shield
 } from "lucide-react";
 
 interface Story {
@@ -33,6 +35,18 @@ interface Story {
   exampleUserInput: string | null;
   exampleAiResponse: string | null;
   startingSituation: string | null;
+}
+
+interface Group {
+  id: number;
+  name: string;
+  type: string;
+  description: string | null;
+}
+
+interface GroupPermission {
+  groupId: number;
+  permission: 'read' | 'write';
 }
 
 export default function EditStory() {
@@ -57,6 +71,53 @@ export default function EditStory() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingPrologue, setIsGeneratingPrologue] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<GroupPermission[]>([]);
+
+  const loadGroups = async () => {
+    try {
+      const response = await fetch("/api/groups");
+      if (response.ok) {
+        const data = await response.json();
+        setGroups(data);
+      }
+    } catch (error) {
+      console.error("Failed to load groups:", error);
+    }
+  };
+
+  const loadStoryGroups = async () => {
+    if (!storyId) return;
+    try {
+      const response = await fetch(`/api/stories/${storyId}/groups`);
+      if (response.ok) {
+        const data = await response.json();
+        const permissions = data.map((g: any) => ({
+          groupId: g.id,
+          permission: g.permission
+        }));
+        setSelectedGroups(permissions);
+      }
+    } catch (error) {
+      console.error("Failed to load story groups:", error);
+    }
+  };
+
+  const toggleGroupSelection = (groupId: number) => {
+    const exists = selectedGroups.find(g => g.groupId === groupId);
+    if (exists) {
+      setSelectedGroups(selectedGroups.filter(g => g.groupId !== groupId));
+    } else {
+      setSelectedGroups([...selectedGroups, { groupId, permission: 'read' }]);
+    }
+  };
+
+  const updateGroupPermission = (groupId: number, permission: 'read' | 'write') => {
+    setSelectedGroups(selectedGroups.map(g => 
+      g.groupId === groupId ? { ...g, permission } : g
+    ));
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -163,6 +224,8 @@ export default function EditStory() {
   useEffect(() => {
     if (storyId) {
       loadStory();
+      loadGroups();
+      loadStoryGroups();
     }
   }, [storyId]);
 
@@ -219,6 +282,40 @@ export default function EditStory() {
       });
 
       if (response.ok) {
+        const currentGroups = await fetch(`/api/stories/${storyId}/groups`).then(r => r.json());
+        const currentGroupIds = currentGroups.map((g: any) => g.id);
+        
+        for (const group of selectedGroups) {
+          const existing = currentGroups.find((g: any) => g.id === group.groupId);
+          if (existing) {
+            if (existing.permission !== group.permission) {
+              await fetch(`/api/stories/${storyId}/groups/${group.groupId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ permission: group.permission }),
+              });
+            }
+          } else {
+            await fetch(`/api/stories/${storyId}/groups`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                groupId: group.groupId,
+                permission: group.permission,
+              }),
+            });
+          }
+        }
+        
+        const selectedGroupIds = selectedGroups.map(g => g.groupId);
+        for (const groupId of currentGroupIds) {
+          if (!selectedGroupIds.includes(groupId)) {
+            await fetch(`/api/stories/${storyId}/groups/${groupId}`, {
+              method: "DELETE",
+            });
+          }
+        }
+
         setLocation(`/play/${storyId}`);
       } else {
         alert("저장에 실패했습니다.");
@@ -265,6 +362,9 @@ export default function EditStory() {
                 </TabsTrigger>
                 <TabsTrigger value="start" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent">
                   시작 설정
+                </TabsTrigger>
+                <TabsTrigger value="permissions" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent">
+                  권한 설정
                 </TabsTrigger>
                 <TabsTrigger value="save" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 h-full bg-transparent border-b-2 border-transparent text-primary font-bold ml-auto">
                   저장
@@ -523,6 +623,66 @@ export default function EditStory() {
             </div>
           )}
 
+          {activeTab === "permissions" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" /> 권한 설정
+                </h2>
+              </div>
+              
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label>이 스토리에 접근할 수 있는 그룹을 선택하세요</Label>
+                    <p className="text-xs text-muted-foreground">
+                      선택된 그룹에 속한 사용자만 이 스토리를 볼 수 있습니다. 그룹이 선택되지 않으면 아무도 접근할 수 없습니다.
+                    </p>
+                  </div>
+
+                  {groups.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      등록된 그룹이 없습니다.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {groups.map((group) => {
+                        const selected = selectedGroups.find(g => g.groupId === group.id);
+                        return (
+                          <div key={group.id} className="flex items-center justify-between p-3 border rounded-lg bg-background" data-testid={`group-item-${group.id}`}>
+                            <div className="flex items-center gap-3">
+                              <Checkbox 
+                                checked={!!selected}
+                                onCheckedChange={() => toggleGroupSelection(group.id)}
+                                data-testid={`checkbox-group-${group.id}`}
+                              />
+                              <div>
+                                <p className="font-medium">{group.name}</p>
+                                {group.description && (
+                                  <p className="text-xs text-muted-foreground">{group.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            {selected && (
+                              <select
+                                value={selected.permission}
+                                onChange={(e) => updateGroupPermission(group.id, e.target.value as 'read' | 'write')}
+                                className="text-sm p-1.5 rounded border bg-background"
+                                data-testid={`select-permission-${group.id}`}
+                              >
+                                <option value="read">읽기 전용</option>
+                                <option value="write">읽기/쓰기</option>
+                              </select>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {activeTab === "save" && (
              <div className="flex flex-col items-center justify-center py-20 animate-in zoom-in-95 duration-300">
@@ -572,14 +732,14 @@ export default function EditStory() {
         <div className="border-t bg-background p-4 sticky bottom-0 z-20">
            <div className="container mx-auto max-w-3xl flex justify-between">
               <Button variant="secondary" onClick={() => {
-                const tabs = ["profile", "story", "start", "save"];
+                const tabs = ["profile", "story", "start", "permissions", "save"];
                 const currIdx = tabs.indexOf(activeTab);
                 if (currIdx > 0) setActiveTab(tabs[currIdx - 1]);
               }}>
                 <ChevronLeft className="w-4 h-4 mr-2" /> 이전
               </Button>
               <Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => {
-                  const tabs = ["profile", "story", "start", "save"];
+                  const tabs = ["profile", "story", "start", "permissions", "save"];
                   const currIdx = tabs.indexOf(activeTab);
                   if (currIdx < tabs.length - 1) setActiveTab(tabs[currIdx + 1]);
               }}>
