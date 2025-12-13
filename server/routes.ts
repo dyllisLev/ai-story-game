@@ -513,6 +513,11 @@ export async function registerRoutes(
           { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
           { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
           { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
+          { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
+          { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+          { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+          { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
+          { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
         ];
       } else if (provider === "grok") {
         const response = await fetch("https://api.x.ai/v1/models", {
@@ -535,6 +540,12 @@ export async function registerRoutes(
             { id: "grok-4", name: "Grok 4" },
             { id: "grok-4-fast", name: "Grok 4 Fast" },
             { id: "grok-3", name: "Grok 3" },
+            { id: "grok-3-fast", name: "Grok 3 Fast" },
+            { id: "grok-3-mini", name: "Grok 3 Mini" },
+            { id: "grok-3-mini-fast", name: "Grok 3 Mini Fast" },
+            { id: "grok-2", name: "Grok 2" },
+            { id: "grok-2-mini", name: "Grok 2 Mini" },
+            { id: "grok-beta", name: "Grok Beta" },
           ];
         }
       } else {
