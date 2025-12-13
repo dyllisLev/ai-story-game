@@ -62,22 +62,21 @@ export function ModelSelector({
   // Set default model when models load and no session model exists
   useEffect(() => {
     if (!sessionProvider && !sessionModel && availableModels.length > 0 && defaultModelsData?.models) {
-      // Try to find user's default model
-      for (const provider of PROVIDERS) {
-        const defaultModel = defaultModelsData.models[provider];
-        if (defaultModel) {
-          const found = availableModels.find(m => m.provider === provider && m.id === defaultModel);
-          if (found) {
-            const value = `${provider}:${defaultModel}`;
-            setSelectedValue(value);
-            onProviderChange?.(provider);
-            onModelChange?.(defaultModel);
-            return;
-          }
-        }
-      }
-      // If no default found, select first available model
-      if (availableModels.length > 0) {
+      // Find user's default model from available models
+      // This searches through all available models and picks the first one that matches user's default
+      const defaultModel = availableModels.find(model => {
+        const userDefaultForProvider = defaultModelsData.models[model.provider];
+        return userDefaultForProvider && userDefaultForProvider === model.id;
+      });
+
+      if (defaultModel) {
+        // Found user's default model
+        const value = `${defaultModel.provider}:${defaultModel.id}`;
+        setSelectedValue(value);
+        onProviderChange?.(defaultModel.provider);
+        onModelChange?.(defaultModel.id);
+      } else if (availableModels.length > 0) {
+        // No default found, select first available model
         const first = availableModels[0];
         const value = `${first.provider}:${first.id}`;
         setSelectedValue(value);
