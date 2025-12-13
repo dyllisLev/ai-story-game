@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PROVIDER_LABELS, type Provider } from "@shared/models";
-import type { DefaultModels } from "@shared/schema";
+import type { DefaultModels, SelectedModels } from "@shared/schema";
 
 interface ModelSelectorProps {
   storyId?: number;
@@ -26,12 +26,18 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const [provider, setProvider] = useState(sessionProvider || "auto");
   const [model, setModel] = useState(sessionModel || "");
+  const [allModels, setAllModels] = useState<{id: string, name: string}[]>([]);
   const [models, setModels] = useState<{id: string, name: string}[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
   // Fetch user's default models
   const { data: defaultModelsData } = useQuery<{ models: DefaultModels }>({
     queryKey: ["/api/auth/default-models"],
+  });
+
+  // Fetch admin's selected models (models available for selection)
+  const { data: selectedModelsData } = useQuery<{ models: SelectedModels }>({
+    queryKey: ["/api/auth/selected-models"],
   });
 
   useEffect(() => {
@@ -43,10 +49,36 @@ export function ModelSelector({
     if (provider && provider !== "auto") {
       loadModels(provider);
     } else {
+      setAllModels([]);
       setModels([]);
-      setModel("");
+      if (provider === "auto") {
+        setModel("");
+      }
     }
   }, [provider]);
+
+  // Filter models based on admin's selected models
+  useEffect(() => {
+    if (provider === "auto") {
+      setModels([]);
+      return;
+    }
+
+    if (allModels.length === 0) {
+      setModels([]);
+      return;
+    }
+
+    const selectedModelIds = selectedModelsData?.models?.[provider as Provider];
+    if (selectedModelIds && selectedModelIds.length > 0) {
+      // Show only models selected by admin
+      const filteredModels = allModels.filter((m) => selectedModelIds.includes(m.id));
+      setModels(filteredModels);
+    } else {
+      // If no models selected by admin, show all available models
+      setModels(allModels);
+    }
+  }, [allModels, selectedModelsData, provider]);
 
   // Set default model when models load and no session model exists
   useEffect(() => {
@@ -75,16 +107,15 @@ export function ModelSelector({
       if (response.ok) {
         const data = await response.json();
         const fetchedModels = data.models || [];
-        setModels(fetchedModels);
-        
+        setAllModels(fetchedModels);
       } else {
         const error = await response.json();
         console.warn(`Failed to load models for ${providerName}:`, error.error);
-        setModels([]);
+        setAllModels([]);
       }
     } catch (error) {
       console.error("Failed to load models:", error);
-      setModels([]);
+      setAllModels([]);
     } finally {
       setLoadingModels(false);
     }

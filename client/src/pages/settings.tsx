@@ -106,35 +106,21 @@ export default function Settings() {
       const response = await fetch("/api/settings");
       const settings = await response.json();
       
-      const defaultModels: Record<string, string> = {
-        gemini: "gemini-2.0-flash",
-        chatgpt: "gpt-4o",
-        claude: "claude-3-5-sonnet-20241022",
-        grok: "grok-beta"
-      };
-      
       const newApiKeys: Record<string, string> = {
         gemini: "",
         chatgpt: "",
         claude: "",
         grok: ""
       };
-      const newAiModels: Record<string, string> = { ...defaultModels };
       
       for (const setting of settings) {
         if (setting.key.startsWith("apiKey_")) {
           const provider = setting.key.replace("apiKey_", "");
           newApiKeys[provider] = setting.value || "";
-        } else if (setting.key.startsWith("aiModel_")) {
-          const provider = setting.key.replace("aiModel_", "");
-          if (setting.value) {
-            newAiModels[provider] = setting.value;
-          }
         }
       }
       
       setApiKeys(newApiKeys);
-      setAiModels(newAiModels);
     } catch (error) {
       console.error("Failed to load API keys:", error);
     }
