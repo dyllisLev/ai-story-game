@@ -757,7 +757,12 @@ export class Storage implements IStorage {
     const isAdmin = await this.isUserAdmin(userId);
     if (isAdmin) return true;
 
-    // Get user's groups
+    // Write permission is only for creator and admin
+    if (requiredPermission === 'write') {
+      return false;
+    }
+
+    // For read permission, check group access
     const userGroups = await this.getUserGroups(userId);
     const userGroupIds = userGroups.map(g => g.id);
 
@@ -766,15 +771,11 @@ export class Storage implements IStorage {
     // Get story groups
     const storyGroups = await this.getStoryGroups(storyId);
 
-    // Check if any of user's groups have access
+    // Check if any of user's groups have read access
     for (const sg of storyGroups) {
       if (userGroupIds.includes(sg.id)) {
-        if (requiredPermission === 'read') {
-          // Both 'read' and 'write' permissions grant read access
-          if (sg.permission === 'read' || sg.permission === 'write') {
-            return true;
-          }
-        } else if (requiredPermission === 'write' && sg.permission === 'write') {
+        // Both 'read' and 'write' group permissions grant read access
+        if (sg.permission === 'read' || sg.permission === 'write') {
           return true;
         }
       }

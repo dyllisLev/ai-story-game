@@ -636,7 +636,7 @@ export default function EditStory() {
                   <div className="space-y-2">
                     <Label>이 스토리에 접근할 수 있는 그룹을 선택하세요</Label>
                     <p className="text-xs text-muted-foreground">
-                      선택된 그룹에 속한 사용자만 이 스토리를 볼 수 있습니다. 그룹이 선택되지 않으면 아무도 접근할 수 없습니다.
+                      선택된 그룹에 속한 사용자는 이 스토리를 플레이할 수 있습니다. 스토리 수정은 작성자와 관리자만 가능합니다.
                     </p>
                   </div>
 
@@ -664,15 +664,9 @@ export default function EditStory() {
                               </div>
                             </div>
                             {selected && (
-                              <select
-                                value={selected.permission}
-                                onChange={(e) => updateGroupPermission(group.id, e.target.value as 'read' | 'write')}
-                                className="text-sm p-1.5 rounded border bg-background"
-                                data-testid={`select-permission-${group.id}`}
-                              >
-                                <option value="read">플레이 전용</option>
-                                <option value="write">플레이 + 수정</option>
-                              </select>
+                              <span className="text-sm text-muted-foreground px-2 py-1 bg-muted rounded">
+                                플레이 가능
+                              </span>
                             )}
                           </div>
                         );
