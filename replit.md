@@ -1,8 +1,6 @@
 # Overview
 
-This is a React-based interactive AI story roleplay application called "Crack AI". The application allows users to create, manage, and play through AI-powered interactive stories with multiple AI models. It features a full-stack architecture with an Express backend, React frontend, and Supabase PostgreSQL database for data persistence.
-
-The app provides a story creation interface with customizable settings, a chat-based gameplay interface with markdown rendering, and support for multiple AI language models (Gemini, GPT-4, Claude, Grok). The primary language appears to be Korean, as evidenced by the UI content and sample stories.
+"Crack AI" is an interactive AI story roleplay application built with React, Express, and Supabase. It enables users to create, manage, and play AI-powered stories using various AI models (Gemini, GPT-4, Claude, Grok). The application features a story creation interface, a chat-based gameplay system with markdown rendering, and robust user and session management. Its primary purpose is to provide an engaging and customizable platform for interactive AI narrative experiences.
 
 # User Preferences
 
@@ -10,271 +8,57 @@ Preferred communication style: Simple, everyday language.
 
 # System Architecture
 
-## Frontend Architecture
+## Frontend
 
-**Technology Stack:**
-- React 18 with TypeScript
-- Vite as the build tool and development server
-- Wouter for client-side routing
-- TanStack Query for server state management
-- Tailwind CSS v4 with custom theme variables
-- shadcn/ui component library (New York style)
-- React Markdown for rendering story content
+The frontend is a React 18 application using TypeScript, Vite, Wouter for routing, TanStack Query for state management, and Tailwind CSS with shadcn/ui for components. It follows a component-based, mobile-first design, supporting type-safe routing and optimistic UI updates. Story content is rendered using React Markdown.
 
-**Design Decisions:**
-- **Component-based UI:** Uses a comprehensive shadcn/ui component library for consistent design patterns
-- **Mobile-first responsive design:** Custom hook `useIsMobile` for adaptive layouts
-- **Type-safe routing:** Wouter provides lightweight routing with TypeScript support
-- **Optimistic UI updates:** TanStack Query handles caching and background synchronization
+## Backend
 
-**Frontend Structure:**
-- `/client/src/pages/` - Route-level page components (home, create, play, settings)
-- `/client/src/components/` - Reusable UI components
-- `/client/src/lib/` - Utilities and API client logic
-- `/client/src/hooks/` - Custom React hooks
+The backend is an Express.js application with TypeScript, interacting with a self-hosted Supabase PostgreSQL database. It provides RESTful APIs for settings, stories, messages, and user management. Key features include:
 
-## Backend Architecture
+-   **Database Schema:** Main tables include `users`, `settings`, `stories`, `sessions`, and `messages`, alongside `groups`, `user_groups`, and `story_groups` for access control.
+-   **Conversation Profiles:** Users can create reusable conversation profiles stored in the `users` table.
+-   **Session Management:** Stories act as templates, and sessions are individual playthroughs with isolated chat histories and session-specific settings.
+-   **Build Configuration:** Optimized for both development (Vite HMR) and production (pre-built static assets, bundled server) using esbuild for tree-shaking and dependency optimization.
 
-**Technology Stack:**
-- Express.js with TypeScript
-- Self-hosted Supabase PostgreSQL for database
-- Supabase JS Client for type-safe database queries
-- Custom static file serving in production
+## Security
 
-**API Design:**
-- RESTful endpoints under `/api/` prefix
-- Settings API for storing API keys and configuration
-- Stories API for CRUD operations on stories
-- Messages API for managing story chat history
-- Batch operations support for efficient updates
+-   **API Key Storage:** AI service API keys are stored per-user in the `users` table, with global fallbacks in the `settings` table.
+-   **Group-Based Story Access Control:** Stories are protected by group permissions (`read`, `write`) managed in `story_groups`. Creators and admins have elevated access.
+-   **Session Access Control:** Sessions are user-specific, requiring authentication and ownership for access and modification.
+-   **Input Validation:** Drizzle-zod schemas ensure type safety and validate database inserts.
+-   **Supabase Configuration:** Utilizes a self-hosted Supabase instance with Row Level Security (RLS) enabled for server-side access.
 
-**Database Schema:**
-The application uses five main tables:
-- `users` - User accounts with authentication and per-user API key storage (username, email, password hash, API keys for each provider, model selections, conversationProfiles JSON array for reusable profiles)
-- `settings` - Key-value store for global configuration (system prompts, fallback API keys)
-- `stories` - Story templates with metadata (title, description, genre, author, prologue, story settings, timestamps)
-- `sessions` - Individual playthroughs of stories (storyId FK, userId FK, title, conversation profile, user notes, summary memory, model/provider settings, timestamps)
-- `messages` - Chat history with session ID foreign key, role (user/assistant), content, and optional character attribution
+# External Dependencies
 
-**Conversation Profile Management:**
-- Users can create, edit, and delete reusable conversation profiles in account settings ("계정 관리" → "대화 프로필" tab)
-- Profiles are stored as JSON array in users table (conversationProfiles field)
-- Each profile has: id (UUID), name, content
-- In play page session settings, users can select from saved profiles to quickly apply them
-- When a saved profile is selected, it auto-saves to the session's conversationProfile field
-- API endpoints: GET/PUT /api/auth/conversation-profiles (requires authentication)
+## AI Service Integrations
 
-**Session System Architecture:**
-- **Stories as Templates:** Stories serve as reusable templates that define the world, characters, and starting situation
-- **Sessions as Playthroughs:** Each session represents an independent playthrough of a story with its own chat history and settings
-- **Per-User Session Isolation:** Sessions are tied to users via userId foreign key - users can only view and manage their own sessions
-- **Isolated Chat History:** Messages are tied to sessions, allowing multiple concurrent playthroughs of the same story
-- **Session-Specific Settings:** Each session can have custom conversation profiles, user notes, summary memory, and AI model preferences
-- **Safe Data Migration:** Existing story-based messages are automatically migrated to session-based storage with backup preservation; existing sessions are assigned to the first user during schema migration
+The application integrates with multiple AI language models, supporting per-user API key management:
+-   **Google Gemini:** (gemini-3.0-pro, gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash)
+-   **OpenAI:** GPT-4o
+-   **Anthropic:** Claude 3.5 Sonnet
+-   **xAI:** Grok
 
-**Architectural Choices:**
-- **Supabase PostgreSQL:** Uses self-hosted Supabase instance at `supa.nuc.hmini.me` with Supabase JS Client for database access
-- **API-based Access:** Database operations through Supabase REST API (PostgreSQL port not externally exposed)
-- **Shared schema:** `/shared/schema.ts` provides type definitions used by both client and server
-- **Build-time bundling:** Selected dependencies are bundled with esbuild to reduce cold start syscalls
+All integrated AI providers support streaming responses via Server-Sent Events (SSE).
 
-## Development vs Production
+## Database
 
-**Development Mode:**
-- Vite dev server with HMR at port 5000
-- Middleware mode integration with Express
-- Replit-specific plugins (cartographer, dev-banner, runtime error overlay)
-- Dynamic HTML template reloading with cache-busting
+-   **Self-hosted Supabase PostgreSQL:** `supa.nuc.hmini.me`
+-   **Supabase JS Client:** Used for database interactions.
 
-**Production Mode:**
-- Pre-built static assets served from `/dist/public`
-- Server bundled as single CJS file with selective dependency bundling
-- Optimized for cold start performance on Replit deployments
+## UI Component Libraries
 
-**Build Configuration:**
-- **esbuild Tree-Shaking:** Both Dockerfile and `script/build.ts` use `--define:process.env.NODE_ENV='"production"'` to enable tree-shaking of development-only code (e.g., Vite middleware)
-- **Critical Rationale:** Without the NODE_ENV define, esbuild attempts to bundle `server/vite.ts` → `vite.config.ts`, which contains top-level await incompatible with CJS format, causing build failures
-- **Client Build:** Uses dynamic import of `vite.config.js` in `script/build.ts` to preserve alias configuration while preventing config from being bundled into server output
-- **External Dependencies:** Express, Supabase, bcryptjs, dotenv, @octokit/rest, and database drivers are marked as external to avoid bundling runtime-only dependencies
+-   **shadcn/ui:** Component library built on Radix UI primitives.
+-   **Lucide React:** Iconography.
+-   **Tailwind CSS:** For styling.
+-   **React Markdown:** For rendering markdown content.
 
-## GitHub Integration
+## Development Tools
 
-**Repository Management:**
-- GitHub integration via Octokit REST API (`@octokit/rest` package)
-- Authentication through `GITHUB_PERSONAL_ACCESS_TOKEN` secret (stored in Replit Secrets)
-- Helper module: `server/github-helper.ts` provides `getUncachableGitHubClient()` function
-- Deployment script: `scripts/init-and-push.ts` automates repository initialization and file pushing
+-   **Vite:** Build tool.
+-   **TypeScript:** Language.
+-   **ESM:** Module system.
 
-**Security:**
-- GitHub token stored exclusively in Replit Secrets (not in environment variables)
-- No hardcoded credentials in codebase
-- Replit GUI Git integration available for manual commits and pushes
+## Third-party Services
 
-## Docker Deployment
-
-**Automated Docker Build:**
-- GitHub Actions workflow: `.github/workflows/docker-build-push.yml`
-- Automatically builds and pushes Docker images to Docker Hub
-- Triggered on push to main branch or manual workflow dispatch
-- Build configuration files:
-  - `Dockerfile` - Multi-stage build with dependency caching
-  - `docker-compose.yml` - Service orchestration configuration
-  - `BUILD_DOCKER.md` - Comprehensive build and deployment documentation
-
-**Docker Image:**
-- Optimized multi-stage build process
-- Includes both development and production configurations
-- Pushed to Docker Hub repository: `miniproj2024/crack-ai`
-- Tagged with commit SHA and 'latest' for easy deployment
-
-**Note:** These Docker files are actively used by GitHub Actions and should not be removed, even though they are not used for local Replit development.
-
-## External Dependencies
-
-**AI Service Integrations:**
-The application supports multiple AI language model providers with per-user API key management:
-- Google Gemini (gemini-3.0-pro, gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash)
-- OpenAI GPT-4o
-- Anthropic Claude 3.5 Sonnet
-- Grok (xAI)
-
-**Per-User API Key Architecture:**
-- Each user can configure their own API keys via the Settings page ("설정" → "모델 관리" tab)
-- API keys are stored per-user in the users table (apiKeyChatgpt, apiKeyGrok, apiKeyClaude, apiKeyGemini)
-- Model selections are also stored per-user (aiModelChatgpt, aiModelGrok, aiModelClaude, aiModelGemini)
-- AI endpoints use user-specific keys when available, with fallback to global settings for unauthenticated requests
-- The Model Management tab integrates API key input/saving functionality with model selection for each provider
-
-**AI API Implementation:**
-- **Streaming Responses:** Real-time text streaming using Server-Sent Events (SSE)
-  - Endpoint: `/api/ai/chat/stream` - Streams AI responses in real-time
-  - All 4 providers (Gemini, ChatGPT, Claude, Grok) support streaming
-  - Frontend displays text progressively as it's generated with animated cursor
-- **Non-streaming Fallback:** `/api/ai/chat` endpoint for standard request/response
-- **Gemini Thinking Mode:** Gemini 2.5 Pro and 3 Pro require thinking mode enabled; Flash models can disable it for faster responses
-- **JSON Response Parsing:** AI responses in `{"nextStrory": "..."}` format are automatically parsed
-
-**Database:**
-- Self-hosted Supabase PostgreSQL at `supa.nuc.hmini.me`
-- Supabase JS Client (@supabase/supabase-js) for database operations
-- Connection via REST API (no direct PostgreSQL port access)
-- Row Level Security (RLS) enabled with permissive policies for server-side access
-
-**UI Component Libraries:**
-- Radix UI primitives for accessible components
-- Lucide React for iconography
-- Tailwind CSS with PostCSS for styling
-- React Markdown for content rendering
-
-**Development Tools:**
-- Replit-specific Vite plugins for enhanced development experience
-- Custom meta-images plugin for OpenGraph tag injection
-- TypeScript with strict mode enabled
-- ESM module system throughout
-
-**Third-party Services:**
-- Google Fonts (Noto Sans KR, JetBrains Mono)
-- Font loading optimized with preconnect
-
-## Data Flow
-
-**Story Creation:**
-1. User creates a story template through the React frontend
-2. Story metadata (including prologue, settings) stored in SQLite via Drizzle ORM
-
-**Session Creation (New Playthrough):**
-1. User clicks "새로 시작" (New Start) on a story card
-2. Frontend sends POST request to `/api/stories/:id/sessions`
-3. Backend creates a new session and automatically adds prologue as first message (server-side)
-4. Frontend redirects to `/play/:sessionId`
-
-**Gameplay:**
-1. User sends messages through the chat interface
-2. Messages are sent to the selected AI model's API with session context
-3. AI responses are saved to the messages table with session association
-4. TanStack Query manages caching and synchronization between UI and API
-
-**Session Continuation:**
-1. User clicks "이어서 플레이" (Continue) on a story card
-2. Frontend fetches sessions for that story
-3. Redirects to most recent session or creates new one if none exist
-
-## Security Considerations
-
-**API Key Storage:** API keys for AI services are stored per-user in the PostgreSQL database users table. Each user's keys are isolated and only accessible through authenticated API requests. Global fallback keys remain in the settings table for unauthenticated requests.
-
-**Group-Based Story Access Control:**
-- Stories are protected by group-based permissions (stored in `story_groups` table)
-- **Story Creators:** Users who create a story (stored in `stories.created_by`) always have full read/write access regardless of group permissions
-- **Admin Users:** Members of admin-type groups can access all stories
-- **Regular Users:** Can access stories they created + stories assigned to their groups
-- **Permission Levels:**
-  - `read`: Can view and play stories (labeled as "플레이 전용" in UI)
-  - `write`: Can view, play, edit, and delete stories (labeled as "플레이 + 수정" in UI)
-- **Enforcement Points:**
-  - GET /api/stories - Returns stories created by user + stories accessible through group memberships
-  - GET /api/stories/:id - Requires read permission (creators always have access)
-  - PUT /api/stories/:id - Requires write permission (creators always have access)
-  - DELETE /api/stories/:id - Requires write permission (creators always have access)
-  - POST /api/stories/:id/sessions - Requires read permission (creators always have access)
-- **Implementation:** 
-  - `storage.checkStoryAccess(userId, storyId, permission)` validates access with creator check priority
-  - `storage.getStoriesForUser(userId)` returns union of created stories and group-accessible stories
-  - Story creation automatically sets `createdBy` to authenticated user's ID
-- **UI Integration:** Story creation/editing pages include "권한 설정" tab for assigning group permissions
-
-**Session Access Control:**
-- All session endpoints require authentication (401 if not authenticated)
-- Users can only access their own sessions (403 if attempting to access another user's session)
-- Session creation automatically assigns the authenticated user as owner
-- Session updates prevent changing userId, storyId, and other immutable ownership fields
-- Session deletion requires ownership verification
-
-**Input Validation:** Drizzle-zod schemas provide runtime validation for database inserts, ensuring type safety between client and server.
-
-**Supabase Configuration:**
-- Base URL: `https://supa.nuc.hmini.me` (self-hosted instance)
-- Authentication: API Key-based (SUPABASE_ANON_KEY)
-- Tables: users, settings, stories, sessions, messages, groups, user_groups, story_groups
-- RLS: Enabled with server-side permissive policies
-- Schema file: `supabase-schema.sql` for database initialization
-
-# Recent Changes
-
-## Code Refactoring (December 2025)
-
-**Objective:** Major codebase cleanup to remove unused files and dependencies while maintaining all current functionality.
-
-**Deleted Files:**
-- SQLite migration scripts (no longer needed after switching to Supabase):
-  - `scripts/setup-db.ts`
-  - `scripts/export-init-db.ts`
-  - `scripts/create-example-db.ts`
-  - `migrate-sqlite-to-supabase.ts`
-- Temporary utility scripts in root directory:
-  - `check-user.ts`
-  - `reset-password.ts`
-- Redundant documentation files:
-  - `LOCAL_SETUP.md`
-  - `COMPLETE_SETUP_GUIDE.md`
-  - `SUPABASE_SETUP.md`
-- Old migration files:
-  - `migrations/` directory
-  - `supabase-add-plot-points.sql`
-  - `supabase-add-summary-fields.sql`
-
-**Removed NPM Packages (23 packages removed, 94 total dependencies removed):**
-- Unused Radix UI components: accordion, alert-dialog, aspect-ratio, collapsible, context-menu, hover-card, menubar, navigation-menu, popover, progress, slider, switch, toggle, toggle-group
-- Other unused packages: input-otp, cmdk, embla-carousel-react, react-day-picker, recharts, sonner, vaul, react-resizable-panels
-- Note: @radix-ui/react-radio-group was initially removed but reinstalled after discovering active usage in model selection UI
-
-**Kept Files:**
-- Docker-related files (Dockerfile, docker-compose.yml, BUILD_DOCKER.md) - actively used by GitHub Actions workflow
-- Password management scripts in `scripts/` directory (reset-password-sha256.ts, reset-password.ts, verify-and-reset-password.ts)
-- Deployment script: `scripts/init-and-push.ts`
-
-**Database Schema Updates:**
-- Updated `server/supabase-types.ts` to match current Supabase schema
-- Added missing tables: groups, user_groups, story_groups
-- Added missing fields: stories.created_by, users.selected_models, users.default_model
-- Fixed sessions table field types: ai_message_count and last_summary_turn are now non-nullable
+-   **Google Fonts:** Noto Sans KR, JetBrains Mono.
