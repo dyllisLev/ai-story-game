@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
 
@@ -30,6 +30,18 @@ export default function Settings() {
     chatgpt: [],
     claude: [],
     grok: []
+  });
+  const [availableModels, setAvailableModels] = useState<Record<Provider, { id: string; name: string }[]>>({
+    gemini: [],
+    chatgpt: [],
+    claude: [],
+    grok: []
+  });
+  const [loadingModels, setLoadingModels] = useState<Record<Provider, boolean>>({
+    gemini: false,
+    chatgpt: false,
+    claude: false,
+    grok: false
   });
   const [savingModels, setSavingModels] = useState(false);
 
@@ -100,6 +112,28 @@ export default function Settings() {
       }
     } catch (error) {
       console.error("Failed to load selected models:", error);
+    }
+  };
+
+  const fetchModelsForProvider = async (provider: Provider) => {
+    setLoadingModels(prev => ({ ...prev, [provider]: true }));
+    try {
+      const response = await fetch(`/api/ai/models/${provider}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ useAdminKey: true })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableModels(prev => ({ ...prev, [provider]: data.models || [] }));
+      } else {
+        const error = await response.json();
+        console.error(`Failed to fetch ${provider} models:`, error.error);
+      }
+    } catch (error) {
+      console.error(`Failed to fetch ${provider} models:`, error);
+    } finally {
+      setLoadingModels(prev => ({ ...prev, [provider]: false }));
     }
   };
 
@@ -387,13 +421,32 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => (
+            {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => {
+              const models = availableModels[provider].length > 0 ? availableModels[provider] : MODEL_CATALOG[provider];
+              return (
               <Card key={provider}>
                 <CardContent className="p-4 space-y-3">
-                  <h3 className="font-semibold">{PROVIDER_LABELS[provider]}</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">{PROVIDER_LABELS[provider]}</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchModelsForProvider(provider)}
+                      disabled={loadingModels[provider]}
+                      className="gap-2"
+                      data-testid={`button-fetch-${provider}`}
+                    >
+                      {loadingModels[provider] ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                      모델 조회
+                    </Button>
+                  </div>
 
                   <div className="space-y-2">
-                    {MODEL_CATALOG[provider].map((model) => (
+                    {models.map((model) => (
                       <div 
                         key={model.id} 
                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
@@ -424,7 +477,8 @@ export default function Settings() {
                   )}
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </TabsContent>
         </Tabs>
       </main>

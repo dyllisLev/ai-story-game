@@ -426,7 +426,7 @@ export async function registerRoutes(
   app.post("/api/ai/models/:provider", isAuthenticated, async (req, res) => {
     try {
       const { provider } = req.params;
-      const { apiKey: providedApiKey } = req.body;
+      const { apiKey: providedApiKey, useAdminKey } = req.body;
       const userId = req.session.userId!;
       
       const validProviders = ["gemini", "chatgpt", "claude", "grok"];
@@ -436,11 +436,16 @@ export async function registerRoutes(
       
       let apiKey = providedApiKey;
       if (!apiKey) {
-        apiKey = await getUserApiKeyForProvider(userId, provider);
+        if (useAdminKey) {
+          const globalSetting = await storage.getSetting(`apiKey_${provider}`);
+          apiKey = globalSetting?.value || null;
+        } else {
+          apiKey = await getUserApiKeyForProvider(userId, provider);
+        }
       }
       
       if (!apiKey) {
-        return res.status(400).json({ error: "API 키를 먼저 입력해주세요" });
+        return res.status(400).json({ error: useAdminKey ? "관리자 API 키가 설정되지 않았습니다" : "API 키를 먼저 입력해주세요" });
       }
 
       let models: { id: string; name: string }[] = [];
