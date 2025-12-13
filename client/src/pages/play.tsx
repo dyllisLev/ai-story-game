@@ -356,10 +356,14 @@ export default function PlayStory() {
       .replace(/\n?```$/, '')
       .trim();
     
-    // Check if it looks like JSON with nextStory
-    if (processedText.startsWith('{') && (processedText.includes('nextStory') || processedText.includes('nextStrory'))) {
+    // Check if it looks like JSON with story content fields
+    const hasStoryField = processedText.includes('nextStory') || 
+                          processedText.includes('nextStrory') || 
+                          processedText.includes('output_schema');
+    
+    if (processedText.startsWith('{') && hasStoryField) {
       // Try regex extraction first (works for both complete and incomplete JSON)
-      const storyMatch = processedText.match(/"next(?:Story|Strory)"\s*:\s*"((?:[^"\\]|\\.)*)(")?/);
+      const storyMatch = processedText.match(/"(?:next(?:Story|Strory)|output_schema)"\s*:\s*"((?:[^"\\]|\\.)*)(")?/);
       if (storyMatch && storyMatch[1]) {
         return storyMatch[1]
           .replace(/\\n/g, '\n')
@@ -377,14 +381,11 @@ export default function PlayStory() {
           if (quoteCount % 2 === 1) {
             fixedText += '"';
           }
-          if (!fixedText.includes('"aiAnswer"')) {
-            fixedText += ',\n  "aiAnswer": ""';
-          }
           fixedText += '\n}';
         }
         
         const parsed = JSON.parse(fixedText);
-        const storyContent = parsed.nextStory || parsed.nextStrory;
+        const storyContent = parsed.nextStory || parsed.nextStrory || parsed.output_schema;
         if (storyContent) {
           return storyContent
             .replace(/\\n/g, '\n')
