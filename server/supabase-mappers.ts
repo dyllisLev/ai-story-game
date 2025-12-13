@@ -38,6 +38,7 @@ export function dbUserToUser(dbUser: DbUser): User {
     aiModelGemini: dbUser.ai_model_gemini,
     conversationProfiles: dbUser.conversation_profiles,
     selectedModels: (dbUser as any).selected_models,
+    defaultModel: (dbUser as any).default_model,
     createdAt: dbUser.created_at ? new Date(dbUser.created_at) : null,
     updatedAt: dbUser.updated_at ? new Date(dbUser.updated_at) : null,
   };
