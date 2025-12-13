@@ -362,7 +362,7 @@ export default function Settings() {
       <main className="container mx-auto px-6 py-6 max-w-3xl flex-1">
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="chat" className="gap-2" data-testid="tab-chat">
               <MessageSquare className="w-4 h-4" />
               <span className="hidden sm:inline">채팅 프롬프트</span>
@@ -377,11 +377,6 @@ export default function Settings() {
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">프롤로그 생성</span>
               <span className="sm:hidden">프롤로그</span>
-            </TabsTrigger>
-            <TabsTrigger value="apikeys" className="gap-2" data-testid="tab-apikeys">
-              <Key className="w-4 h-4" />
-              <span className="hidden sm:inline">API 키</span>
-              <span className="sm:hidden">API 키</span>
             </TabsTrigger>
             <TabsTrigger value="models" className="gap-2" data-testid="tab-models">
               <Cpu className="w-4 h-4" />
@@ -548,123 +543,6 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="apikeys" className="space-y-4 animate-in fade-in-50 duration-300">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <div>
-                  <h2 className="text-lg font-semibold mb-1">AI API 키 관리</h2>
-                  <p className="text-sm text-muted-foreground">
-                    각 AI 제공업체의 API 키와 기본 모델을 설정하세요.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => {
-              const label = PROVIDER_LABELS[provider];
-              const models = providerModels[provider].length > 0 ? providerModels[provider] : MODEL_CATALOG[provider];
-              
-              return (
-                <Card key={provider}>
-                  <CardContent className="p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Key className="h-5 w-5 text-primary" />
-                      <h3 className="text-base font-semibold">{label}</h3>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`apikey-${provider}`}>API 키</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input
-                            id={`apikey-${provider}`}
-                            data-testid={`input-apikey-${provider}`}
-                            type={showApiKeys[provider] ? "text" : "password"}
-                            placeholder={`${label} API 키 입력`}
-                            value={apiKeys[provider] || ""}
-                            onChange={(e) => setApiKeys(prev => ({ ...prev, [provider]: e.target.value }))}
-                            className="pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                            onClick={() => toggleShowApiKey(provider)}
-                            data-testid={`button-toggle-apikey-${provider}`}
-                          >
-                            {showApiKeys[provider] ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor={`model-${provider}`}>기본 모델</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleVerifyAndLoadModels(provider)}
-                          disabled={loadingModelsProvider[provider]}
-                          data-testid={`button-load-models-${provider}`}
-                          className="h-7 text-xs gap-1"
-                        >
-                          {loadingModelsProvider[provider] ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-3 w-3" />
-                          )}
-                          모델 조회
-                        </Button>
-                      </div>
-                      {models.length > 0 ? (
-                        <Select
-                          value={aiModels[provider] || models[0]?.id}
-                          onValueChange={(value) => setAiModels(prev => ({ ...prev, [provider]: value }))}
-                        >
-                          <SelectTrigger id={`model-${provider}`} data-testid={`select-model-${provider}`}>
-                            <SelectValue placeholder="모델 선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {models.map((model) => (
-                              <SelectItem key={model.id} value={model.id}>
-                                {model.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          API 키를 저장한 후 "모델 조회" 버튼을 클릭하여 사용 가능한 모델 목록을 불러오세요.
-                        </p>
-                      )}
-                    </div>
-
-                    <Button
-                      size="sm"
-                      onClick={() => handleSaveApiKey(provider)}
-                      disabled={savingApiKeys}
-                      data-testid={`button-save-apikey-${provider}`}
-                      className="gap-2"
-                    >
-                      {savingApiKeys ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      저장
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </TabsContent>
-
           <TabsContent value="models" className="space-y-4 animate-in fade-in-50 duration-300">
             <Card>
               <CardContent className="p-6 space-y-4">
@@ -672,7 +550,7 @@ export default function Settings() {
                   <div>
                     <h2 className="text-lg font-semibold mb-1">AI 모델 관리</h2>
                     <p className="text-sm text-muted-foreground">
-                      계정 페이지에서 사용할 모델을 선택하세요.
+                      API 키를 설정하고 사용할 모델을 선택하세요.
                     </p>
                   </div>
                   <Button 
@@ -682,66 +560,162 @@ export default function Settings() {
                     data-testid="button-save-models"
                   >
                     {savingModels ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    저장
+                    모델 저장
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
             {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => {
+              const label = PROVIDER_LABELS[provider];
               const models = availableModels[provider].length > 0 ? availableModels[provider] : MODEL_CATALOG[provider];
+              const providerModelsForSelect = providerModels[provider].length > 0 ? providerModels[provider] : MODEL_CATALOG[provider];
+              
               return (
               <Card key={provider}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">{PROVIDER_LABELS[provider]}</h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchModelsForProvider(provider)}
-                      disabled={loadingModels[provider]}
-                      className="gap-2"
-                      data-testid={`button-fetch-${provider}`}
-                    >
-                      {loadingModels[provider] ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3 h-3" />
-                      )}
-                      모델 조회
-                    </Button>
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Key className="h-5 w-5 text-primary" />
+                    <h3 className="text-base font-semibold">{label}</h3>
                   </div>
 
                   <div className="space-y-2">
-                    {models.map((model) => (
-                      <div 
-                        key={model.id} 
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
-                      >
-                        <Checkbox
-                          id={`model-${provider}-${model.id}`}
-                          checked={selectedModels[provider].includes(model.id)}
-                          onCheckedChange={() => toggleModelSelection(provider, model.id)}
-                          data-testid={`checkbox-${provider}-${model.id}`}
+                    <Label htmlFor={`apikey-${provider}`}>API 키</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id={`apikey-${provider}`}
+                          data-testid={`input-apikey-${provider}`}
+                          type={showApiKeys[provider] ? "text" : "password"}
+                          placeholder={`${label} API 키 입력`}
+                          value={apiKeys[provider] || ""}
+                          onChange={(e) => setApiKeys(prev => ({ ...prev, [provider]: e.target.value }))}
+                          className="pr-10"
                         />
-                        <label 
-                          htmlFor={`model-${provider}-${model.id}`}
-                          className="flex-1 cursor-pointer"
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                          onClick={() => toggleShowApiKey(provider)}
+                          data-testid={`button-toggle-apikey-${provider}`}
                         >
-                          <span className="font-medium text-sm">{model.name}</span>
-                          <span className="text-xs text-muted-foreground ml-2">({model.id})</span>
-                        </label>
+                          {showApiKeys[provider] ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
                       </div>
-                    ))}
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveApiKey(provider)}
+                        disabled={savingApiKeys}
+                        data-testid={`button-save-apikey-${provider}`}
+                        className="gap-2 shrink-0"
+                      >
+                        {savingApiKeys ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                        저장
+                      </Button>
+                    </div>
                   </div>
 
-                  {selectedModels[provider].length > 0 && (
-                    <div className="pt-2 border-t border-muted">
-                      <p className="text-xs text-muted-foreground">
-                        선택된 모델: {selectedModels[provider].join(", ")}
-                      </p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor={`model-${provider}`}>기본 모델</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleVerifyAndLoadModels(provider)}
+                        disabled={loadingModelsProvider[provider]}
+                        data-testid={`button-load-models-${provider}`}
+                        className="h-7 text-xs gap-1"
+                      >
+                        {loadingModelsProvider[provider] ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3" />
+                        )}
+                        모델 조회
+                      </Button>
                     </div>
-                  )}
+                    {providerModelsForSelect.length > 0 ? (
+                      <Select
+                        value={aiModels[provider] || providerModelsForSelect[0]?.id}
+                        onValueChange={(value) => setAiModels(prev => ({ ...prev, [provider]: value }))}
+                      >
+                        <SelectTrigger id={`model-${provider}`} data-testid={`select-model-${provider}`}>
+                          <SelectValue placeholder="모델 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {providerModelsForSelect.map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        API 키를 저장한 후 "모델 조회" 버튼을 클릭하여 사용 가능한 모델 목록을 불러오세요.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t border-muted space-y-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-medium">선택 가능한 모델</Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchModelsForProvider(provider)}
+                        disabled={loadingModels[provider]}
+                        className="gap-2 h-7"
+                        data-testid={`button-fetch-${provider}`}
+                      >
+                        {loadingModels[provider] ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3 h-3" />
+                        )}
+                        새로고침
+                      </Button>
+                    </div>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {models.map((model) => (
+                        <div 
+                          key={model.id} 
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                        >
+                          <Checkbox
+                            id={`model-${provider}-${model.id}`}
+                            checked={selectedModels[provider].includes(model.id)}
+                            onCheckedChange={() => toggleModelSelection(provider, model.id)}
+                            data-testid={`checkbox-${provider}-${model.id}`}
+                          />
+                          <label 
+                            htmlFor={`model-${provider}-${model.id}`}
+                            className="flex-1 cursor-pointer"
+                          >
+                            <span className="font-medium text-sm">{model.name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">({model.id})</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+
+                    {selectedModels[provider].length > 0 && (
+                      <div className="pt-2 border-t border-muted">
+                        <p className="text-xs text-muted-foreground">
+                          선택된 모델: {selectedModels[provider].join(", ")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
