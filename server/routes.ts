@@ -481,8 +481,7 @@ export async function registerRoutes(
             if (aIndex !== -1) return -1;
             if (bIndex !== -1) return 1;
             return b.id.localeCompare(a.id);
-          })
-          .slice(0, 3);
+          });
       } else if (provider === "chatgpt") {
         const response = await fetch("https://api.openai.com/v1/models", {
           headers: {
@@ -503,7 +502,6 @@ export async function registerRoutes(
             return true;
           })
           .sort((a: any, b: any) => (b.created || 0) - (a.created || 0))
-          .slice(0, 3)
           .map((m: any) => ({
             id: m.id,
             name: m.id.toUpperCase().replace(/-/g, " ").replace(/GPT /g, "GPT-")
@@ -529,8 +527,7 @@ export async function registerRoutes(
             .map((m: any) => ({
               id: m.id,
               name: m.id.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
-            }))
-            .slice(0, 3);
+            }));
         } else {
           models = [
             { id: "grok-4", name: "Grok 4" },
