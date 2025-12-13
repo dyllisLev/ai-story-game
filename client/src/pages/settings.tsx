@@ -56,6 +56,18 @@ export default function Settings() {
     loadSelectedModels();
   }, []);
 
+  // 모델 탭 진입 시 자동으로 모든 제공업체 모델 조회
+  useEffect(() => {
+    if (activeTab === "models") {
+      const providers: Provider[] = ["gemini", "chatgpt", "claude", "grok"];
+      providers.forEach(provider => {
+        if (availableModels[provider].length === 0) {
+          fetchModelsForProvider(provider);
+        }
+      });
+    }
+  }, [activeTab]);
+
   const loadSettings = async () => {
     try {
       const response = await fetch("/api/settings");
