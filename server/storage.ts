@@ -15,7 +15,7 @@ import {
   type InsertGroup, type Group,
   type InsertUserGroup, type UserGroup,
   type InsertStoryGroup, type StoryGroup,
-  type SelectedModels, type DefaultModels
+  type SelectedModels, type DefaultModel
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -58,8 +58,8 @@ export interface IStorage {
   getUserConversationProfiles(userId: number): Promise<ConversationProfile[]>;
   getUserSelectedModels(userId: number): Promise<SelectedModels | null>;
   updateUserSelectedModels(userId: number, models: SelectedModels): Promise<User>;
-  getUserDefaultModels(userId: number): Promise<DefaultModels | null>;
-  updateUserDefaultModels(userId: number, models: DefaultModels): Promise<User>;
+  getUserDefaultModel(userId: number): Promise<DefaultModel | null>;
+  updateUserDefaultModel(userId: number, model: DefaultModel): Promise<User>;
   validatePassword(inputPassword: string, storedHash: string): boolean;
   hashPassword(password: string): string;
   deleteUser(userId: number): Promise<boolean>;
@@ -608,28 +608,26 @@ export class Storage implements IStorage {
     return dbUserToUser(data);
   }
 
-  async getUserDefaultModels(userId: number): Promise<DefaultModels | null> {
+  async getUserDefaultModel(userId: number): Promise<DefaultModel | null> {
     const user = await this.getUserById(userId);
     if (!user) return null;
     
-    const defaultModels: DefaultModels = {
-      gemini: user.aiModelGemini || "gemini-2.0-flash",
-      chatgpt: user.aiModelChatgpt || "gpt-4o",
-      claude: user.aiModelClaude || "claude-3-5-sonnet-20241022",
-      grok: user.aiModelGrok || "grok-beta"
-    };
+    if (user.defaultModel) {
+      try {
+        return JSON.parse(user.defaultModel);
+      } catch {
+        return null;
+      }
+    }
     
-    return defaultModels;
+    return null;
   }
 
-  async updateUserDefaultModels(userId: number, models: DefaultModels): Promise<User> {
+  async updateUserDefaultModel(userId: number, model: DefaultModel): Promise<User> {
     const { data, error } = await supabase
       .from('users')
       .update({ 
-        ai_model_gemini: models.gemini,
-        ai_model_chatgpt: models.chatgpt,
-        ai_model_claude: models.claude,
-        ai_model_grok: models.grok,
+        default_model: JSON.stringify(model),
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PROVIDER_LABELS, type Provider } from "@shared/models";
-import type { DefaultModels, SelectedModels } from "@shared/schema";
+import type { DefaultModel, SelectedModels } from "@shared/schema";
 
 interface ModelSelectorProps {
   storyId?: number;
@@ -35,8 +35,8 @@ export function ModelSelector({
   const [availableModels, setAvailableModels] = useState<ModelWithProvider[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
-  // Fetch user's default models
-  const { data: defaultModelsData } = useQuery<{ models: DefaultModels }>({
+  // Fetch user's default model
+  const { data: defaultModelData } = useQuery<{ model: DefaultModel | null }>({
     queryKey: ["/api/auth/default-models"],
   });
 
@@ -61,13 +61,13 @@ export function ModelSelector({
 
   // Set default model when models load and no session model exists
   useEffect(() => {
-    if (!sessionProvider && !sessionModel && availableModels.length > 0 && defaultModelsData?.models) {
+    if (!sessionProvider && !sessionModel && availableModels.length > 0 && defaultModelData?.model) {
       // Find user's default model from available models
-      // This searches through all available models and picks the first one that matches user's default
-      const defaultModel = availableModels.find(model => {
-        const userDefaultForProvider = defaultModelsData.models[model.provider];
-        return userDefaultForProvider && userDefaultForProvider === model.id;
-      });
+      // This searches through all available models and picks the one that matches both provider and modelId
+      const defaultModel = availableModels.find(model => 
+        defaultModelData.model?.provider === model.provider && 
+        defaultModelData.model?.modelId === model.id
+      );
 
       if (defaultModel) {
         // Found user's default model
@@ -84,7 +84,7 @@ export function ModelSelector({
         onModelChange?.(first.id);
       }
     }
-  }, [availableModels, defaultModelsData, sessionProvider, sessionModel]);
+  }, [availableModels, defaultModelData, sessionProvider, sessionModel]);
 
   const loadAllSelectedModels = async () => {
     if (!selectedModelsData?.models) return;

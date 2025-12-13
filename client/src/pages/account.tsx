@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, User, Lock, Trash2, Key, Users, Plus, Pencil, X, Check, Cpu } from "lucide-react";
 import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
-import { type DefaultModels } from "@shared/schema";
+import { type DefaultModel } from "@shared/schema";
 
 const profileSchema = z.object({
   displayName: z.string().optional(),
@@ -165,40 +165,37 @@ export default function AccountPage() {
   };
 
   // Model Selection
-  const [defaultModels, setDefaultModels] = useState<DefaultModels>({
-    gemini: "gemini-2.0-flash",
-    chatgpt: "gpt-4o",
-    claude: "claude-3-5-sonnet-20241022",
-    grok: "grok-beta"
-  });
+  const [defaultModel, setDefaultModel] = useState<DefaultModel | null>(null);
+  const [selectedModelValue, setSelectedModelValue] = useState<string>("");
 
   const { data: selectedModelsData, isLoading: selectedModelsLoading } = useQuery<{ models: SelectedModels }>({
     queryKey: ["/api/auth/selected-models"],
     enabled: isAuthenticated,
   });
 
-  const { data: defaultModelsData, isLoading: defaultModelsLoading } = useQuery<{ models: DefaultModels }>({
+  const { data: defaultModelData, isLoading: defaultModelLoading } = useQuery<{ model: DefaultModel | null }>({
     queryKey: ["/api/auth/default-models"],
     enabled: isAuthenticated,
   });
 
   useEffect(() => {
-    if (defaultModelsData?.models) {
-      setDefaultModels(defaultModelsData.models);
+    if (defaultModelData?.model) {
+      setDefaultModel(defaultModelData.model);
+      setSelectedModelValue(`${defaultModelData.model.provider}:${defaultModelData.model.modelId}`);
     }
-  }, [defaultModelsData]);
+  }, [defaultModelData]);
 
-  const updateDefaultModelsMutation = useMutation({
-    mutationFn: async (models: DefaultModels) => {
+  const updateDefaultModelMutation = useMutation({
+    mutationFn: async (model: DefaultModel) => {
       const res = await fetch("/api/auth/default-models", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ models }),
+        body: JSON.stringify({ model }),
         credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || "Failed to update default models");
+        throw new Error(error.error || "Failed to update default model");
       }
       return res.json();
     },
@@ -218,8 +215,17 @@ export default function AccountPage() {
     },
   });
 
-  const handleSaveDefaultModels = () => {
-    updateDefaultModelsMutation.mutate(defaultModels);
+  const handleSaveDefaultModel = () => {
+    if (!selectedModelValue) {
+      toast({
+        title: "모델 선택 필요",
+        description: "기본 모델을 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const [provider, modelId] = selectedModelValue.split(":");
+    updateDefaultModelMutation.mutate({ provider, modelId });
   };
 
   const profileForm = useForm<ProfileFormData>({
@@ -640,63 +646,73 @@ export default function AccountPage() {
                   기본 모델 선택
                 </CardTitle>
                 <CardDescription>
-                  각 AI 제공업체의 기본 모델을 선택하세요
+                  새 세션 시작 시 자동으로 선택될 기본 모델을 지정하세요
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {selectedModelsLoading || defaultModelsLoading ? (
+                {selectedModelsLoading || defaultModelLoading ? (
                   <div className="flex justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
                   <>
-                    {(["gemini", "chatgpt", "claude", "grok"] as const).map((provider) => {
-                      const label = PROVIDER_LABELS[provider];
-                      const availableModels = selectedModelsData?.models?.[provider] || [];
-                      const models = availableModels.length > 0 ? availableModels : MODEL_CATALOG[provider].map(m => m.id);
-                      
-                      return (
-                        <div key={provider} className="space-y-3">
-                          <Label className="text-base font-semibold">{label}</Label>
-                          {models.length > 0 ? (
-                            <RadioGroup
-                              value={defaultModels[provider]}
-                              onValueChange={(value) => setDefaultModels(prev => ({ ...prev, [provider]: value }))}
-                              className="space-y-2"
-                            >
-                              {models.map((modelId) => (
-                                <div key={modelId} className="flex items-center space-x-2">
+                    {(() => {
+                      const allModels: { provider: Provider; modelId: string; displayName: string }[] = [];
+                      (["gemini", "chatgpt", "claude", "grok"] as const).forEach((provider) => {
+                        const availableModels = selectedModelsData?.models?.[provider] || [];
+                        const models = availableModels.length > 0 ? availableModels : MODEL_CATALOG[provider].map(m => m.id);
+                        models.forEach((modelId) => {
+                          allModels.push({
+                            provider,
+                            modelId,
+                            displayName: `${PROVIDER_LABELS[provider]} - ${modelId}`
+                          });
+                        });
+                      });
+
+                      return allModels.length > 0 ? (
+                        <div className="space-y-3">
+                          <Label className="text-base font-semibold">사용 가능한 모델</Label>
+                          <RadioGroup
+                            value={selectedModelValue}
+                            onValueChange={setSelectedModelValue}
+                            className="space-y-2"
+                          >
+                            {allModels.map(({ provider, modelId, displayName }) => {
+                              const value = `${provider}:${modelId}`;
+                              return (
+                                <div key={value} className="flex items-center space-x-2">
                                   <RadioGroupItem 
-                                    value={modelId} 
-                                    id={`model-${provider}-${modelId}`}
+                                    value={value} 
+                                    id={`model-${value}`}
                                     data-testid={`radio-${provider}-${modelId}`}
                                   />
                                   <Label 
-                                    htmlFor={`model-${provider}-${modelId}`}
+                                    htmlFor={`model-${value}`}
                                     className="font-normal cursor-pointer"
                                   >
-                                    {modelId}
+                                    {displayName}
                                   </Label>
                                 </div>
-                              ))}
-                            </RadioGroup>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              관리자가 설정한 사용 가능한 모델이 없습니다.
-                            </p>
-                          )}
+                              );
+                            })}
+                          </RadioGroup>
                         </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          관리자가 설정한 사용 가능한 모델이 없습니다.
+                        </p>
                       );
-                    })}
+                    })()}
                     
                     <div className="pt-4">
                       <Button 
-                        onClick={handleSaveDefaultModels}
-                        disabled={updateDefaultModelsMutation.isPending}
+                        onClick={handleSaveDefaultModel}
+                        disabled={updateDefaultModelMutation.isPending}
                         className="w-full"
                         data-testid="button-save-default-models"
                       >
-                        {updateDefaultModelsMutation.isPending ? (
+                        {updateDefaultModelMutation.isPending ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : null}
                         저장

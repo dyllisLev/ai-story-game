@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateConversationProfilesSchema, updateSelectedModelsSchema, updateDefaultModelsSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateConversationProfilesSchema, updateSelectedModelsSchema, updateDefaultModelSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -375,12 +375,12 @@ export async function registerRoutes(
     }
   });
 
-  // Default Models API
+  // Default Model API
   app.get("/api/auth/default-models", isAuthenticated, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const models = await storage.getUserDefaultModels(userId);
-      res.json({ models });
+      const model = await storage.getUserDefaultModel(userId);
+      res.json({ model });
     } catch (error) {
       res.status(500).json({ error: "기본 모델을 가져오는데 실패했습니다" });
     }
@@ -388,16 +388,16 @@ export async function registerRoutes(
 
   app.put("/api/auth/default-models", isAuthenticated, async (req, res) => {
     try {
-      const parsed = updateDefaultModelsSchema.safeParse(req.body);
+      const parsed = updateDefaultModelSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
 
       const userId = req.session.userId!;
-      await storage.updateUserDefaultModels(userId, parsed.data.models);
+      await storage.updateUserDefaultModel(userId, parsed.data.model);
       
-      const models = await storage.getUserDefaultModels(userId);
-      res.json({ models });
+      const model = await storage.getUserDefaultModel(userId);
+      res.json({ model });
     } catch (error) {
       res.status(500).json({ error: "기본 모델 업데이트에 실패했습니다" });
     }
