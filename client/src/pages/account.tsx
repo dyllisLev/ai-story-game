@@ -55,6 +55,13 @@ interface ConversationProfile {
   content: string;
 }
 
+interface SelectedModels {
+  gemini: string[];
+  chatgpt: string[];
+  claude: string[];
+  grok: string[];
+}
+
 export default function AccountPage() {
   const [, navigate] = useLocation();
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -117,6 +124,11 @@ export default function AccountPage() {
 
   const { data: profilesData, isLoading: profilesLoading } = useQuery<{ profiles: ConversationProfile[] }>({
     queryKey: ["/api/auth/conversation-profiles"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: selectedModelsData } = useQuery<{ models: SelectedModels }>({
+    queryKey: ["/api/auth/selected-models"],
     enabled: isAuthenticated,
   });
 
@@ -424,6 +436,13 @@ export default function AccountPage() {
     setShowApiKeys(prev => ({ ...prev, [provider]: !prev[provider] }));
   };
 
+  const getFilteredModels = (provider: string, models: AIModel[]) => {
+    const selectedList = selectedModelsData?.models?.[provider as keyof SelectedModels] || [];
+    if (selectedList.length === 0) return models;
+    const filtered = models.filter(m => selectedList.includes(m.id));
+    return filtered.length > 0 ? filtered : models;
+  };
+
   const renderApiKeySection = (
     provider: string, 
     label: string, 
@@ -432,6 +451,7 @@ export default function AccountPage() {
     modelField: keyof UserApiKeys
   ) => {
     const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+    const filteredModels = getFilteredModels(provider, models);
     
     return (
       <Card key={provider} className="mb-4">
@@ -501,7 +521,7 @@ export default function AccountPage() {
                   <SelectValue placeholder="모델 선택" />
                 </SelectTrigger>
                 <SelectContent>
-                  {models.map((model) => (
+                  {filteredModels.map((model) => (
                     <SelectItem key={model.id} value={model.id}>
                       {model.name}
                     </SelectItem>
