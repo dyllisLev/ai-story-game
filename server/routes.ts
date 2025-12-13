@@ -967,19 +967,31 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Story not found" });
       }
 
-      // Get default provider and model from settings
-      const providerSetting = await storage.getSetting("aiProvider");
-      const defaultProvider = providerSetting?.value || "gemini";
+      // Get user's default model first
+      const userDefaultModel = await storage.getUserDefaultModel(userId);
       
-      const defaultModels: Record<string, string> = {
-        gemini: "gemini-2.0-flash",
-        chatgpt: "gpt-4o",
-        claude: "claude-3-5-sonnet-20241022",
-        grok: "grok-beta"
-      };
+      let defaultProvider = "gemini";
+      let defaultModel = "gemini-2.0-flash";
       
-      const modelSetting = await storage.getSetting(`aiModel_${defaultProvider}`);
-      const defaultModel = modelSetting?.value || defaultModels[defaultProvider] || "";
+      if (userDefaultModel) {
+        // Use user's default model
+        defaultProvider = userDefaultModel.provider;
+        defaultModel = userDefaultModel.modelId;
+      } else {
+        // Fallback to global settings
+        const providerSetting = await storage.getSetting("aiProvider");
+        defaultProvider = providerSetting?.value || "gemini";
+        
+        const defaultModels: Record<string, string> = {
+          gemini: "gemini-2.0-flash",
+          chatgpt: "gpt-4o",
+          claude: "claude-3-5-sonnet-20241022",
+          grok: "grok-beta"
+        };
+        
+        const modelSetting = await storage.getSetting(`aiModel_${defaultProvider}`);
+        defaultModel = modelSetting?.value || defaultModels[defaultProvider] || "";
+      }
 
       const parsed = insertSessionSchema.safeParse({
         ...req.body,
