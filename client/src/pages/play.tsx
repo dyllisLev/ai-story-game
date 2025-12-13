@@ -416,7 +416,7 @@ export default function PlayStory() {
           );
         }
         return (
-          <pre className="my-6 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-x-auto max-w-full">
+          <pre className="my-6 rounded-lg border bg-muted/50 p-3 font-mono text-sm whitespace-pre-wrap break-words max-w-full">
             <code className={className} {...props}>
               {children}
             </code>
