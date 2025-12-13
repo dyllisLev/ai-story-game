@@ -14,7 +14,8 @@ import {
   type InsertUser, type User, type SafeUser, type UserApiKeys, type ConversationProfile,
   type InsertGroup, type Group,
   type InsertUserGroup, type UserGroup,
-  type InsertStoryGroup, type StoryGroup
+  type InsertStoryGroup, type StoryGroup,
+  type SelectedModels
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -55,6 +56,8 @@ export interface IStorage {
   getUserApiKeys(userId: number): Promise<UserApiKeys | null>;
   updateUserConversationProfiles(userId: number, profiles: ConversationProfile[]): Promise<User>;
   getUserConversationProfiles(userId: number): Promise<ConversationProfile[]>;
+  getUserSelectedModels(userId: number): Promise<SelectedModels | null>;
+  updateUserSelectedModels(userId: number, models: SelectedModels): Promise<User>;
   validatePassword(inputPassword: string, storedHash: string): boolean;
   hashPassword(password: string): string;
   deleteUser(userId: number): Promise<boolean>;
@@ -566,6 +569,41 @@ export class Storage implements IStorage {
     } catch {
       return [];
     }
+  }
+
+  async getUserSelectedModels(userId: number): Promise<SelectedModels | null> {
+    const user = await this.getUserById(userId);
+    if (!user) return null;
+    
+    const defaultModels: SelectedModels = {
+      gemini: [],
+      chatgpt: [],
+      claude: [],
+      grok: []
+    };
+    
+    if (!user.selectedModels) return defaultModels;
+    
+    try {
+      return JSON.parse(user.selectedModels);
+    } catch {
+      return defaultModels;
+    }
+  }
+
+  async updateUserSelectedModels(userId: number, models: SelectedModels): Promise<User> {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        selected_models: JSON.stringify(models),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return dbUserToUser(data);
   }
 
   hashPassword(password: string): string {

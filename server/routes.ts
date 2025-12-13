@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateApiKeysSchema, updateConversationProfilesSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateApiKeysSchema, updateConversationProfilesSchema, updateSelectedModelsSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -392,6 +392,34 @@ export async function registerRoutes(
       res.json({ profiles });
     } catch (error) {
       res.status(500).json({ error: "대화 프로필 업데이트에 실패했습니다" });
+    }
+  });
+
+  // Selected Models API
+  app.get("/api/auth/selected-models", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const models = await storage.getUserSelectedModels(userId);
+      res.json({ models });
+    } catch (error) {
+      res.status(500).json({ error: "선택된 모델을 가져오는데 실패했습니다" });
+    }
+  });
+
+  app.put("/api/auth/selected-models", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = updateSelectedModelsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const userId = req.session.userId!;
+      await storage.updateUserSelectedModels(userId, parsed.data.models);
+      
+      const models = await storage.getUserSelectedModels(userId);
+      res.json({ models });
+    } catch (error) {
+      res.status(500).json({ error: "선택된 모델 업데이트에 실패했습니다" });
     }
   });
 

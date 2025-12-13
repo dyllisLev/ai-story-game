@@ -37,6 +37,7 @@ export function dbUserToUser(dbUser: DbUser): User {
     aiModelClaude: dbUser.ai_model_claude,
     aiModelGemini: dbUser.ai_model_gemini,
     conversationProfiles: dbUser.conversation_profiles,
+    selectedModels: (dbUser as any).selected_models,
     createdAt: dbUser.created_at ? new Date(dbUser.created_at) : null,
     updatedAt: dbUser.updated_at ? new Date(dbUser.updated_at) : null,
   };
@@ -59,7 +60,8 @@ export function userToDbUserInsert(user: InsertUser): DbUserInsert {
     ai_model_claude: user.aiModelClaude,
     ai_model_gemini: user.aiModelGemini,
     conversation_profiles: user.conversationProfiles,
-  };
+    selected_models: (user as any).selectedModels,
+  } as DbUserInsert;
 }
 
 // Story mappers

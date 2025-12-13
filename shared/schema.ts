@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   aiModelClaude: text("ai_model_claude").default("claude-3-5-sonnet-20241022"),
   aiModelGemini: text("ai_model_gemini").default("gemini-2.0-flash"),
   conversationProfiles: text("conversation_profiles"), // JSON array of {id, name, content}
+  selectedModels: text("selected_models"), // JSON object: { gemini: string[], chatgpt: string[], claude: string[], grok: string[] }
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -207,6 +208,24 @@ export const conversationProfileSchema = z.object({
 
 export const updateConversationProfilesSchema = z.object({
   profiles: z.array(conversationProfileSchema),
+});
+
+export interface SelectedModels {
+  gemini: string[];
+  chatgpt: string[];
+  claude: string[];
+  grok: string[];
+}
+
+export const selectedModelsSchema = z.object({
+  gemini: z.array(z.string()),
+  chatgpt: z.array(z.string()),
+  claude: z.array(z.string()),
+  grok: z.array(z.string()),
+});
+
+export const updateSelectedModelsSchema = z.object({
+  models: selectedModelsSchema,
 });
 
 export const insertGroupSchema = createInsertSchema(groups).omit({
