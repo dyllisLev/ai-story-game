@@ -1,6 +1,6 @@
 # Overview
 
-This is a React-based interactive AI story roleplay application called "Crack AI". The application allows users to create, manage, and play through AI-powered interactive stories with multiple AI models. It features a full-stack architecture with an Express backend, React frontend, and SQLite database for local data persistence.
+This is a React-based interactive AI story roleplay application called "Crack AI". The application allows users to create, manage, and play through AI-powered interactive stories with multiple AI models. It features a full-stack architecture with an Express backend, React frontend, and Supabase PostgreSQL database for data persistence.
 
 The app provides a story creation interface with customizable settings, a chat-based gameplay interface with markdown rendering, and support for multiple AI language models (Gemini, GPT-4, Claude, Grok). The primary language appears to be Korean, as evidenced by the UI content and sample stories.
 
@@ -110,6 +110,25 @@ The application uses five main tables:
 - No hardcoded credentials in codebase
 - Replit GUI Git integration available for manual commits and pushes
 
+## Docker Deployment
+
+**Automated Docker Build:**
+- GitHub Actions workflow: `.github/workflows/docker-build-push.yml`
+- Automatically builds and pushes Docker images to Docker Hub
+- Triggered on push to main branch or manual workflow dispatch
+- Build configuration files:
+  - `Dockerfile` - Multi-stage build with dependency caching
+  - `docker-compose.yml` - Service orchestration configuration
+  - `BUILD_DOCKER.md` - Comprehensive build and deployment documentation
+
+**Docker Image:**
+- Optimized multi-stage build process
+- Includes both development and production configurations
+- Pushed to Docker Hub repository: `miniproj2024/crack-ai`
+- Tagged with commit SHA and 'latest' for easy deployment
+
+**Note:** These Docker files are actively used by GitHub Actions and should not be removed, even though they are not used for local Replit development.
+
 ## External Dependencies
 
 **AI Service Integrations:**
@@ -216,6 +235,46 @@ The application supports multiple AI language model providers with per-user API 
 **Supabase Configuration:**
 - Base URL: `https://supa.nuc.hmini.me` (self-hosted instance)
 - Authentication: API Key-based (SUPABASE_ANON_KEY)
-- Tables: users, settings, stories, sessions, messages
+- Tables: users, settings, stories, sessions, messages, groups, user_groups, story_groups
 - RLS: Enabled with server-side permissive policies
 - Schema file: `supabase-schema.sql` for database initialization
+
+# Recent Changes
+
+## Code Refactoring (December 2025)
+
+**Objective:** Major codebase cleanup to remove unused files and dependencies while maintaining all current functionality.
+
+**Deleted Files:**
+- SQLite migration scripts (no longer needed after switching to Supabase):
+  - `scripts/setup-db.ts`
+  - `scripts/export-init-db.ts`
+  - `scripts/create-example-db.ts`
+  - `migrate-sqlite-to-supabase.ts`
+- Temporary utility scripts in root directory:
+  - `check-user.ts`
+  - `reset-password.ts`
+- Redundant documentation files:
+  - `LOCAL_SETUP.md`
+  - `COMPLETE_SETUP_GUIDE.md`
+  - `SUPABASE_SETUP.md`
+- Old migration files:
+  - `migrations/` directory
+  - `supabase-add-plot-points.sql`
+  - `supabase-add-summary-fields.sql`
+
+**Removed NPM Packages (23 packages removed, 94 total dependencies removed):**
+- Unused Radix UI components: accordion, alert-dialog, aspect-ratio, collapsible, context-menu, hover-card, menubar, navigation-menu, popover, progress, slider, switch, toggle, toggle-group
+- Other unused packages: input-otp, cmdk, embla-carousel-react, react-day-picker, recharts, sonner, vaul, react-resizable-panels
+- Note: @radix-ui/react-radio-group was initially removed but reinstalled after discovering active usage in model selection UI
+
+**Kept Files:**
+- Docker-related files (Dockerfile, docker-compose.yml, BUILD_DOCKER.md) - actively used by GitHub Actions workflow
+- Password management scripts in `scripts/` directory (reset-password-sha256.ts, reset-password.ts, verify-and-reset-password.ts)
+- Deployment script: `scripts/init-and-push.ts`
+
+**Database Schema Updates:**
+- Updated `server/supabase-types.ts` to match current Supabase schema
+- Added missing tables: groups, user_groups, story_groups
+- Added missing fields: stories.created_by, users.selected_models, users.default_model
+- Fixed sessions table field types: ai_message_count and last_summary_turn are now non-nullable

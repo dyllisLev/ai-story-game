@@ -4,7 +4,10 @@ import {
   dbStoryToStory, storyToDbStoryInsert,
   dbSessionToSession, sessionToDbSessionInsert,
   dbMessageToMessage, messageToDbMessageInsert,
-  dbSettingToSetting, settingToDbSettingInsert
+  dbSettingToSetting, settingToDbSettingInsert,
+  dbGroupToGroup, groupToDbGroupInsert,
+  dbUserGroupToUserGroup, userGroupToDbUserGroupInsert,
+  dbStoryGroupToStoryGroup, storyGroupToDbStoryGroupInsert
 } from "./supabase-mappers";
 import { 
   type InsertSetting, type Setting,
@@ -674,7 +677,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data as Group | undefined;
+    return data ? dbGroupToGroup(data) : undefined;
   }
 
   async getAllGroups(): Promise<Group[]> {
@@ -684,30 +687,37 @@ export class Storage implements IStorage {
       .order('name', { ascending: true });
     
     if (error) throw error;
-    return (data || []) as Group[];
+    return (data || []).map(dbGroupToGroup);
   }
 
   async createGroup(group: InsertGroup): Promise<Group> {
     const { data, error } = await supabase
       .from('groups')
-      .insert(group)
+      .insert(groupToDbGroupInsert(group))
       .select()
       .single();
     
     if (error) throw error;
-    return data as Group;
+    return dbGroupToGroup(data);
   }
 
   async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> {
+    const dbUpdate = {
+      ...(group.name && { name: group.name }),
+      ...(group.type && { type: group.type }),
+      ...(group.description !== undefined && { description: group.description }),
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('groups')
-      .update({ ...group, updated_at: new Date().toISOString() })
+      .update(dbUpdate)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data as Group;
+    return dbGroupToGroup(data);
   }
 
   async deleteGroup(id: number): Promise<void> {
@@ -727,18 +737,18 @@ export class Storage implements IStorage {
       .eq('user_id', userId);
     
     if (error) throw error;
-    return (data || []).map((ug: any) => ug.groups as Group);
+    return (data || []).map((ug: any) => dbGroupToGroup(ug.groups));
   }
 
   async addUserToGroup(userId: number, groupId: number): Promise<UserGroup> {
     const { data, error } = await supabase
       .from('user_groups')
-      .insert({ user_id: userId, group_id: groupId })
+      .insert(userGroupToDbUserGroupInsert({ userId, groupId }))
       .select()
       .single();
     
     if (error) throw error;
-    return data as UserGroup;
+    return dbUserGroupToUserGroup(data);
   }
 
   async removeUserFromGroup(userId: number, groupId: number): Promise<void> {
@@ -777,7 +787,7 @@ export class Storage implements IStorage {
     
     if (error) throw error;
     return (data || []).map((sg: any) => ({
-      ...sg.groups,
+      ...dbGroupToGroup(sg.groups),
       permission: sg.permission
     }));
   }
@@ -785,12 +795,12 @@ export class Storage implements IStorage {
   async addStoryGroup(storyId: number, groupId: number, permission: string): Promise<StoryGroup> {
     const { data, error } = await supabase
       .from('story_groups')
-      .insert({ story_id: storyId, group_id: groupId, permission })
+      .insert(storyGroupToDbStoryGroupInsert({ storyId, groupId, permission }))
       .select()
       .single();
     
     if (error) throw error;
-    return data as StoryGroup;
+    return dbStoryGroupToStoryGroup(data);
   }
 
   async removeStoryGroup(storyId: number, groupId: number): Promise<void> {
@@ -813,7 +823,7 @@ export class Storage implements IStorage {
       .single();
     
     if (error) throw error;
-    return data as StoryGroup;
+    return dbStoryGroupToStoryGroup(data);
   }
 
   async checkStoryAccess(userId: number, storyId: number, requiredPermission: 'read' | 'write' = 'read'): Promise<boolean> {

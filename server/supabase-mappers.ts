@@ -6,7 +6,10 @@ import type {
   Story, InsertStory,
   Session, InsertSession,
   Message, InsertMessage,
-  Setting, InsertSetting
+  Setting, InsertSetting,
+  Group, InsertGroup,
+  UserGroup, InsertUserGroup,
+  StoryGroup, InsertStoryGroup
 } from '@shared/schema';
 
 type DbUser = Database['public']['Tables']['users']['Row'];
@@ -17,6 +20,12 @@ type DbSession = Database['public']['Tables']['sessions']['Row'];
 type DbSessionInsert = Database['public']['Tables']['sessions']['Insert'];
 type DbMessage = Database['public']['Tables']['messages']['Row'];
 type DbMessageInsert = Database['public']['Tables']['messages']['Insert'];
+type DbGroup = Database['public']['Tables']['groups']['Row'];
+type DbGroupInsert = Database['public']['Tables']['groups']['Insert'];
+type DbUserGroup = Database['public']['Tables']['user_groups']['Row'];
+type DbUserGroupInsert = Database['public']['Tables']['user_groups']['Insert'];
+type DbStoryGroup = Database['public']['Tables']['story_groups']['Row'];
+type DbStoryGroupInsert = Database['public']['Tables']['story_groups']['Insert'];
 
 // User mappers
 export function dbUserToUser(dbUser: DbUser): User {
@@ -175,4 +184,60 @@ export function dbSettingToSetting(dbSetting: Database['public']['Tables']['sett
 
 export function settingToDbSettingInsert(setting: InsertSetting): Database['public']['Tables']['settings']['Insert'] {
   return setting;
+}
+
+// Group mappers
+export function dbGroupToGroup(dbGroup: DbGroup): Group {
+  return {
+    id: dbGroup.id,
+    name: dbGroup.name,
+    type: dbGroup.type,
+    description: dbGroup.description,
+    createdAt: dbGroup.created_at ? new Date(dbGroup.created_at) : null,
+    updatedAt: dbGroup.updated_at ? new Date(dbGroup.updated_at) : null,
+  };
+}
+
+export function groupToDbGroupInsert(group: InsertGroup): DbGroupInsert {
+  return {
+    name: group.name,
+    type: group.type,
+    description: group.description,
+  };
+}
+
+// UserGroup mappers
+export function dbUserGroupToUserGroup(dbUserGroup: DbUserGroup): UserGroup {
+  return {
+    id: dbUserGroup.id,
+    userId: dbUserGroup.user_id,
+    groupId: dbUserGroup.group_id,
+    createdAt: dbUserGroup.created_at ? new Date(dbUserGroup.created_at) : null,
+  };
+}
+
+export function userGroupToDbUserGroupInsert(userGroup: InsertUserGroup): DbUserGroupInsert {
+  return {
+    user_id: userGroup.userId,
+    group_id: userGroup.groupId,
+  };
+}
+
+// StoryGroup mappers
+export function dbStoryGroupToStoryGroup(dbStoryGroup: DbStoryGroup): StoryGroup {
+  return {
+    id: dbStoryGroup.id,
+    storyId: dbStoryGroup.story_id,
+    groupId: dbStoryGroup.group_id,
+    permission: dbStoryGroup.permission,
+    createdAt: dbStoryGroup.created_at ? new Date(dbStoryGroup.created_at) : null,
+  };
+}
+
+export function storyGroupToDbStoryGroupInsert(storyGroup: InsertStoryGroup): DbStoryGroupInsert {
+  return {
+    story_id: storyGroup.storyId,
+    group_id: storyGroup.groupId,
+    permission: storyGroup.permission,
+  };
 }

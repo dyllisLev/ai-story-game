@@ -27,6 +27,8 @@ export interface Database {
           ai_model_claude: string | null
           ai_model_gemini: string | null
           conversation_profiles: string | null
+          selected_models: string | null
+          default_model: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -47,6 +49,8 @@ export interface Database {
           ai_model_claude?: string | null
           ai_model_gemini?: string | null
           conversation_profiles?: string | null
+          selected_models?: string | null
+          default_model?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -67,6 +71,8 @@ export interface Database {
           ai_model_claude?: string | null
           ai_model_gemini?: string | null
           conversation_profiles?: string | null
+          selected_models?: string | null
+          default_model?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -96,6 +102,7 @@ export interface Database {
           image: string | null
           genre: string | null
           author: string | null
+          created_by: number | null
           story_settings: string | null
           prologue: string | null
           prompt_template: string | null
@@ -112,6 +119,7 @@ export interface Database {
           image?: string | null
           genre?: string | null
           author?: string | null
+          created_by?: number | null
           story_settings?: string | null
           prologue?: string | null
           prompt_template?: string | null
@@ -128,6 +136,7 @@ export interface Database {
           image?: string | null
           genre?: string | null
           author?: string | null
+          created_by?: number | null
           story_settings?: string | null
           prologue?: string | null
           prompt_template?: string | null
@@ -150,8 +159,8 @@ export interface Database {
           key_plot_points: string | null
           session_model: string | null
           session_provider: string | null
-          ai_message_count: number | null
-          last_summary_turn: number | null
+          ai_message_count: number
+          last_summary_turn: number
           created_at: string | null
           updated_at: string | null
         }
@@ -166,8 +175,8 @@ export interface Database {
           key_plot_points?: string | null
           session_model?: string | null
           session_provider?: string | null
-          ai_message_count?: number | null
-          last_summary_turn?: number | null
+          ai_message_count?: number
+          last_summary_turn?: number
           created_at?: string | null
           updated_at?: string | null
         }
@@ -182,8 +191,8 @@ export interface Database {
           key_plot_points?: string | null
           session_model?: string | null
           session_provider?: string | null
-          ai_message_count?: number | null
-          last_summary_turn?: number | null
+          ai_message_count?: number
+          last_summary_turn?: number
           created_at?: string | null
           updated_at?: string | null
         }
@@ -211,6 +220,75 @@ export interface Database {
           role?: string
           content?: string
           character?: string | null
+          created_at?: string | null
+        }
+      }
+      groups: {
+        Row: {
+          id: number
+          name: string
+          type: string
+          description: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: number
+          name: string
+          type: string
+          description?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: number
+          name?: string
+          type?: string
+          description?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      user_groups: {
+        Row: {
+          id: number
+          user_id: number
+          group_id: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          user_id: number
+          group_id: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          user_id?: number
+          group_id?: number
+          created_at?: string | null
+        }
+      }
+      story_groups: {
+        Row: {
+          id: number
+          story_id: number
+          group_id: number
+          permission: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          story_id: number
+          group_id: number
+          permission: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          story_id?: number
+          group_id?: number
+          permission?: string
           created_at?: string | null
         }
       }
