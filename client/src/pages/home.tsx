@@ -122,11 +122,13 @@ export default function Home() {
               새 스토리 만들기
             </Button>
           </Link>
-          <Link href="/settings">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" data-testid="button-settings">
-              <SettingsIcon className="w-5 h-5" />
-            </Button>
-          </Link>
+          {user?.isAdmin && (
+            <Link href="/settings">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" data-testid="button-settings">
+                <SettingsIcon className="w-5 h-5" />
+              </Button>
+            </Link>
+          )}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
