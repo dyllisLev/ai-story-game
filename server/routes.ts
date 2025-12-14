@@ -75,6 +75,16 @@ async function isAdmin(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+function splitAndStreamText(text: string, res: Response): void {
+  const tokens = text.split(/(\s+)/);
+  
+  for (const token of tokens) {
+    if (token) {
+      res.write(`data: ${JSON.stringify({ text: token, done: false })}\n\n`);
+    }
+  }
+}
+
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -2010,7 +2020,7 @@ nextStrory 구성:
                     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
                     if (text) {
                       fullText += text;
-                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                      splitAndStreamText(text, res);
                     }
                   } catch (parseErr) {
                     // Skip malformed JSON
@@ -2091,7 +2101,7 @@ nextStrory 구성:
                     const text = data.choices?.[0]?.delta?.content || "";
                     if (text) {
                       fullText += text;
-                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                      splitAndStreamText(text, res);
                     }
                   } catch (parseErr) {
                     // Skip malformed JSON
@@ -2171,7 +2181,7 @@ nextStrory 구성:
                     if (data.type === 'content_block_delta' && data.delta?.text) {
                       const text = data.delta.text;
                       fullText += text;
-                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                      splitAndStreamText(text, res);
                     }
                   } catch (parseErr) {
                     // Skip malformed JSON
@@ -2253,7 +2263,7 @@ nextStrory 구성:
                     const text = data.choices?.[0]?.delta?.content || "";
                     if (text) {
                       fullText += text;
-                      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+                      splitAndStreamText(text, res);
                     }
                   } catch (parseErr) {
                     // Skip malformed JSON
