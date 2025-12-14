@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateConversationProfilesSchema, updateSelectedModelsSchema, updateDefaultModelSchema, type SafeUser, type ConversationProfile } from "@shared/schema";
+import { insertStorySchema, insertSessionSchema, insertMessageSchema, loginSchema, registerSchema, updateProfileSchema, changePasswordSchema, updateConversationProfilesSchema, updateSelectedModelsSchema, updateDefaultModelSchema, type SafeUser, type ConversationProfile, type Message } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -2423,6 +2423,97 @@ nextStrory 구성:
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete message" });
+    }
+  });
+
+  // ==================== MANUAL SUMMARY API ====================
+  
+  app.post("/api/sessions/:sessionId/summary", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: "Invalid session ID" });
+      }
+
+      console.log(`[MANUAL-SUMMARY] Starting manual summary generation for session ${sessionId}`);
+      
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Get all messages
+      const allMessages = await storage.getMessagesBySession(sessionId);
+      const aiMessages = allMessages.filter(m => m.role === "assistant");
+      
+      console.log(`[MANUAL-SUMMARY] Total messages: ${allMessages.length}, AI messages: ${aiMessages.length}`);
+      
+      if (aiMessages.length === 0) {
+        return res.status(400).json({ error: "요약할 메시지가 없습니다" });
+      }
+      
+      // Determine which messages to use for summary
+      let messagesToSummarize: Message[];
+      const lastSummaryTurn = session.lastSummaryTurn || 0;
+      
+      if (lastSummaryTurn > 0) {
+        // If there's a previous summary, get messages after last summary
+        const messagesAfterSummary = aiMessages.slice(lastSummaryTurn);
+        console.log(`[MANUAL-SUMMARY] Using ${messagesAfterSummary.length} messages after turn ${lastSummaryTurn}`);
+        messagesToSummarize = messagesAfterSummary;
+      } else {
+        // No previous summary, use all messages
+        console.log(`[MANUAL-SUMMARY] No previous summary, using all ${aiMessages.length} messages`);
+        messagesToSummarize = aiMessages;
+      }
+      
+      if (messagesToSummarize.length === 0) {
+        return res.status(400).json({ error: "요약할 새 메시지가 없습니다" });
+      }
+      
+      const summaryProvider = session.sessionProvider || "gemini";
+      const summaryModel = session.sessionModel || "gemini-2.0-flash";
+      console.log(`[MANUAL-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
+      
+      const apiKey = await getUserApiKeyForProvider(session.userId, summaryProvider);
+      
+      if (!apiKey) {
+        console.error(`[MANUAL-SUMMARY] No API key found for provider ${summaryProvider}`);
+        return res.status(400).json({ error: `${summaryProvider} API 키가 설정되지 않았습니다` });
+      }
+      
+      console.log(`[MANUAL-SUMMARY] Calling generateSummary with ${messagesToSummarize.length} messages...`);
+      const { generateSummary } = await import("./summary-helper");
+      const result = await generateSummary({
+        messages: messagesToSummarize,
+        existingSummary: session.summaryMemory,
+        existingPlotPoints: session.keyPlotPoints,
+        provider: summaryProvider,
+        model: summaryModel,
+        apiKey
+      });
+      
+      console.log(`[MANUAL-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
+      
+      // Update session with new summary
+      await storage.updateSession(sessionId, {
+        summaryMemory: result.summary,
+        keyPlotPoints: JSON.stringify(result.keyPlotPoints),
+        lastSummaryTurn: aiMessages.length
+      });
+      
+      console.log(`[MANUAL-SUMMARY] Successfully saved to database for session ${sessionId}`);
+      
+      res.json({
+        success: true,
+        summary: result.summary,
+        keyPlotPoints: result.keyPlotPoints,
+        messageCount: aiMessages.length
+      });
+    } catch (error: any) {
+      console.error("[MANUAL-SUMMARY] Failed:", error?.message || error);
+      console.error("[MANUAL-SUMMARY] Stack:", error?.stack);
+      res.status(500).json({ error: error?.message || "요약 생성에 실패했습니다" });
     }
   });
 

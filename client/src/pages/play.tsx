@@ -190,6 +190,7 @@ export default function PlayStory() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<ConversationProfile[]>([]);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   
   // Auto-scroll to bottom (only on initial load)
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -727,6 +728,46 @@ export default function PlayStory() {
     }
   };
 
+  const handleGenerateSummary = async () => {
+    if (!sessionId || isGeneratingSummary) return;
+    
+    setIsGeneratingSummary(true);
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/summary`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || "요약 생성에 실패했습니다");
+        return;
+      }
+      
+      const result = await response.json();
+      setSummaryMemory(result.summary);
+      
+      // Reload session to get updated data
+      const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+      if (sessionResponse.ok) {
+        const updatedSession = await sessionResponse.json();
+        setSession(updatedSession);
+        setSummaryMemory(updatedSession.summaryMemory || "");
+      }
+      
+      alert("요약이 성공적으로 생성되었습니다!");
+    } catch (error) {
+      console.error("Failed to generate summary:", error);
+      alert("요약 생성 중 오류가 발생했습니다");
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  // Calculate AI message count
+  const aiMessageCount = messages.filter(m => m.role === "assistant").length;
+  const shouldHighlightSummary = aiMessageCount > 0 && aiMessageCount % 20 === 0;
+
   if (loading && !session) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -1073,6 +1114,38 @@ export default function PlayStory() {
                         <History className="w-4 h-4 text-muted-foreground" /> 요약 메모리
                         {summaryMemory && <span className="text-[10px] bg-green-100 text-green-600 px-1 rounded ml-auto">설정됨</span>}
                      </Button>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                     <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-muted-foreground">요약 생성</label>
+                        <span className="text-[10px] text-muted-foreground">{aiMessageCount}턴</span>
+                     </div>
+                     <Button 
+                       variant={shouldHighlightSummary ? "default" : "outline"}
+                       className={cn(
+                         "w-full justify-start gap-3 font-normal h-10",
+                         shouldHighlightSummary && "bg-primary text-primary-foreground animate-pulse shadow-lg"
+                       )}
+                       onClick={handleGenerateSummary}
+                       disabled={isGeneratingSummary || aiMessageCount === 0}
+                       data-testid="button-generate-summary"
+                     >
+                        {isGeneratingSummary ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <History className={cn("w-4 h-4", shouldHighlightSummary && "animate-bounce")} />
+                        )}
+                        {isGeneratingSummary ? "요약 생성 중..." : "요약 생성"}
+                        {shouldHighlightSummary && <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded ml-auto font-bold">20턴!</span>}
+                     </Button>
+                     {shouldHighlightSummary && (
+                       <p className="text-xs text-muted-foreground px-1">
+                         💡 20턴마다 요약을 생성하시는 것을 권장합니다.
+                       </p>
+                     )}
                   </div>
                </div>
             </ScrollArea>
