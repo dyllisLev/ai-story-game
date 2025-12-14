@@ -191,8 +191,9 @@ export default function PlayStory() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<ConversationProfile[]>([]);
   
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom (only on initial load)
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasInitiallyScrolled = useRef(false);
   
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -335,13 +336,19 @@ export default function PlayStory() {
     }
   }, [session, loadMessages]);
 
-  // Auto-scroll to bottom when messages load or change
+  // Auto-scroll to bottom only on initial page load/refresh
   useEffect(() => {
-    if (messages.length > 0 && !loading) {
+    if (messages.length > 0 && !loading && !hasInitiallyScrolled.current) {
       // Small delay to ensure DOM is updated
       setTimeout(scrollToBottom, 100);
+      hasInitiallyScrolled.current = true;
     }
   }, [messages, loading, scrollToBottom]);
+
+  // Reset scroll flag when session changes (navigating to different session)
+  useEffect(() => {
+    hasInitiallyScrolled.current = false;
+  }, [sessionId]);
 
 
   // Helper function to extract story content from JSON (complete or incomplete)
