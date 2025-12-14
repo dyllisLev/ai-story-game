@@ -51,10 +51,11 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
   
   promptParts.push(`당신은 인터랙티브 스토리의 대화 내용을 분석하는 AI입니다.`);
   promptParts.push(`다음 규칙을 따라주세요:`);
-  promptParts.push(`1. 최근 대화의 요약을 1500자 이내로 작성하세요. 과거 주요 사건도 요약에 자연스럽게 통합하세요.`);
-  promptParts.push(`2. 중요한 분기점(선택, 결정, 사건)을 별도로 추출하세요.`);
-  promptParts.push(`3. 핵심 분기점은 최대 ${MAX_PLOT_POINTS}개만 유지합니다.`);
-  promptParts.push(`4. 새로운 중요 분기점만 추가하세요.\n`);
+  promptParts.push(`1. **중요**: 기존 요약과 최근 대화를 모두 고려하여, 처음부터 현재까지의 전체 스토리 요약을 1500자 이내로 작성하세요.`);
+  promptParts.push(`2. 기존 요약의 내용을 반드시 포함하되, 최근 대화 내용으로 업데이트하여 통합된 하나의 완전한 요약을 만드세요.`);
+  promptParts.push(`3. 중요한 분기점(선택, 결정, 사건)을 별도로 추출하세요.`);
+  promptParts.push(`4. 핵심 분기점은 최대 ${MAX_PLOT_POINTS}개만 유지합니다.`);
+  promptParts.push(`5. 새로운 중요 분기점만 추가하세요.\n`);
   
   if (existingSummary || archivedPointsSummary) {
     promptParts.push(`[기존 요약]`);
@@ -76,11 +77,13 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
   promptParts.push(``);
   promptParts.push(`다음 JSON 형식으로만 응답하세요:`);
   promptParts.push(`{`);
-  promptParts.push(`  "summary": "전체 스토리 요약 (1500자 이내, 과거 사건 통합)",`);
+  promptParts.push(`  "summary": "처음부터 현재까지의 완전한 통합 요약 (1500자 이내, 기존 요약 내용 포함 필수)",`);
   promptParts.push(`  "keyPlotPoints": ["최근 핵심 분기점만, 최대 ${MAX_PLOT_POINTS}개"]`);
   promptParts.push(`}`);
   promptParts.push(``);
-  promptParts.push(`중요: keyPlotPoints는 최근 ${MAX_PLOT_POINTS}개만 유지하세요. 오래된 분기점은 summary에 통합하세요.`);
+  promptParts.push(`중요: `);
+  promptParts.push(`- summary는 기존 요약을 버리지 말고 최근 내용과 통합하여 전체 스토리의 완전한 요약을 작성하세요.`);
+  promptParts.push(`- keyPlotPoints는 최근 ${MAX_PLOT_POINTS}개만 유지하세요. 오래된 분기점은 summary에 통합하세요.`);
   
   const summaryPrompt = promptParts.join("\n");
   
