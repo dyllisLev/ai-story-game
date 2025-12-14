@@ -95,8 +95,8 @@ export default function Home() {
       if (response.ok) {
         const sessions = await response.json();
         if (sessions.length > 0) {
-          // Navigate to the most recent session
-          const latestSession = sessions[sessions.length - 1];
+          // Navigate to the most recent session (sessions are ordered by updated_at descending from API)
+          const latestSession = sessions[0];
           setLocation(`/play/${latestSession.id}`);
         } else {
           // No sessions exist, create a new one
