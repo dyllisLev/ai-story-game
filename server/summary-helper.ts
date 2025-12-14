@@ -49,13 +49,13 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
   
   const promptParts = [];
   
-  promptParts.push(`당신은 인터랙티브 스토리를 간결하게 요약하는 AI입니다.`);
+  promptParts.push(`당신은 인터랙티브 스토리의 타임라인을 작성하는 AI입니다.`);
   promptParts.push(`다음 규칙을 반드시 따르세요:`);
-  promptParts.push(`1. **요약은 500자 이내로 짧고 간결하게** 작성하세요.`);
-  promptParts.push(`2. **시간순으로 정리**하되, 핵심 사건만 포함하세요.`);
-  promptParts.push(`3. 각 사건 앞에 시간 표기 (예: [초반], [10턴 경], [20턴 경], [최근])를 붙이세요.`);
-  promptParts.push(`4. 중요한 선택/결정/사건만 간략히 나열하세요.`);
-  promptParts.push(`5. 불필요한 설명이나 장황한 묘사는 제거하세요.\n`);
+  promptParts.push(`1. **형식**: [시간] 사건 요약 한 줄`);
+  promptParts.push(`2. **시간 표기**: [1턴], [5턴], [12턴] 등 턴 번호 사용`);
+  promptParts.push(`3. **각 사건은 한 줄로**: 간결하게 핵심만 표현 (20-30자 내외)`);
+  promptParts.push(`4. **기존 타임라인에 추가**: 기존 내용은 그대로 유지하고 새로운 사건만 추가`);
+  promptParts.push(`5. **중요한 사건만**: 의미 있는 선택, 결정, 전개만 포함\n`);
   
   if (existingSummary || archivedPointsSummary) {
     promptParts.push(`[기존 요약]`);
@@ -77,13 +77,17 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
   promptParts.push(``);
   promptParts.push(`다음 JSON 형식으로만 응답하세요:`);
   promptParts.push(`{`);
-  promptParts.push(`  "summary": "[초반] 첫 사건. [10턴경] 두번째 사건. [최근] 최신 사건. (500자 이내, 핵심만)",`);
-  promptParts.push(`  "keyPlotPoints": ["간결한 분기점 설명 (최대 ${MAX_PLOT_POINTS}개)"]`);
+  promptParts.push(`  "summary": "기존 타임라인\\n[새로운턴] 새 사건\\n[다음턴] 다음 사건",`);
+  promptParts.push(`  "keyPlotPoints": ["간결한 분기점 (최대 ${MAX_PLOT_POINTS}개)"]`);
   promptParts.push(`}`);
   promptParts.push(``);
-  promptParts.push(`중요 규칙:`);
-  promptParts.push(`- summary: 기존 요약과 최근 내용을 통합하되 500자 이내로 짧게. 시간 표기 필수.`);
-  promptParts.push(`- keyPlotPoints: 각 분기점은 한 문장으로 간결하게. 최대 ${MAX_PLOT_POINTS}개.`);
+  promptParts.push(`예시:`);
+  promptParts.push(`"summary": "[1턴] 무림에 도착\\n[3턴] 소매치기 추적\\n[7턴] 하오문 분타 발견\\n[12턴] 만월루에서 조설연과 만남"`);
+  promptParts.push(``);
+  promptParts.push(`중요:`);
+  promptParts.push(`- 기존 타임라인을 그대로 유지하고 새로운 사건만 추가`);
+  promptParts.push(`- 각 줄은 [턴수] 사건 형식으로 20-30자 이내`);
+  promptParts.push(`- 타임라인은 길이 제한 없이 계속 쌓임`);
   
   const summaryPrompt = promptParts.join("\n");
   
@@ -141,7 +145,7 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       console.error("Failed to parse JSON from response:", generatedText);
       // Fallback: return the raw text as summary with active plot points
       return {
-        summary: generatedText.trim().slice(0, 500),
+        summary: generatedText.trim(),
         keyPlotPoints: activePoints
       };
     }
@@ -163,13 +167,13 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       const finalPoints = allPoints.slice(-MAX_PLOT_POINTS);
       
       return {
-        summary: parsed.summary || generatedText.trim().slice(0, 500),
+        summary: parsed.summary || generatedText.trim(),
         keyPlotPoints: finalPoints
       };
     } catch (parseError) {
       console.error("JSON parse error:", parseError);
       return {
-        summary: generatedText.trim().slice(0, 500),
+        summary: generatedText.trim(),
         keyPlotPoints: activePoints
       };
     }
