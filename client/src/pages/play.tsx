@@ -19,7 +19,9 @@ import {
   Loader2,
   Trash2,
   Save,
-  X
+  X,
+  Copy,
+  Check
 } from "lucide-react";
 import {
   Dialog,
@@ -401,6 +403,19 @@ export default function PlayStory() {
     return processedText;
   };
 
+  // Code block copy state
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCopyCode = async (code: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(id);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  };
+
   // Render AI response with special styling
   const renderAIContent = (content: string) => {
     const processedContent = extractStoryFromJSON(content);
@@ -416,12 +431,43 @@ export default function PlayStory() {
             </code>
           );
         }
+        
+        // Extract language from className (e.g., "language-javascript")
+        const langMatch = className?.match(/language-(\w+)/);
+        const language = langMatch ? langMatch[1] : 'info';
+        const codeContent = String(children).replace(/\n$/, '');
+        const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
+        
         return (
-          <pre className="my-6 rounded-lg border bg-muted/50 p-3 font-mono text-sm whitespace-pre-wrap break-words max-w-full">
-            <code className={className} {...props}>
-              {children}
-            </code>
-          </pre>
+          <div className="my-6 rounded-lg overflow-hidden border border-border bg-gradient-to-br from-muted/30 to-muted/50 shadow-sm">
+            <div className="flex items-center justify-between px-4 py-2 bg-muted/80 border-b border-border/50">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {language}
+              </span>
+              <button
+                onClick={() => handleCopyCode(codeContent, codeId)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background border border-border/50 rounded transition-all duration-200"
+                data-testid={`button-copy-code-${codeId}`}
+              >
+                {copiedCode === codeId ? (
+                  <>
+                    <Check className="w-3 h-3" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="p-4 font-mono text-sm whitespace-pre-wrap break-words max-w-full overflow-x-auto">
+              <code className={className} {...props}>
+                {children}
+              </code>
+            </pre>
+          </div>
         );
       },
       p({ children, node, ...props }: any) {
