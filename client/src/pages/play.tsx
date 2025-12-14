@@ -439,14 +439,14 @@ export default function PlayStory() {
         const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
         
         return (
-          <div className="my-6 rounded-lg overflow-hidden border border-border bg-gradient-to-br from-muted/30 to-muted/50 shadow-sm">
-            <div className="flex items-center justify-between px-4 py-2 bg-muted/80 border-b border-border/50">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="my-8 rounded-lg overflow-hidden border border-neutral-700 dark:border-neutral-800 bg-neutral-900 shadow-lg">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-800 dark:bg-neutral-800/80 border-b border-neutral-700/50">
+              <span className="text-xs font-medium text-neutral-400 uppercase tracking-wide">
                 {language}
               </span>
               <button
                 onClick={() => handleCopyCode(codeContent, codeId)}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background border border-border/50 rounded transition-all duration-200"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-200 bg-neutral-700/50 hover:bg-neutral-700 border border-neutral-600/50 rounded transition-all duration-200"
                 data-testid={`button-copy-code-${codeId}`}
               >
                 {copiedCode === codeId ? (
@@ -462,7 +462,7 @@ export default function PlayStory() {
                 )}
               </button>
             </div>
-            <pre className="p-4 font-mono text-sm whitespace-pre-wrap break-words max-w-full overflow-x-auto">
+            <pre className="p-4 font-mono text-sm text-neutral-200 whitespace-pre-wrap break-words max-w-full overflow-x-auto">
               <code className={className} {...props}>
                 {children}
               </code>
