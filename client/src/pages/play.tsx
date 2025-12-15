@@ -144,6 +144,7 @@ interface Session {
   summaryMemory?: string | null;
   sessionModel?: string | null;
   sessionProvider?: string | null;
+  fontSize?: number | null;
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -188,6 +189,7 @@ export default function PlayStory() {
   const [summaryMemory, setSummaryMemory] = useState("");
   const [sessionProvider, setSessionProvider] = useState("");
   const [sessionModel, setSessionModel] = useState("");
+  const [fontSize, setFontSize] = useState(13);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<ConversationProfile[]>([]);
@@ -222,6 +224,7 @@ export default function PlayStory() {
         setSummaryMemory(sessionData.summaryMemory || "");
         setSessionProvider(sessionData.sessionProvider || "");
         setSessionModel(sessionData.sessionModel || "");
+        setFontSize(sessionData.fontSize || 13);
         
         // Load story
         const storyResponse = await fetch(`/api/stories/${sessionData.storyId}`);
@@ -251,11 +254,11 @@ export default function PlayStory() {
     }
   }, [sessionId, setLocation]);
 
-  const saveSessionSettings = async (field: string, value: string) => {
+  const saveSessionSettings = async (field: string, value: string | number) => {
     if (!sessionId) return;
     setIsSavingSettings(true);
     try {
-      const updateData: Record<string, string> = { [field]: value };
+      const updateData: Record<string, string | number> = { [field]: value };
       await fetch(`/api/sessions/${sessionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -936,7 +939,7 @@ export default function PlayStory() {
                         <div key={msg.id} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2" style={{ width: '100%' }}>
-                                  <div className="text-sm leading-loose max-w-full break-words">
+                                  <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
                                      {renderAIContent(msg.content)}
                                   </div>
                                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -972,7 +975,7 @@ export default function PlayStory() {
                  <div className="group">
                    <div className="flex gap-4">
                      <div className="flex-1 space-y-2" style={{ width: '100%' }}>
-                       <div className="text-sm leading-loose max-w-full break-words">
+                       <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
                          {renderAIContent(streamingContent)}
                          <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
                        </div>
@@ -1140,6 +1143,43 @@ export default function PlayStory() {
                         <History className="w-4 h-4 text-muted-foreground" /> 요약 메모리
                         {summaryMemory && <span className="text-[10px] bg-green-100 text-green-600 px-1 rounded ml-auto">설정됨</span>}
                      </Button>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                     <label className="text-xs font-bold text-muted-foreground">폰트 크기</label>
+                     <div className="flex items-center justify-center gap-3 bg-muted/30 rounded-lg p-3">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-full"
+                          onClick={() => {
+                            const newSize = Math.max(10, fontSize - 1);
+                            setFontSize(newSize);
+                            saveSessionSettings("fontSize", newSize);
+                          }}
+                          disabled={fontSize <= 10}
+                          data-testid="button-decrease-font"
+                        >
+                          <span className="text-lg font-bold">-</span>
+                        </Button>
+                        <span className="text-base font-medium min-w-[2ch] text-center" data-testid="text-font-size">{fontSize}</span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-full"
+                          onClick={() => {
+                            const newSize = Math.min(24, fontSize + 1);
+                            setFontSize(newSize);
+                            saveSessionSettings("fontSize", newSize);
+                          }}
+                          disabled={fontSize >= 24}
+                          data-testid="button-increase-font"
+                        >
+                          <span className="text-lg font-bold">+</span>
+                        </Button>
+                     </div>
                   </div>
 
                   <Separator />

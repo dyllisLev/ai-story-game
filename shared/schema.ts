@@ -85,6 +85,7 @@ export const sessions = pgTable("sessions", {
   keyPlotPoints: text("key_plot_points"),
   sessionModel: text("session_model"),
   sessionProvider: text("session_provider"),
+  fontSize: integer("font_size").default(13).notNull(),
   aiMessageCount: integer("ai_message_count").default(0).notNull(),
   lastSummaryTurn: integer("last_summary_turn").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
