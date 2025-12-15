@@ -1573,58 +1573,10 @@ export async function registerRoutes(
       
       // Build system prompt from AI persona settings (commonPrompt) with variable substitution
       const commonPromptSetting = await storage.getSetting("commonPrompt");
-      let systemPrompt = commonPromptSetting?.value || `당신은 경험 많은 판타지 소설가입니다.
-유저가 입력한 "유저 메시지"를 바탕으로 현재세계관과 설정, 현재 이야기 흐름에 맞춰 다음 이야기를 만들어주세요.
-
-길이는 최소 1000자 이상 출력해야합니다.
-
-## 스토리 정보
-제목: {title}
-장르: {genre}
-소개: {description}
-
-## 세계관 설정
-{storySettings}
-
-## 시작 상황
-{startingSituation}
-
-## 대화 프로필
-{conversationProfile}
-
-## 유저 노트
-{userNote}
-
-## 요약 메모리 (과거 사건 타임라인 - 반드시 참고하여 이야기 연속성 유지)
-{summaryMemory}
-
-**중요**: 위 "요약 메모리"에 기록된 과거 사건들을 반드시 고려하여 스토리의 연속성을 유지하세요. 과거에 일어난 일들과 모순되지 않도록 주의하고, 필요시 과거 사건을 자연스럽게 언급하거나 반영하세요.
-
-## 최근 대화 기록 (최근 20턴)
-{recentMessages}
-
-## 유저 메시지
-{userMessage}
-
-생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.
-
--------
-output:
-
-{
-  "nextStrory": "여기에 다음이야기 내용을 작성하세요."
-}
-
-nextStrory 구성:
-- 배경설명: <Narration>내용</Narration>
-- 캐릭터대화: <CharacterDialogue>캐릭터명 | "대사"</CharacterDialogue>
-
-추가 설명이나 AI 서술 없이 정확히 JSON 구조로, 오직 'nextStrory' 항목만 포함해 주세요.
-
-출력예시:
-{
-  "nextStrory": "<Narration>\\n록시는 가슴을 쫙 펴고 당당하게 외쳤다.\\n</Narration>\\n<CharacterDialogue>\\n리나 | \\"잠깐, 록시. 그렇게 단순한 문제가 아니야.\\"\\n</CharacterDialogue>\\n<Narration>\\n록시는 리나를 바라보며 고개를 갸우뚱한다.\\n</Narration>\\n<CharacterDialogue>\\n록시 | \\"무슨문제?\\"\\n</CharacterDialogue>"
-}`;
+      if (!commonPromptSetting || !commonPromptSetting.value) {
+        return res.status(400).json({ error: "AI 페르소나 설정(commonPrompt)이 없습니다. 설정 페이지에서 프롬프트를 설정해주세요." });
+      }
+      let systemPrompt = commonPromptSetting.value;
 
       // Replace all variables with actual values
       systemPrompt = systemPrompt
