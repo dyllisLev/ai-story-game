@@ -1130,7 +1130,7 @@ export default function PlayStory() {
 
                   <Separator />
 
-                  <div className="space-y-1">
+                  <div className="space-y-1 w-[75%]">
                      <Button 
                        variant="ghost" 
                        className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted"
@@ -1159,7 +1159,7 @@ export default function PlayStory() {
 
                   <Separator />
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 w-[75%]">
                      <label className="text-xs font-bold text-muted-foreground">폰트 크기</label>
                      <div className="flex items-center justify-center gap-3 bg-muted/30 rounded-lg p-3">
                         <Button
@@ -1196,7 +1196,7 @@ export default function PlayStory() {
 
                   <Separator />
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 w-[75%]">
                      <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-muted-foreground">요약 생성</label>
                         <span className="text-[10px] text-muted-foreground">{aiMessageCount}턴</span>
