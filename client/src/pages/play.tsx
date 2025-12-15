@@ -673,24 +673,28 @@ export default function PlayStory() {
                     const aiMsg = await saveMessage("assistant", finalResponse, "AI");
                     if (aiMsg) {
                       setMessages(prev => [...prev, aiMsg]);
+                      
+                      // Check if we need to update summary (only at 20, 40, 60... turns)
+                      const newAiCount = messages.filter(m => m.role === "assistant").length + 1;
+                      if (newAiCount > 0 && newAiCount % 20 === 0) {
+                        // Auto-summary was generated at 20th turn, check for updates
+                        setTimeout(async () => {
+                          try {
+                            const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+                            if (sessionResponse.ok) {
+                              const updatedSession = await sessionResponse.json();
+                              // Only update summary memory without triggering full re-render
+                              if (updatedSession.summaryMemory !== summaryMemory) {
+                                setSummaryMemory(updatedSession.summaryMemory || "");
+                              }
+                            }
+                          } catch (e) {
+                            console.error("Failed to refresh summary:", e);
+                          }
+                        }, 3000); // 3 second delay to allow summary generation
+                      }
                     }
                     setLastError(null);
-                    
-                    // Quietly check for auto-summary updates (20턴마다 자동 생성)
-                    setTimeout(async () => {
-                      try {
-                        const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
-                        if (sessionResponse.ok) {
-                          const updatedSession = await sessionResponse.json();
-                          // Only update summary memory without triggering full re-render
-                          if (updatedSession.summaryMemory !== summaryMemory) {
-                            setSummaryMemory(updatedSession.summaryMemory || "");
-                          }
-                        }
-                      } catch (e) {
-                        console.error("Failed to refresh summary:", e);
-                      }
-                    }, 3000); // 3 second delay to allow summary generation
                   }
                   
                   // Always clear streaming content when done
@@ -764,13 +768,18 @@ export default function PlayStory() {
       const result = await response.json();
       setSummaryMemory(result.summary);
       
-      // Reload session to get updated data
-      const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
-      if (sessionResponse.ok) {
-        const updatedSession = await sessionResponse.json();
-        setSession(updatedSession);
-        setSummaryMemory(updatedSession.summaryMemory || "");
-      }
+      // Manual summary generation - update summary memory
+      setTimeout(async () => {
+        try {
+          const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+          if (sessionResponse.ok) {
+            const updatedSession = await sessionResponse.json();
+            setSummaryMemory(updatedSession.summaryMemory || "");
+          }
+        } catch (e) {
+          console.error("Failed to refresh summary:", e);
+        }
+      }, 1000);
       
       alert("요약이 성공적으로 생성되었습니다!");
     } catch (error) {
