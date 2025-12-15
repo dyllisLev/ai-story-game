@@ -125,6 +125,7 @@ export function dbSessionToSession(dbSession: DbSession): Session {
     keyPlotPoints: dbSession.key_plot_points,
     sessionModel: dbSession.session_model,
     sessionProvider: dbSession.session_provider,
+    fontSize: dbSession.font_size || 13,
     aiMessageCount: dbSession.ai_message_count || 0,
     lastSummaryTurn: dbSession.last_summary_turn || 0,
     createdAt: dbSession.created_at ? new Date(dbSession.created_at) : null,
@@ -145,7 +146,10 @@ export function sessionToDbSessionInsert(session: InsertSession): DbSessionInser
     session_provider: session.sessionProvider,
   };
   
-  // Only include count fields if explicitly provided
+  // Only include optional fields if explicitly provided
+  if (session.fontSize !== undefined) {
+    dbSession.font_size = session.fontSize;
+  }
   if (session.aiMessageCount !== undefined) {
     dbSession.ai_message_count = session.aiMessageCount;
   }

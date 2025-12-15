@@ -159,6 +159,7 @@ export interface Database {
           key_plot_points: string | null
           session_model: string | null
           session_provider: string | null
+          font_size: number
           ai_message_count: number
           last_summary_turn: number
           created_at: string | null
@@ -175,6 +176,7 @@ export interface Database {
           key_plot_points?: string | null
           session_model?: string | null
           session_provider?: string | null
+          font_size?: number
           ai_message_count?: number
           last_summary_turn?: number
           created_at?: string | null
@@ -191,6 +193,7 @@ export interface Database {
           key_plot_points?: string | null
           session_model?: string | null
           session_provider?: string | null
+          font_size?: number
           ai_message_count?: number
           last_summary_turn?: number
           created_at?: string | null
