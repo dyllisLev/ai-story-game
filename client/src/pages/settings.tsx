@@ -333,34 +333,23 @@ export default function Settings() {
                 </div>
                 <Textarea
                   placeholder={`예:
-당신은 경험 많은 판타지 소설가입니다.
-
-## 스토리 정보
-제목: {title}
-장르: {genre}
-소개: {description}
-
-## 세계관 설정
-{storySettings}
-
-## 현재 상황
-{startingSituation}
-
-## 대화 프로필
-{conversationProfile}
-
-## 유저 노트
-{userNote}
-
-## 요약 메모리 (과거 사건 타임라인 - 반드시 참고하여 이야기 연속성 유지)
-{summaryMemory}
-
-**중요**: 위 "요약 메모리"에 기록된 과거 사건들을 반드시 고려하여 스토리의 연속성을 유지하세요.
-
-## 최근 대화 기록
-{recentMessages}
-
-위 정보를 바탕으로 사용자의 다음 메시지에 생생하고 몰입감 있는 서술과 대화를 제공하세요. 한국어로 응답하세요.`}
+{
+  "role_definition": {
+    "identity": "You are an experienced novelist.",
+    "task": "Based on the given world-building and settings, you vividly develop the story according to the user's choices."
+  },
+  "input_info": {
+    "title": "{title}",
+    "genre": "{genre}",
+    "description": "{description}",
+    "story_settings": "{storySettings}",
+    "conversation_profile": "{conversationProfile}",
+    "user_note": "{userNote}",
+    "summary_memory": "{summaryMemory}",
+    "recent_messages": "{recentMessages}",
+    "user_message": "{userMessage}"
+  }
+}`}
                   value={commonPrompt}
                   onChange={(e) => setCommonPrompt(e.target.value)}
                   className="min-h-[280px] font-mono text-sm"
