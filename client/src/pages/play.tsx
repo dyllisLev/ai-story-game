@@ -201,10 +201,13 @@ export default function PlayStory() {
   
   // Auto-scroll to bottom (only on initial load)
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasInitiallyScrolled = useRef(false);
   
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
   }, []);
 
   const loadSession = useCallback(async () => {
@@ -348,9 +351,13 @@ export default function PlayStory() {
   // Auto-scroll to bottom only on initial page load
   useEffect(() => {
     if (messages.length > 0 && !loading && !hasInitiallyScrolled.current) {
-      // Small delay to ensure DOM is updated
-      setTimeout(scrollToBottom, 100);
-      hasInitiallyScrolled.current = true;
+      // Use double requestAnimationFrame to ensure DOM is fully rendered
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom();
+          hasInitiallyScrolled.current = true;
+        });
+      });
     }
   }, [messages, loading, scrollToBottom]);
 
@@ -924,7 +931,7 @@ export default function PlayStory() {
             </div>
          </header>
 
-         <div className="flex-1 overflow-y-auto overflow-x-hidden">
+         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="max-w-3xl mx-auto space-y-8 px-4 py-6">
                {loading ? (
                  <div className="flex items-center justify-center py-12">
