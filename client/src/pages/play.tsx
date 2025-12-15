@@ -495,6 +495,20 @@ export default function PlayStory() {
           </div>
         );
       },
+      strong({ children, ...props }: any) {
+        return (
+          <strong className="font-bold" {...props}>
+            {children}
+          </strong>
+        );
+      },
+      em({ children, ...props }: any) {
+        return (
+          <em className="italic" {...props}>
+            {children}
+          </em>
+        );
+      },
       p({ children, node, ...props }: any) {
         // Check if children contains a code block (code element that will become pre)
         // If so, render as div to avoid HTML nesting violation
