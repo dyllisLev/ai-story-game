@@ -1839,10 +1839,10 @@ nextStrory 구성:
 
   // ==================== AI CHAT STREAMING API ====================
 
-  app.post("/api/ai/chat/stream", async (req, res) => {
+  app.post("/api/ai/chat/stream", isAuthenticated, async (req, res) => {
     try {
       const { sessionId, userMessage, storyId } = req.body;
-      const userId = req.session?.userId;
+      const userId = req.session.userId!;
 
       if (!sessionId || !userMessage || !storyId) {
         return res.status(400).json({ error: "sessionId, userMessage, and storyId are required" });
@@ -1856,6 +1856,10 @@ nextStrory 구성:
       const session = await storage.getSession(sessionId);
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (session.userId !== userId) {
+        return res.status(403).json({ error: "이 세션에 접근할 권한이 없습니다" });
       }
 
       let selectedProvider = session.sessionProvider || "";
@@ -2303,11 +2307,20 @@ nextStrory 구성:
 
   // ==================== MESSAGES API ====================
 
-  app.get("/api/sessions/:sessionId/messages", async (req, res) => {
+  app.get("/api/sessions/:sessionId/messages", isAuthenticated, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
       if (isNaN(sessionId)) {
         return res.status(400).json({ error: "Invalid session ID" });
+      }
+
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (session.userId !== req.session.userId) {
+        return res.status(403).json({ error: "이 세션에 접근할 권한이 없습니다" });
       }
 
       const msgs = await storage.getMessagesBySession(sessionId);
@@ -2317,13 +2330,22 @@ nextStrory 구성:
     }
   });
 
-  app.post("/api/sessions/:sessionId/messages", async (req, res) => {
+  app.post("/api/sessions/:sessionId/messages", isAuthenticated, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
       console.log(`[MESSAGE-SAVE] Received message for session ${sessionId}, role: ${req.body.role}`);
       
       if (isNaN(sessionId)) {
         return res.status(400).json({ error: "Invalid session ID" });
+      }
+
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (session.userId !== req.session.userId) {
+        return res.status(403).json({ error: "이 세션에 접근할 권한이 없습니다" });
       }
 
       const messageData = { ...req.body, sessionId };
@@ -2398,11 +2420,20 @@ nextStrory 구성:
     }
   });
 
-  app.delete("/api/sessions/:sessionId/messages", async (req, res) => {
+  app.delete("/api/sessions/:sessionId/messages", isAuthenticated, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
       if (isNaN(sessionId)) {
         return res.status(400).json({ error: "Invalid session ID" });
+      }
+
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (session.userId !== req.session.userId) {
+        return res.status(403).json({ error: "이 세션에 접근할 권한이 없습니다" });
       }
 
       await storage.deleteMessagesBySession(sessionId);
@@ -2412,11 +2443,25 @@ nextStrory 구성:
     }
   });
 
-  app.delete("/api/messages/:messageId", async (req, res) => {
+  app.delete("/api/messages/:messageId", isAuthenticated, async (req, res) => {
     try {
       const messageId = parseInt(req.params.messageId);
       if (isNaN(messageId)) {
         return res.status(400).json({ error: "Invalid message ID" });
+      }
+
+      const message = await storage.getMessage(messageId);
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      const session = await storage.getSession(message.sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (session.userId !== req.session.userId) {
+        return res.status(403).json({ error: "이 메시지를 삭제할 권한이 없습니다" });
       }
 
       await storage.deleteMessage(messageId);
@@ -2428,7 +2473,7 @@ nextStrory 구성:
 
   // ==================== MANUAL SUMMARY API ====================
   
-  app.post("/api/sessions/:sessionId/summary", async (req, res) => {
+  app.post("/api/sessions/:sessionId/summary", isAuthenticated, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
       if (isNaN(sessionId)) {
@@ -2440,6 +2485,10 @@ nextStrory 구성:
       const session = await storage.getSession(sessionId);
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (session.userId !== req.session.userId) {
+        return res.status(403).json({ error: "이 세션에 접근할 권한이 없습니다" });
       }
       
       // Get all messages
