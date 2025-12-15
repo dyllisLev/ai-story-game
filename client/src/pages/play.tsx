@@ -204,11 +204,11 @@ export default function PlayStory() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasInitiallyScrolled = useRef(false);
   
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = () => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-  }, []);
+  };
 
   const loadSession = useCallback(async () => {
     if (!sessionId) {
@@ -351,15 +351,15 @@ export default function PlayStory() {
   // Auto-scroll to bottom only on initial page load
   useEffect(() => {
     if (messages.length > 0 && !loading && !hasInitiallyScrolled.current) {
-      // Use double requestAnimationFrame to ensure DOM is fully rendered
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scrollToBottom();
-          hasInitiallyScrolled.current = true;
-        });
-      });
+      hasInitiallyScrolled.current = true;
+      // Use setTimeout with longer delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      }, 300);
     }
-  }, [messages, loading, scrollToBottom]);
+  }, [messages.length, loading]);
 
   // Reset scroll flag when session changes (navigating to different session)
   useEffect(() => {
