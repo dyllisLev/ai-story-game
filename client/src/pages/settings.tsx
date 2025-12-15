@@ -352,6 +352,11 @@ export default function Settings() {
 ## 유저 노트
 {userNote}
 
+## 요약 메모리 (과거 사건 타임라인 - 반드시 참고하여 이야기 연속성 유지)
+{summaryMemory}
+
+**중요**: 위 "요약 메모리"에 기록된 과거 사건들을 반드시 고려하여 스토리의 연속성을 유지하세요.
+
 ## 최근 대화 기록
 {recentMessages}
 
