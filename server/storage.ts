@@ -323,6 +323,7 @@ export class Storage implements IStorage {
       ...(session.keyPlotPoints !== undefined && { key_plot_points: session.keyPlotPoints }),
       ...(session.sessionModel !== undefined && { session_model: session.sessionModel }),
       ...(session.sessionProvider !== undefined && { session_provider: session.sessionProvider }),
+      ...(session.fontSize !== undefined && { font_size: session.fontSize }),
       ...(session.aiMessageCount !== undefined && { ai_message_count: session.aiMessageCount }),
       ...(session.lastSummaryTurn !== undefined && { last_summary_turn: session.lastSummaryTurn }),
       updated_at: new Date().toISOString()
