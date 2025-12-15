@@ -904,7 +904,7 @@ export default function PlayStory() {
                      <Menu className="w-4 h-4" />
                   </Button>
                )}
-               <span className="font-semibold text-sm">{story.title} &gt;</span>
+               <span className="font-semibold text-sm">{session?.title} &gt;</span>
             </div>
             
             <div className="flex items-center gap-4">
