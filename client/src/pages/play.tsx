@@ -1101,7 +1101,7 @@ export default function PlayStory() {
       {(!isMobile || rightSidebarOpen) && (
          <div className={cn(
             "bg-background border-l flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out",
-            isMobile ? "fixed inset-y-0 right-0 z-50 w-full max-w-[320px] h-full shadow-xl animate-in slide-in-from-right duration-200" : "w-[300px]"
+            isMobile ? "fixed inset-y-0 right-0 z-50 w-full max-w-[280px] h-full shadow-xl animate-in slide-in-from-right duration-200" : "w-[260px]"
          )}>
             <div className="p-4 border-b font-medium text-sm flex items-center justify-between">
                채팅방 설정
