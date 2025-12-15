@@ -376,7 +376,8 @@ export default function PlayStory() {
       .trim();
     
     // Check if it looks like JSON with story content fields (support both camelCase and snake_case)
-    const hasStoryField = processedText.includes('nextStory') || 
+    const hasStoryField = processedText.includes('"story"') ||
+                          processedText.includes('nextStory') || 
                           processedText.includes('nextStrory') || 
                           processedText.includes('next_story') ||
                           processedText.includes('output_schema');
@@ -384,7 +385,7 @@ export default function PlayStory() {
     // Only attempt JSON parsing if it starts with { and has story fields
     if (processedText.startsWith('{') && hasStoryField) {
       // Try regex extraction first (works for both complete and incomplete JSON)
-      const storyMatch = processedText.match(/"(?:next(?:Story|Strory|_story)|output_schema)"\s*:\s*"((?:[^"\\]|\\.)*)(")?/);
+      const storyMatch = processedText.match(/"(?:story|next(?:Story|Strory|_story)|output_schema)"\s*:\s*"((?:[^"\\]|\\.)*)(")?/);
       if (storyMatch && storyMatch[1]) {
         // Unescape JSON string literals (convert \n to actual newlines, etc.)
         return storyMatch[1]
@@ -408,7 +409,7 @@ export default function PlayStory() {
         }
         
         const parsed = JSON.parse(fixedText);
-        const storyContent = parsed.nextStory || parsed.nextStrory || parsed.next_story || parsed.output_schema;
+        const storyContent = parsed.story || parsed.nextStory || parsed.nextStrory || parsed.next_story || parsed.output_schema;
         if (storyContent) {
           // Unescape JSON string literals
           return storyContent
