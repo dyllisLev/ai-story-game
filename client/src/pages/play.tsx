@@ -496,18 +496,10 @@ export default function PlayStory() {
         );
       },
       strong({ children, ...props }: any) {
-        return (
-          <strong className="font-bold" {...props}>
-            {children}
-          </strong>
-        );
+        return <strong {...props}>{children}</strong>;
       },
       em({ children, ...props }: any) {
-        return (
-          <em className="italic" {...props}>
-            {children}
-          </em>
-        );
+        return <em {...props}>{children}</em>;
       },
       p({ children, node, ...props }: any) {
         // Check if children contains a code block (code element that will become pre)
@@ -546,30 +538,14 @@ export default function PlayStory() {
           );
           
         case 'dialogue':
-          // Split dialogue content by lines and render each separately
-          const dialogueLines = part.content.split('\n').filter(line => line.trim());
+          // Render dialogue content with markdown support
           return (
-            <div key={index} className="mb-6 space-y-3">
-              {dialogueLines.map((line, lineIndex) => {
-                // Check if line has character name format: "Character | dialogue"
-                const characterMatch = line.match(/^(.+?)\s*\|\s*"?(.+?)"?$/);
-                if (characterMatch) {
-                  const [, character, dialogue] = characterMatch;
-                  return (
-                    <p key={lineIndex} className="pl-4 leading-relaxed max-w-full break-words">
-                      <span className="font-bold">{character.trim()}</span>
-                      <span className="text-muted-foreground"> | </span>
-                      <span className="font-semibold">"{dialogue.trim()}"</span>
-                    </p>
-                  );
-                }
-                // If no character format, just render the dialogue
-                return (
-                  <p key={lineIndex} className="pl-4 font-semibold leading-relaxed max-w-full break-words">
-                    "{line.trim()}"
-                  </p>
-                );
-              })}
+            <div key={index} className="mb-6">
+              <div className="prose prose-sm dark:prose-invert w-full max-w-full pl-4">
+                <ReactMarkdown components={markdownComponents}>
+                  {part.content}
+                </ReactMarkdown>
+              </div>
             </div>
           );
           
