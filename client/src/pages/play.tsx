@@ -675,6 +675,22 @@ export default function PlayStory() {
                       setMessages(prev => [...prev, aiMsg]);
                     }
                     setLastError(null);
+                    
+                    // Quietly check for auto-summary updates (20턴마다 자동 생성)
+                    setTimeout(async () => {
+                      try {
+                        const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+                        if (sessionResponse.ok) {
+                          const updatedSession = await sessionResponse.json();
+                          // Only update summary memory without triggering full re-render
+                          if (updatedSession.summaryMemory !== summaryMemory) {
+                            setSummaryMemory(updatedSession.summaryMemory || "");
+                          }
+                        }
+                      } catch (e) {
+                        console.error("Failed to refresh summary:", e);
+                      }
+                    }, 3000); // 3 second delay to allow summary generation
                   }
                   
                   // Always clear streaming content when done
