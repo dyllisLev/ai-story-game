@@ -352,14 +352,15 @@ export default function PlayStory() {
   }, [sessionId]);
 
 
-  // Helper function to extract story content from JSON (complete or incomplete)
+  // Helper function to extract story content from AI response
+  // Handles both JSON-wrapped responses and plain text responses
   const extractStoryFromJSON = (text: string): string => {
     // First convert HTML entities to actual characters
     let processedText = text
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>');
     
-    // Remove markdown code blocks
+    // Remove markdown code blocks if present
     processedText = processedText
       .replace(/^```json\n?/, '')
       .replace(/^```\n?/, '')
@@ -372,15 +373,18 @@ export default function PlayStory() {
                           processedText.includes('next_story') ||
                           processedText.includes('output_schema');
     
+    // Only attempt JSON parsing if it starts with { and has story fields
     if (processedText.startsWith('{') && hasStoryField) {
       // Try regex extraction first (works for both complete and incomplete JSON)
       const storyMatch = processedText.match(/"(?:next(?:Story|Strory|_story)|output_schema)"\s*:\s*"((?:[^"\\]|\\.)*)(")?/);
       if (storyMatch && storyMatch[1]) {
+        // Unescape JSON string literals (convert \n to actual newlines, etc.)
         return storyMatch[1]
           .replace(/\\n/g, '\n')
           .replace(/\\"/g, '"')
           .replace(/\\'/g, "'")
-          .replace(/\\t/g, '\t');
+          .replace(/\\t/g, '\t')
+          .replace(/\\\\/g, '\\');
       }
       
       // Try full JSON parse as fallback
@@ -398,17 +402,20 @@ export default function PlayStory() {
         const parsed = JSON.parse(fixedText);
         const storyContent = parsed.nextStory || parsed.nextStrory || parsed.next_story || parsed.output_schema;
         if (storyContent) {
+          // Unescape JSON string literals
           return storyContent
             .replace(/\\n/g, '\n')
             .replace(/\\"/g, '"')
             .replace(/\\'/g, "'")
-            .replace(/\\t/g, '\t');
+            .replace(/\\t/g, '\t')
+            .replace(/\\\\/g, '\\');
         }
       } catch (e) {
-        // JSON parse failed, fall through
+        // JSON parse failed, fall through to return as plain text
       }
     }
     
+    // Return as plain text (already has proper formatting from AI)
     return processedText;
   };
 
