@@ -199,12 +199,15 @@ export default function PlayStory() {
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
   
-  // Auto-scroll to bottom (only on initial load)
+  // Auto-scroll to bottom
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const hasInitiallyScrolled = useRef(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScroll = useRef(true);
   
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = useCallback((smooth: boolean = true) => {
+    if (shouldAutoScroll.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
+    }
   }, []);
 
   const loadSession = useCallback(async () => {
@@ -345,18 +348,17 @@ export default function PlayStory() {
     }
   }, [session, loadMessages]);
 
-  // Auto-scroll to bottom only on initial page load/refresh
+  // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
-    if (messages.length > 0 && !loading && !hasInitiallyScrolled.current) {
+    if (!loading) {
       // Small delay to ensure DOM is updated
-      setTimeout(scrollToBottom, 100);
-      hasInitiallyScrolled.current = true;
+      setTimeout(() => scrollToBottom(true), 100);
     }
-  }, [messages, loading, scrollToBottom]);
+  }, [messages, streamingContent, loading, scrollToBottom]);
 
-  // Reset scroll flag when session changes (navigating to different session)
+  // Reset auto-scroll preference when session changes
   useEffect(() => {
-    hasInitiallyScrolled.current = false;
+    shouldAutoScroll.current = true;
   }, [sessionId]);
 
 
