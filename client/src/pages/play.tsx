@@ -21,7 +21,8 @@ import {
   Save,
   X,
   Copy,
-  Check
+  Check,
+  Pencil
 } from "lucide-react";
 import {
   Dialog,
@@ -191,6 +192,10 @@ export default function PlayStory() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<ConversationProfile[]>([]);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  
+  // Session title editing
+  const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState("");
   
   // Auto-scroll to bottom (only on initial load)
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -839,6 +844,20 @@ export default function PlayStory() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingSessionId(s.id);
+                          setEditingSessionTitle(s.title);
+                        }}
+                        data-testid={`button-edit-session-${s.id}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors flex-shrink-0"
                         onClick={async (e) => {
                           e.preventDefault();
@@ -1158,6 +1177,56 @@ export default function PlayStory() {
             </ScrollArea>
          </div>
       )}
+
+      {/* Session Title Edit Dialog */}
+      <Dialog open={editingSessionId !== null} onOpenChange={(open) => !open && setEditingSessionId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>세션 이름 변경</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              className="min-h-[80px]"
+              placeholder="세션 이름을 입력하세요..."
+              value={editingSessionTitle}
+              onChange={(e) => setEditingSessionTitle(e.target.value)}
+              data-testid="textarea-session-title"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditingSessionId(null)} data-testid="button-cancel-title">
+                <X className="w-4 h-4 mr-2" /> 취소
+              </Button>
+              <Button 
+                onClick={async () => {
+                  if (!editingSessionId || !editingSessionTitle.trim()) return;
+                  try {
+                    await fetch(`/api/sessions/${editingSessionId}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ title: editingSessionTitle.trim() })
+                    });
+                    // Update local state
+                    setSessions(prev => prev.map(s => 
+                      s.id === editingSessionId ? { ...s, title: editingSessionTitle.trim() } : s
+                    ));
+                    if (session?.id === editingSessionId) {
+                      setSession(prev => prev ? { ...prev, title: editingSessionTitle.trim() } : null);
+                    }
+                    setEditingSessionId(null);
+                  } catch (error) {
+                    console.error("Failed to update session title:", error);
+                  }
+                }}
+                disabled={!editingSessionTitle.trim()}
+                data-testid="button-save-title"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                저장
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Session Settings Edit Dialog */}
       <Dialog open={editingField !== null} onOpenChange={(open) => !open && setEditingField(null)}>
