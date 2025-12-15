@@ -1,10 +1,16 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useState, useEffect, useMemo } from "react";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Loader2 } from "lucide-react";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Sparkles } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { PROVIDER_LABELS, type Provider } from "@shared/models";
+import { PROVIDER_LABELS, MODEL_CATALOG, type Provider } from "@shared/models";
 import type { DefaultModel, SelectedModels } from "@shared/schema";
 
 interface ModelSelectorProps {
@@ -32,8 +38,6 @@ export function ModelSelector({
   onModelChange
 }: ModelSelectorProps) {
   const [selectedValue, setSelectedValue] = useState("");
-  const [availableModels, setAvailableModels] = useState<ModelWithProvider[]>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
 
   // Fetch user's default model
   const { data: defaultModelData } = useQuery<{ model: DefaultModel | null }>({
@@ -45,6 +49,46 @@ export function ModelSelector({
     queryKey: ["/api/auth/selected-models"],
   });
 
+  // Build available models from MODEL_CATALOG and selected models
+  const availableModels = useMemo(() => {
+    if (!selectedModelsData?.models) return [];
+
+    const models: ModelWithProvider[] = [];
+
+    for (const provider of PROVIDERS) {
+      const selectedModelIds = selectedModelsData.models[provider];
+      if (!selectedModelIds || selectedModelIds.length === 0) {
+        continue;
+      }
+
+      // Get model metadata from MODEL_CATALOG
+      const providerModels = MODEL_CATALOG[provider];
+      
+      for (const modelId of selectedModelIds) {
+        const modelInfo = providerModels.find(m => m.id === modelId);
+        if (modelInfo) {
+          models.push({
+            id: modelInfo.id,
+            name: modelInfo.name,
+            provider,
+            displayName: `${PROVIDER_LABELS[provider]} - ${modelInfo.name}`
+          });
+        } else {
+          // Model not in catalog - include it anyway with ID as name
+          console.warn(`Model ${modelId} not found in MODEL_CATALOG for provider ${provider}`);
+          models.push({
+            id: modelId,
+            name: modelId,
+            provider,
+            displayName: `${PROVIDER_LABELS[provider]} - ${modelId}`
+          });
+        }
+      }
+    }
+
+    return models;
+  }, [selectedModelsData]);
+
   // Set initial selected value from session
   useEffect(() => {
     if (sessionProvider && sessionModel) {
@@ -52,18 +96,10 @@ export function ModelSelector({
     }
   }, [sessionProvider, sessionModel]);
 
-  // Load all selected models when selectedModelsData is available
-  useEffect(() => {
-    if (selectedModelsData?.models) {
-      loadAllSelectedModels();
-    }
-  }, [selectedModelsData]);
-
   // Set default model when models load and no session model exists
   useEffect(() => {
     if (!sessionProvider && !sessionModel && availableModels.length > 0 && defaultModelData?.model) {
       // Find user's default model from available models
-      // This searches through all available models and picks the one that matches both provider and modelId
       const defaultModel = availableModels.find(model => 
         defaultModelData.model?.provider === model.provider && 
         defaultModelData.model?.modelId === model.id
@@ -84,60 +120,7 @@ export function ModelSelector({
         onModelChange?.(first.id);
       }
     }
-  }, [availableModels, defaultModelData, sessionProvider, sessionModel]);
-
-  const loadAllSelectedModels = async () => {
-    if (!selectedModelsData?.models) return;
-
-    setLoadingModels(true);
-    const allModels: ModelWithProvider[] = [];
-
-    try {
-      // Load models for each provider that has selected models
-      for (const provider of PROVIDERS) {
-        const selectedModelIds = selectedModelsData.models[provider];
-        if (!selectedModelIds || selectedModelIds.length === 0) {
-          continue;
-        }
-
-        try {
-          const response = await fetch(`/api/ai/models/${provider}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({}),
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            const providerModels = data.models || [];
-            
-            // Filter to only include selected models
-            const filtered = providerModels
-              .filter((m: any) => selectedModelIds.includes(m.id))
-              .map((m: any) => ({
-                id: m.id,
-                name: m.name,
-                provider,
-                displayName: `${PROVIDER_LABELS[provider]} - ${m.name}`
-              }));
-            
-            allModels.push(...filtered);
-          } else {
-            console.warn(`Failed to load models for ${provider}`);
-          }
-        } catch (error) {
-          console.error(`Failed to load models for ${provider}:`, error);
-        }
-      }
-
-      setAvailableModels(allModels);
-    } catch (error) {
-      console.error("Failed to load models:", error);
-    } finally {
-      setLoadingModels(false);
-    }
-  };
+  }, [availableModels, defaultModelData, sessionProvider, sessionModel, onProviderChange, onModelChange]);
 
   const handleModelChange = (value: string) => {
     setSelectedValue(value);
@@ -153,32 +136,26 @@ export function ModelSelector({
           <Sparkles className="w-4 h-4 text-primary" />
           <Label className="text-sm font-semibold">모델 선택</Label>
         </div>
-        {loadingModels ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>모델 로딩 중...</span>
-          </div>
-        ) : availableModels.length > 0 ? (
-          <RadioGroup value={selectedValue} onValueChange={handleModelChange}>
-            {availableModels.map((m) => {
-              const value = `${m.provider}:${m.id}`;
-              return (
-                <div key={value} className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value={value} 
-                    id={`model-${value}`}
-                    data-testid={`radio-model-${m.provider}-${m.id}`}
-                  />
-                  <Label 
-                    htmlFor={`model-${value}`}
-                    className="font-normal cursor-pointer text-sm"
+        {availableModels.length > 0 ? (
+          <Select value={selectedValue} onValueChange={handleModelChange}>
+            <SelectTrigger data-testid="select-model-trigger">
+              <SelectValue placeholder="모델을 선택하세요" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableModels.map((m) => {
+                const value = `${m.provider}:${m.id}`;
+                return (
+                  <SelectItem 
+                    key={value} 
+                    value={value}
+                    data-testid={`select-model-${m.provider}-${m.id}`}
                   >
                     {m.displayName}
-                  </Label>
-                </div>
-              );
-            })}
-          </RadioGroup>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
         ) : (
           <p className="text-sm text-muted-foreground">사용 가능한 모델이 없습니다.</p>
         )}
