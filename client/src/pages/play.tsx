@@ -1112,7 +1112,7 @@ export default function PlayStory() {
             </div>
             <ScrollArea className="flex-1 p-4">
                <div className="space-y-6">
-                  <div className="space-y-2">
+                  <div className="space-y-2 w-[75%]">
                      <label className="text-xs font-bold text-muted-foreground">모델 설정</label>
                      <ModelSelector 
                        sessionProvider={sessionProvider}
