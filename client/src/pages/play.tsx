@@ -145,6 +145,8 @@ interface Session {
   sessionModel?: string | null;
   sessionProvider?: string | null;
   fontSize?: number | null;
+  aiMessageCount?: number;
+  lastSummaryTurn?: number;
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -190,6 +192,7 @@ export default function PlayStory() {
   const [sessionProvider, setSessionProvider] = useState("");
   const [sessionModel, setSessionModel] = useState("");
   const [fontSize, setFontSize] = useState(13);
+  const [aiMessageCount, setAiMessageCount] = useState(0);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<ConversationProfile[]>([]);
@@ -210,6 +213,28 @@ export default function PlayStory() {
     }
   };
 
+  // Centralized helper to refresh session from server
+  // Only updates auto-generated fields to avoid wiping user edits
+  const refreshSession = useCallback(async () => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      if (response.ok) {
+        const sessionData = await response.json();
+        // Update session object for consistency
+        setSession(sessionData);
+        // Only update auto-generated fields (summary and turn count)
+        // Do NOT update user-editable fields (conversationProfile, userNote, etc.)
+        // to avoid wiping in-progress edits when auto-summary fires
+        setSummaryMemory(sessionData.summaryMemory || "");
+        setAiMessageCount(sessionData.aiMessageCount || 0);
+      }
+    } catch (error) {
+      console.error("Failed to refresh session:", error);
+    }
+  }, [sessionId]);
+
   const loadSession = useCallback(async () => {
     if (!sessionId) {
       setLoading(false);
@@ -228,6 +253,7 @@ export default function PlayStory() {
         setSessionProvider(sessionData.sessionProvider || "");
         setSessionModel(sessionData.sessionModel || "");
         setFontSize(sessionData.fontSize || 13);
+        setAiMessageCount(sessionData.aiMessageCount || 0);
         
         // Load story
         const storyResponse = await fetch(`/api/stories/${sessionData.storyId}`);
@@ -681,25 +707,21 @@ export default function PlayStory() {
                         return updated.length > 20 ? updated.slice(-20) : updated;
                       });
                       
-                      // Check if we need to update summary (only at 20, 40, 60... turns)
-                      const newAiCount = messages.filter(m => m.role === "assistant").length + 1;
-                      if (newAiCount > 0 && newAiCount % 20 === 0) {
-                        // Auto-summary was generated at 20th turn, check for updates
-                        setTimeout(async () => {
-                          try {
-                            const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
-                            if (sessionResponse.ok) {
-                              const updatedSession = await sessionResponse.json();
-                              // Only update summary memory without triggering full re-render
-                              if (updatedSession.summaryMemory !== summaryMemory) {
-                                setSummaryMemory(updatedSession.summaryMemory || "");
-                              }
-                            }
-                          } catch (e) {
-                            console.error("Failed to refresh summary:", e);
-                          }
-                        }, 3000); // 3 second delay to allow summary generation
-                      }
+                      // Update AI message count (backend increments this automatically)
+                      // Use functional updater to avoid stale closure issues
+                      setAiMessageCount(prev => {
+                        const newCount = prev + 1;
+                        
+                        // Check if we need to update summary (only at 20, 40, 60... turns)
+                        if (newCount > 0 && newCount % 20 === 0) {
+                          // Auto-summary was generated at 20th turn, check for updates
+                          setTimeout(() => {
+                            refreshSession();
+                          }, 3000); // 3 second delay to allow summary generation
+                        }
+                        
+                        return newCount;
+                      });
                     }
                     setLastError(null);
                   }
@@ -744,6 +766,8 @@ export default function PlayStory() {
           await fetch(`/api/messages/${secondLastMsg.id}`, { method: "DELETE" });
           setMessages(prev => prev.slice(0, -2));
           setLastError(null);
+          // Refresh session to get updated AI count after deleting assistant message
+          await refreshSession();
           return;
         }
       }
@@ -751,6 +775,10 @@ export default function PlayStory() {
       await fetch(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
       setMessages(prev => prev.slice(0, -1));
       setLastError(null);
+      // If deleted message was assistant, refresh count
+      if (lastMsg.role === "assistant") {
+        await refreshSession();
+      }
     } catch (error) {
       console.error("Failed to delete messages:", error);
     }
@@ -775,17 +803,9 @@ export default function PlayStory() {
       const result = await response.json();
       setSummaryMemory(result.summary);
       
-      // Manual summary generation - update summary memory
-      setTimeout(async () => {
-        try {
-          const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
-          if (sessionResponse.ok) {
-            const updatedSession = await sessionResponse.json();
-            setSummaryMemory(updatedSession.summaryMemory || "");
-          }
-        } catch (e) {
-          console.error("Failed to refresh summary:", e);
-        }
+      // Manual summary generation - update summary memory and AI count
+      setTimeout(() => {
+        refreshSession();
       }, 1000);
       
       alert("요약이 성공적으로 생성되었습니다!");
@@ -798,7 +818,8 @@ export default function PlayStory() {
   };
 
   // Calculate AI message count
-  const aiMessageCount = messages.filter(m => m.role === "assistant").length;
+  // Use session's aiMessageCount instead of counting visible messages
+  // This ensures the turn count reflects the actual total, not just the visible 20 messages
   const shouldHighlightSummary = aiMessageCount > 0 && aiMessageCount % 20 === 0;
 
   if (loading && !session) {
