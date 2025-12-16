@@ -2277,7 +2277,19 @@ export async function registerRoutes(
         return res.status(403).json({ error: "이 세션에 접근할 권한이 없습니다" });
       }
 
-      const msgs = await storage.getMessagesBySession(sessionId);
+      // Support optional limit query parameter (default: 20)
+      const limitParam = req.query.limit as string | undefined;
+      let limit = limitParam ? parseInt(limitParam) : 20;
+      
+      // Validate limit to prevent malicious or malformed values
+      if (isNaN(limit) || limit < 1) {
+        limit = 20;
+      } else if (limit > 1000) {
+        // Cap at 1000 to prevent excessive queries
+        limit = 1000;
+      }
+
+      const msgs = await storage.getMessagesBySession(sessionId, limit);
       res.json(msgs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch messages" });

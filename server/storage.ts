@@ -42,7 +42,7 @@ export interface IStorage {
   deleteSession(id: number): Promise<void>;
   
   getMessage(id: number): Promise<Message | undefined>;
-  getMessagesBySession(sessionId: number): Promise<Message[]>;
+  getMessagesBySession(sessionId: number, limit?: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   incrementAIMessageCount(sessionId: number): Promise<number>;
   getRecentAIMessages(sessionId: number, limit: number): Promise<Message[]>;
@@ -361,13 +361,28 @@ export class Storage implements IStorage {
     return data ? dbMessageToMessage(data) : undefined;
   }
 
-  async getMessagesBySession(sessionId: number): Promise<Message[]> {
-    const { data, error } = await supabase
+  async getMessagesBySession(sessionId: number, limit?: number): Promise<Message[]> {
+    let query = supabase
       .from('messages')
       .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
     
+    if (limit && limit > 0) {
+      // Get the most recent N messages by ordering desc, limiting, then reversing
+      const { data: recentData, error: recentError } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      
+      if (recentError) throw recentError;
+      // Reverse to get chronological order
+      return (recentData || []).reverse().map(dbMessageToMessage);
+    }
+    
+    const { data, error } = await query;
     if (error) throw error;
     return (data || []).map(dbMessageToMessage);
   }

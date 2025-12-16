@@ -299,7 +299,8 @@ export default function PlayStory() {
     if (!sessionId) return;
     setLoading(true);
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/messages`);
+      // Load only the most recent 20 messages for better performance
+      const response = await fetch(`/api/sessions/${sessionId}/messages?limit=20`);
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
@@ -598,7 +599,11 @@ export default function PlayStory() {
     if (!retryMessage) {
       const userMsg = await saveMessage("user", userInput);
       if (userMsg) {
-        setMessages(prev => [...prev, userMsg]);
+        setMessages(prev => {
+          const updated = [...prev, userMsg];
+          // Keep only the most recent 20 messages for performance
+          return updated.length > 20 ? updated.slice(-20) : updated;
+        });
       }
     }
     
@@ -670,7 +675,11 @@ export default function PlayStory() {
                     // Save the final message
                     const aiMsg = await saveMessage("assistant", finalResponse, "AI");
                     if (aiMsg) {
-                      setMessages(prev => [...prev, aiMsg]);
+                      setMessages(prev => {
+                        const updated = [...prev, aiMsg];
+                        // Keep only the most recent 20 messages for performance
+                        return updated.length > 20 ? updated.slice(-20) : updated;
+                      });
                       
                       // Check if we need to update summary (only at 20, 40, 60... turns)
                       const newAiCount = messages.filter(m => m.role === "assistant").length + 1;
