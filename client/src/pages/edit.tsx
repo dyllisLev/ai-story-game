@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import {
   Upload,
   Shield
 } from "lucide-react";
+import { useStoryForm, type GroupPermission } from "@/hooks/use-story-form";
 
 interface Story {
   id: number;
@@ -37,18 +38,6 @@ interface Story {
   startingSituation: string | null;
 }
 
-interface Group {
-  id: number;
-  name: string;
-  type: string;
-  description: string | null;
-}
-
-interface GroupPermission {
-  groupId: number;
-  permission: 'read' | 'write';
-}
-
 export default function EditStory() {
   const [, params] = useRoute("/edit/:id");
   const [, setLocation] = useLocation();
@@ -57,43 +46,40 @@ export default function EditStory() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [genre, setGenre] = useState("판타지");
-  const [storySettings, setStorySettings] = useState("");
-  const [prologue, setPrologue] = useState("");
-  const [promptTemplate, setPromptTemplate] = useState("기본 프롬프트");
-  const [exampleUserInput, setExampleUserInput] = useState("");
-  const [exampleAiResponse, setExampleAiResponse] = useState("");
-  const [startingSituation, setStartingSituation] = useState("");
-  const [image, setImage] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isGeneratingPrologue, setIsGeneratingPrologue] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    title, setTitle,
+    description, setDescription,
+    genre, setGenre,
+    storySettings, setStorySettings,
+    prologue, setPrologue,
+    promptTemplate, setPromptTemplate,
+    exampleUserInput, setExampleUserInput,
+    exampleAiResponse, setExampleAiResponse,
+    startingSituation, setStartingSituation,
+    image,
+    isUploading,
+    isGenerating,
+    isGeneratingPrologue,
+    groups,
+    selectedGroups,
+    setSelectedGroups,
+    fileInputRef,
+    loadGroups,
+    toggleGroupSelection,
+    handleImageUpload,
+    handleGenerateStorySettings,
+    handleGeneratePrologue,
+    setFormState,
+    getFormData,
+  } = useStoryForm();
 
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [selectedGroups, setSelectedGroups] = useState<GroupPermission[]>([]);
-
-  const loadGroups = async () => {
-    try {
-      const response = await fetch("/api/groups");
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data);
-      }
-    } catch (error) {
-      console.error("Failed to load groups:", error);
-    }
-  };
-
-  const loadStoryGroups = async () => {
+  const loadStoryGroups = useCallback(async () => {
     if (!storyId) return;
     try {
       const response = await fetch(`/api/stories/${storyId}/groups`);
       if (response.ok) {
         const data = await response.json();
-        const permissions = data.map((g: any) => ({
+        const permissions: GroupPermission[] = data.map((g: any) => ({
           groupId: g.id,
           permission: g.permission
         }));
@@ -102,148 +88,26 @@ export default function EditStory() {
     } catch (error) {
       console.error("Failed to load story groups:", error);
     }
-  };
+  }, [storyId, setSelectedGroups]);
 
-  const toggleGroupSelection = (groupId: number) => {
-    const exists = selectedGroups.find(g => g.groupId === groupId);
-    if (exists) {
-      setSelectedGroups(selectedGroups.filter(g => g.groupId !== groupId));
-    } else {
-      setSelectedGroups([...selectedGroups, { groupId, permission: 'read' }]);
-    }
-  };
-
-  const updateGroupPermission = (groupId: number, permission: 'read' | 'write') => {
-    setSelectedGroups(selectedGroups.map(g => 
-      g.groupId === groupId ? { ...g, permission } : g
-    ));
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const { url } = await response.json();
-        setImage(url);
-      } else {
-        alert("이미지 업로드에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-      alert("이미지 업로드 중 오류가 발생했습니다.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleGenerateStorySettings = async () => {
-    if (!title.trim()) {
-      alert("먼저 프로필 탭에서 제목을 입력해주세요.");
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const response = await fetch("/api/ai/generate-story-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          genre: genre,
-          promptTemplate: promptTemplate,
-          storySettings: storySettings.trim(),
-          provider: "auto"
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok && data.generatedText) {
-        setStorySettings(prev => prev ? prev + "\n\n" + data.generatedText : data.generatedText);
-      } else {
-        alert(data.error || "스토리 설정 생성에 실패했습니다. 설정에서 API 키를 확인해주세요.");
-      }
-    } catch (error) {
-      console.error("Failed to generate story settings:", error);
-      alert("스토리 설정 생성 중 오류가 발생했습니다.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleGeneratePrologue = async () => {
-    if (!title.trim()) {
-      alert("먼저 프로필 탭에서 제목을 입력해주세요.");
-      return;
-    }
-
-    setIsGeneratingPrologue(true);
-    try {
-      const response = await fetch("/api/ai/generate-prologue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          genre: genre,
-          storySettings: storySettings.trim(),
-          provider: "auto"
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        if (data.prologue) {
-          setPrologue(data.prologue);
-        }
-        if (data.startingSituation) {
-          setStartingSituation(data.startingSituation);
-        }
-      } else {
-        alert(data.error || "프롤로그 생성에 실패했습니다. 설정에서 API 키를 확인해주세요.");
-      }
-    } catch (error) {
-      console.error("Failed to generate prologue:", error);
-      alert("프롤로그 생성 중 오류가 발생했습니다.");
-    } finally {
-      setIsGeneratingPrologue(false);
-    }
-  };
-
-  useEffect(() => {
-    if (storyId) {
-      loadStory();
-      loadGroups();
-      loadStoryGroups();
-    }
-  }, [storyId]);
-
-  const loadStory = async () => {
+  const loadStory = useCallback(async () => {
+    if (!storyId) return;
     try {
       const response = await fetch(`/api/stories/${storyId}`);
       if (response.ok) {
         const story: Story = await response.json();
-        setTitle(story.title);
-        setDescription(story.description || "");
-        setGenre(story.genre || "판타지");
-        setStorySettings(story.storySettings || "");
-        setPrologue(story.prologue || "");
-        setPromptTemplate(story.promptTemplate || "기본 프롬프트");
-        setExampleUserInput(story.exampleUserInput || "");
-        setExampleAiResponse(story.exampleAiResponse || "");
-        setStartingSituation(story.startingSituation || "");
-        setImage(story.image);
+        setFormState({
+          title: story.title,
+          description: story.description || "",
+          genre: story.genre || "판타지",
+          storySettings: story.storySettings || "",
+          prologue: story.prologue || "",
+          promptTemplate: story.promptTemplate || "기본 프롬프트",
+          exampleUserInput: story.exampleUserInput || "",
+          exampleAiResponse: story.exampleAiResponse || "",
+          startingSituation: story.startingSituation || "",
+          image: story.image,
+        });
       } else {
         setLocation("/");
       }
@@ -253,7 +117,15 @@ export default function EditStory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [storyId, setFormState, setLocation]);
+
+  useEffect(() => {
+    if (storyId) {
+      loadStory();
+      loadGroups();
+      loadStoryGroups();
+    }
+  }, [storyId, loadStory, loadGroups, loadStoryGroups]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -264,20 +136,13 @@ export default function EditStory() {
 
     setIsSaving(true);
     try {
+      const formData = getFormData();
       const response = await fetch(`/api/stories/${storyId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || "스토리",
-          genre: genre,
-          storySettings: storySettings.trim(),
-          prologue: prologue.trim(),
-          promptTemplate: promptTemplate,
-          exampleUserInput: exampleUserInput.trim(),
-          exampleAiResponse: exampleAiResponse.trim(),
-          startingSituation: startingSituation.trim(),
-          image: image,
+          ...formData,
+          description: formData.description || "스토리",
         }),
       });
 
