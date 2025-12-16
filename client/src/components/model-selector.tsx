@@ -14,7 +14,6 @@ import { PROVIDER_LABELS, MODEL_CATALOG, type Provider } from "@shared/models";
 import type { DefaultModel, SelectedModels } from "@shared/schema";
 
 interface ModelSelectorProps {
-  storyId?: number;
   sessionProvider?: string;
   sessionModel?: string;
   onProviderChange?: (provider: string) => void;
@@ -31,7 +30,6 @@ interface ModelWithProvider {
 const PROVIDERS: Provider[] = ["gemini", "chatgpt", "claude", "grok"];
 
 export function ModelSelector({ 
-  storyId, 
   sessionProvider = "", 
   sessionModel = "",
   onProviderChange,
