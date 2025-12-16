@@ -19,6 +19,13 @@ interface ModelInfo {
 export default function Settings() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  
+  // Utility to convert escaped newlines to actual newlines
+  const normalizeNewlines = (text: string | null | undefined): string => {
+    if (!text) return "";
+    return text.replace(/\\n/g, "\n");
+  };
+  
   const [commonPrompt, setCommonPrompt] = useState("");
   const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
   const [prologueGeneratePrompt, setPrologueGeneratePrompt] = useState("");
@@ -88,13 +95,13 @@ export default function Settings() {
       
       for (const setting of settings) {
         if (setting.key === "commonPrompt") {
-          setCommonPrompt(setting.value);
+          setCommonPrompt(normalizeNewlines(setting.value));
         } else if (setting.key === "storyGeneratePrompt") {
-          setStoryGeneratePrompt(setting.value);
+          setStoryGeneratePrompt(normalizeNewlines(setting.value));
         } else if (setting.key === "prologueGeneratePrompt") {
-          setPrologueGeneratePrompt(setting.value);
+          setPrologueGeneratePrompt(normalizeNewlines(setting.value));
         } else if (setting.key === "summaryPrompt") {
-          setSummaryPrompt(setting.value);
+          setSummaryPrompt(normalizeNewlines(setting.value));
         }
       }
     } catch (error) {

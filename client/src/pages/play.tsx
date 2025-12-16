@@ -185,6 +185,12 @@ export default function PlayStory() {
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
   const [streamingContent, setStreamingContent] = useState<string>("");
   
+  // Utility to convert escaped newlines to actual newlines
+  const normalizeNewlines = (text: string | null | undefined): string => {
+    if (!text) return "";
+    return text.replace(/\\n/g, "\n");
+  };
+
   // Session settings
   const [conversationProfile, setConversationProfile] = useState("");
   const [userNote, setUserNote] = useState("");
@@ -227,7 +233,7 @@ export default function PlayStory() {
         // Only update auto-generated fields (summary and turn count)
         // Do NOT update user-editable fields (conversationProfile, userNote, etc.)
         // to avoid wiping in-progress edits when auto-summary fires
-        setSummaryMemory(sessionData.summaryMemory || "");
+        setSummaryMemory(normalizeNewlines(sessionData.summaryMemory));
         setAiMessageCount(sessionData.aiMessageCount || 0);
       }
     } catch (error) {
@@ -249,7 +255,7 @@ export default function PlayStory() {
         // Load session settings
         setConversationProfile(sessionData.conversationProfile || "");
         setUserNote(sessionData.userNote || "");
-        setSummaryMemory(sessionData.summaryMemory || "");
+        setSummaryMemory(normalizeNewlines(sessionData.summaryMemory));
         setSessionProvider(sessionData.sessionProvider || "");
         setSessionModel(sessionData.sessionModel || "");
         setFontSize(sessionData.fontSize || 13);
@@ -801,7 +807,7 @@ export default function PlayStory() {
       }
       
       const result = await response.json();
-      setSummaryMemory(result.summary);
+      setSummaryMemory(normalizeNewlines(result.summary));
       
       // Manual summary generation - update summary memory and AI count
       setTimeout(() => {
