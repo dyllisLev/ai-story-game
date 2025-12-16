@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff, History } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
 
@@ -22,6 +22,7 @@ export default function Settings() {
   const [commonPrompt, setCommonPrompt] = useState("");
   const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
   const [prologueGeneratePrompt, setPrologueGeneratePrompt] = useState("");
+  const [summaryPrompt, setSummaryPrompt] = useState("");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,6 +93,8 @@ export default function Settings() {
           setStoryGeneratePrompt(setting.value);
         } else if (setting.key === "prologueGeneratePrompt") {
           setPrologueGeneratePrompt(setting.value);
+        } else if (setting.key === "summaryPrompt") {
+          setSummaryPrompt(setting.value);
         }
       }
     } catch (error) {
@@ -133,6 +136,7 @@ export default function Settings() {
         { key: "commonPrompt", value: commonPrompt },
         { key: "storyGeneratePrompt", value: storyGeneratePrompt },
         { key: "prologueGeneratePrompt", value: prologueGeneratePrompt },
+        { key: "summaryPrompt", value: summaryPrompt },
       ];
 
       await fetch("/api/settings/batch", {
@@ -299,7 +303,7 @@ export default function Settings() {
       <main className="container mx-auto px-6 py-6 max-w-3xl flex-1">
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="chat" className="gap-2" data-testid="tab-chat">
               <MessageSquare className="w-4 h-4" />
               <span className="hidden sm:inline">채팅 프롬프트</span>
@@ -314,6 +318,11 @@ export default function Settings() {
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">프롤로그 생성</span>
               <span className="sm:hidden">프롤로그</span>
+            </TabsTrigger>
+            <TabsTrigger value="summary" className="gap-2" data-testid="tab-summary">
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">요약 생성</span>
+              <span className="sm:hidden">요약</span>
             </TabsTrigger>
             <TabsTrigger value="models" className="gap-2" data-testid="tab-models">
               <Cpu className="w-4 h-4" />
@@ -468,6 +477,62 @@ export default function Settings() {
                 <div className="pt-2 border-t border-muted">
                   <p className="text-xs text-amber-600 dark:text-amber-400">
                     반드시 JSON 형식으로 <code className="bg-background px-1 rounded">prologue</code>와 <code className="bg-background px-1 rounded">startingSituation</code>을 반환하도록 작성하세요.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="summary" className="space-y-4 animate-in fade-in-50 duration-300">
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">요약 생성 프롬프트</h2>
+                  <p className="text-sm text-muted-foreground">
+                    대화 내용을 요약할 때 사용되는 프롬프트입니다. 타임라인과 핵심 분기점을 생성합니다.
+                  </p>
+                </div>
+                <Textarea
+                  placeholder={`예: 당신은 인터랙티브 스토리의 타임라인을 작성하는 AI입니다.
+다음 규칙을 반드시 따르세요:
+1. **형식**: [시간] 사건 요약 한 줄
+2. **시간 표기**: [1턴], [5턴], [12턴] 등 턴 번호 사용
+3. **각 사건은 한 줄로**: 간결하게 핵심만 표현 (20-30자 내외)
+
+[기존 요약]
+{existingSummary}
+
+[현재 핵심 분기점 - 유지]
+{existingPlotPoints}
+
+[최근 AI 응답 {messageCount}개]
+{aiMessages}
+
+다음 JSON 형식으로만 응답하세요:
+{
+  "summary": "기존 타임라인\\n[새로운턴] 새 사건\\n[다음턴] 다음 사건",
+  "keyPlotPoints": ["간결한 분기점 (최대 30개)"]
+}`}
+                  value={summaryPrompt}
+                  onChange={(e) => setSummaryPrompt(e.target.value)}
+                  className="min-h-[300px] font-mono text-sm"
+                  data-testid="textarea-summary-prompt"
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-muted/30">
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs font-semibold text-foreground">사용 가능한 변수</p>
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{existingSummary}"}</code> 기존 타임라인 요약</div>
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{existingPlotPoints}"}</code> 기존 핵심 분기점 목록</div>
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{messageCount}"}</code> 요약할 메시지 개수</div>
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{aiMessages}"}</code> 최근 AI 응답 내용</div>
+                </div>
+                <div className="pt-2 border-t border-muted">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    반드시 JSON 형식으로 <code className="bg-background px-1 rounded">summary</code>와 <code className="bg-background px-1 rounded">keyPlotPoints</code>를 반환하도록 작성하세요.
                   </p>
                 </div>
               </CardContent>
