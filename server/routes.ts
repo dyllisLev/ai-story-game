@@ -2351,6 +2351,9 @@ export async function registerRoutes(
                 return;
               }
               
+              const summaryPromptSetting = await storage.getSetting("summaryPrompt");
+              const summaryPromptTemplate = summaryPromptSetting?.value;
+              
               console.log(`[AUTO-SUMMARY] Calling generateSummary...`);
               const { generateSummary } = await import("./summary-helper");
               const result = await generateSummary({
@@ -2359,7 +2362,8 @@ export async function registerRoutes(
                 existingPlotPoints: session.keyPlotPoints,
                 provider: summaryProvider,
                 model: summaryModel,
-                apiKey
+                apiKey,
+                summaryPromptTemplate
               });
               
               console.log(`[AUTO-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
@@ -2497,6 +2501,9 @@ export async function registerRoutes(
         return res.status(400).json({ error: `${summaryProvider} API 키가 설정되지 않았습니다` });
       }
       
+      const summaryPromptSetting = await storage.getSetting("summaryPrompt");
+      const summaryPromptTemplate = summaryPromptSetting?.value;
+      
       console.log(`[MANUAL-SUMMARY] Calling generateSummary with ${messagesToSummarize.length} messages...`);
       const { generateSummary } = await import("./summary-helper");
       const result = await generateSummary({
@@ -2505,7 +2512,8 @@ export async function registerRoutes(
         existingPlotPoints: session.keyPlotPoints,
         provider: summaryProvider,
         model: summaryModel,
-        apiKey
+        apiKey,
+        summaryPromptTemplate
       });
       
       console.log(`[MANUAL-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);

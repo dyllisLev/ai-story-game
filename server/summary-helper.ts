@@ -7,6 +7,7 @@ interface SummaryRequest {
   provider: string;
   model: string;
   apiKey: string;
+  summaryPromptTemplate?: string;
 }
 
 interface SummaryResult {
@@ -15,7 +16,7 @@ interface SummaryResult {
 }
 
 export async function generateSummary(request: SummaryRequest): Promise<SummaryResult> {
-  const { messages, existingSummary, existingPlotPoints, provider, model, apiKey } = request;
+  const { messages, existingSummary, existingPlotPoints, provider, model, apiKey, summaryPromptTemplate } = request;
   
   if (!apiKey) {
     throw new Error("API key is required for summary generation");
@@ -37,7 +38,6 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
   
   const MAX_PLOT_POINTS = 30;
   
-  // 분기점이 한도 초과 시, 오래된 것들을 요약에 통합
   let archivedPointsSummary = "";
   let activePoints = existingPoints;
   
@@ -47,49 +47,65 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
     archivedPointsSummary = `\n[과거 주요 사건: ${archivedPoints.join(", ")}]`;
   }
   
-  const promptParts = [];
+  let summaryPrompt: string;
   
-  promptParts.push(`당신은 인터랙티브 스토리의 타임라인을 작성하는 AI입니다.`);
-  promptParts.push(`다음 규칙을 반드시 따르세요:`);
-  promptParts.push(`1. **형식**: [시간] 사건 요약 한 줄`);
-  promptParts.push(`2. **시간 표기**: [1턴], [5턴], [12턴] 등 턴 번호 사용`);
-  promptParts.push(`3. **각 사건은 한 줄로**: 간결하게 핵심만 표현 (20-30자 내외)`);
-  promptParts.push(`4. **기존 타임라인에 추가**: 기존 내용은 그대로 유지하고 새로운 사건만 추가`);
-  promptParts.push(`5. **중요한 사건만**: 의미 있는 선택, 결정, 전개만 포함\n`);
-  
-  if (existingSummary || archivedPointsSummary) {
-    promptParts.push(`[기존 요약]`);
-    if (existingSummary) promptParts.push(existingSummary);
-    if (archivedPointsSummary) promptParts.push(archivedPointsSummary);
+  if (summaryPromptTemplate) {
+    const formattedPoints = activePoints.map((point, i) => `${i + 1}. ${point}`).join("\n");
+    
+    summaryPrompt = summaryPromptTemplate
+      .replace(/{existingSummary}/g, existingSummary || "")
+      .replace(/{existingPlotPoints}/g, formattedPoints)
+      .replace(/{messageCount}/g, messages.length.toString())
+      .replace(/{aiMessages}/g, aiMessages);
+    
+    if (existingSummary || archivedPointsSummary) {
+      summaryPrompt = summaryPrompt.replace("[기존 요약]\n", `[기존 요약]\n${existingSummary || ""}${archivedPointsSummary}\n`);
+    }
+  } else {
+    const promptParts = [];
+    
+    promptParts.push(`당신은 인터랙티브 스토리의 타임라인을 작성하는 AI입니다.`);
+    promptParts.push(`다음 규칙을 반드시 따르세요:`);
+    promptParts.push(`1. **형식**: [시간] 사건 요약 한 줄`);
+    promptParts.push(`2. **시간 표기**: [1턴], [5턴], [12턴] 등 턴 번호 사용`);
+    promptParts.push(`3. **각 사건은 한 줄로**: 간결하게 핵심만 표현 (20-30자 내외)`);
+    promptParts.push(`4. **기존 타임라인에 추가**: 기존 내용은 그대로 유지하고 새로운 사건만 추가`);
+    promptParts.push(`5. **중요한 사건만**: 의미 있는 선택, 결정, 전개만 포함\n`);
+    
+    if (existingSummary || archivedPointsSummary) {
+      promptParts.push(`[기존 요약]`);
+      if (existingSummary) promptParts.push(existingSummary);
+      if (archivedPointsSummary) promptParts.push(archivedPointsSummary);
+      promptParts.push(``);
+    }
+    
+    if (activePoints.length > 0) {
+      promptParts.push(`[현재 핵심 분기점 - 유지]`);
+      activePoints.forEach((point, i) => {
+        promptParts.push(`${i + 1}. ${point}`);
+      });
+      promptParts.push(``);
+    }
+    
+    promptParts.push(`[최근 AI 응답 ${messages.length}개]`);
+    promptParts.push(aiMessages);
     promptParts.push(``);
-  }
-  
-  if (activePoints.length > 0) {
-    promptParts.push(`[현재 핵심 분기점 - 유지]`);
-    activePoints.forEach((point, i) => {
-      promptParts.push(`${i + 1}. ${point}`);
-    });
+    promptParts.push(`다음 JSON 형식으로만 응답하세요:`);
+    promptParts.push(`{`);
+    promptParts.push(`  "summary": "기존 타임라인\\n[새로운턴] 새 사건\\n[다음턴] 다음 사건",`);
+    promptParts.push(`  "keyPlotPoints": ["간결한 분기점 (최대 ${MAX_PLOT_POINTS}개)"]`);
+    promptParts.push(`}`);
     promptParts.push(``);
+    promptParts.push(`예시:`);
+    promptParts.push(`"summary": "[1턴] 무림에 도착\\n[3턴] 소매치기 추적\\n[7턴] 하오문 분타 발견\\n[12턴] 만월루에서 조설연과 만남"`);
+    promptParts.push(``);
+    promptParts.push(`중요:`);
+    promptParts.push(`- 기존 타임라인을 그대로 유지하고 새로운 사건만 추가`);
+    promptParts.push(`- 각 줄은 [턴수] 사건 형식으로 20-30자 이내`);
+    promptParts.push(`- 타임라인은 길이 제한 없이 계속 쌓임`);
+    
+    summaryPrompt = promptParts.join("\n");
   }
-  
-  promptParts.push(`[최근 AI 응답 ${messages.length}개]`);
-  promptParts.push(aiMessages);
-  promptParts.push(``);
-  promptParts.push(`다음 JSON 형식으로만 응답하세요:`);
-  promptParts.push(`{`);
-  promptParts.push(`  "summary": "기존 타임라인\\n[새로운턴] 새 사건\\n[다음턴] 다음 사건",`);
-  promptParts.push(`  "keyPlotPoints": ["간결한 분기점 (최대 ${MAX_PLOT_POINTS}개)"]`);
-  promptParts.push(`}`);
-  promptParts.push(``);
-  promptParts.push(`예시:`);
-  promptParts.push(`"summary": "[1턴] 무림에 도착\\n[3턴] 소매치기 추적\\n[7턴] 하오문 분타 발견\\n[12턴] 만월루에서 조설연과 만남"`);
-  promptParts.push(``);
-  promptParts.push(`중요:`);
-  promptParts.push(`- 기존 타임라인을 그대로 유지하고 새로운 사건만 추가`);
-  promptParts.push(`- 각 줄은 [턴수] 사건 형식으로 20-30자 이내`);
-  promptParts.push(`- 타임라인은 길이 제한 없이 계속 쌓임`);
-  
-  const summaryPrompt = promptParts.join("\n");
   
   try {
     let generatedText = "";
