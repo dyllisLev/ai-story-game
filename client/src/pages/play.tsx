@@ -378,7 +378,7 @@ export default function PlayStory() {
     }
   }, [session, loadMessages]);
 
-  // Auto-scroll to bottom only on initial page load
+  // Auto-scroll to bottom only on initial page load (not when new messages are added)
   useEffect(() => {
     if (messages.length > 0 && !loading && !hasInitiallyScrolled.current) {
       hasInitiallyScrolled.current = true;
@@ -389,7 +389,8 @@ export default function PlayStory() {
         }
       }, 300);
     }
-  }, [messages.length, loading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // Reset scroll flag when session changes (navigating to different session)
   useEffect(() => {
