@@ -220,7 +220,7 @@ export default function PlayStory() {
   };
 
   // Centralized helper to refresh session from server
-  // Only updates auto-generated fields to avoid wiping user edits
+  // Only updates auto-generated fields (summary, turn count) without triggering message reload
   const refreshSession = useCallback(async () => {
     if (!sessionId) return;
     
@@ -228,11 +228,8 @@ export default function PlayStory() {
       const response = await fetch(`/api/sessions/${sessionId}`);
       if (response.ok) {
         const sessionData = await response.json();
-        // Update session object for consistency
-        setSession(sessionData);
+        // Do NOT call setSession() - it triggers message reload and scroll reset
         // Only update auto-generated fields (summary and turn count)
-        // Do NOT update user-editable fields (conversationProfile, userNote, etc.)
-        // to avoid wiping in-progress edits when auto-summary fires
         setSummaryMemory(normalizeNewlines(sessionData.summaryMemory));
         setAiMessageCount(sessionData.aiMessageCount || 0);
       }
