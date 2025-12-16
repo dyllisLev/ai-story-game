@@ -3,7 +3,6 @@ import type { Session, Message } from "../shared/schema";
 interface SummaryRequest {
   messages: Message[];
   existingSummary: string | null;
-  existingPlotPoints: string | null;
   provider: string;
   model: string;
   apiKey: string;
@@ -16,7 +15,7 @@ interface SummaryResult {
 }
 
 export async function generateSummary(request: SummaryRequest): Promise<SummaryResult> {
-  const { messages, existingSummary, existingPlotPoints, provider, model, apiKey, summaryPromptTemplate } = request;
+  const { messages, existingSummary, provider, model, apiKey, summaryPromptTemplate } = request;
   
   if (!apiKey) {
     throw new Error("API key is required for summary generation");
@@ -27,40 +26,13 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
     .map(m => m.content)
     .join("\n\n");
   
-  let existingPoints: string[] = [];
-  if (existingPlotPoints) {
-    try {
-      existingPoints = JSON.parse(existingPlotPoints);
-    } catch (e) {
-      existingPoints = [];
-    }
-  }
-  
-  const MAX_PLOT_POINTS = 30;
-  
-  let archivedPointsSummary = "";
-  let activePoints = existingPoints;
-  
-  if (existingPoints.length > MAX_PLOT_POINTS) {
-    const archivedPoints = existingPoints.slice(0, existingPoints.length - MAX_PLOT_POINTS);
-    activePoints = existingPoints.slice(-MAX_PLOT_POINTS);
-    archivedPointsSummary = `\n[과거 주요 사건: ${archivedPoints.join(", ")}]`;
-  }
-  
   let summaryPrompt: string;
   
   if (summaryPromptTemplate) {
-    const formattedPoints = activePoints.map((point, i) => `${i + 1}. ${point}`).join("\n");
-    
     summaryPrompt = summaryPromptTemplate
       .replace(/{existingSummary}/g, existingSummary || "")
-      .replace(/{existingPlotPoints}/g, formattedPoints)
       .replace(/{messageCount}/g, messages.length.toString())
       .replace(/{aiMessages}/g, aiMessages);
-    
-    if (existingSummary || archivedPointsSummary) {
-      summaryPrompt = summaryPrompt.replace("[기존 요약]\n", `[기존 요약]\n${existingSummary || ""}${archivedPointsSummary}\n`);
-    }
   } else {
     const promptParts = [];
     
@@ -72,32 +44,17 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
     promptParts.push(`4. **기존 타임라인에 추가**: 기존 내용은 그대로 유지하고 새로운 사건만 추가`);
     promptParts.push(`5. **중요한 사건만**: 의미 있는 선택, 결정, 전개만 포함\n`);
     
-    if (existingSummary || archivedPointsSummary) {
+    if (existingSummary) {
       promptParts.push(`[기존 요약]`);
-      if (existingSummary) promptParts.push(existingSummary);
-      if (archivedPointsSummary) promptParts.push(archivedPointsSummary);
-      promptParts.push(``);
-    }
-    
-    if (activePoints.length > 0) {
-      promptParts.push(`[현재 핵심 분기점 - 유지]`);
-      activePoints.forEach((point, i) => {
-        promptParts.push(`${i + 1}. ${point}`);
-      });
+      promptParts.push(existingSummary);
       promptParts.push(``);
     }
     
     promptParts.push(`[최근 AI 응답 ${messages.length}개]`);
     promptParts.push(aiMessages);
     promptParts.push(``);
-    promptParts.push(`다음 JSON 형식으로만 응답하세요:`);
-    promptParts.push(`{`);
-    promptParts.push(`  "summary": "기존 타임라인\\n[새로운턴] 새 사건\\n[다음턴] 다음 사건",`);
-    promptParts.push(`  "keyPlotPoints": ["간결한 분기점 (최대 ${MAX_PLOT_POINTS}개)"]`);
-    promptParts.push(`}`);
-    promptParts.push(``);
-    promptParts.push(`예시:`);
-    promptParts.push(`"summary": "[1턴] 무림에 도착\\n[3턴] 소매치기 추적\\n[7턴] 하오문 분타 발견\\n[12턴] 만월루에서 조설연과 만남"`);
+    promptParts.push(`위 내용을 바탕으로 타임라인을 작성하세요.`);
+    promptParts.push(`예시: [1턴] 무림에 도착\\n[3턴] 소매치기 추적\\n[7턴] 하오문 분타 발견\\n[12턴] 만월루에서 조설연과 만남`);
     promptParts.push(``);
     promptParts.push(`중요:`);
     promptParts.push(`- 기존 타임라인을 그대로 유지하고 새로운 사건만 추가`);
@@ -155,44 +112,11 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       throw new Error(`Provider ${provider} not supported for summary generation yet`);
     }
     
-    // Parse the JSON response
-    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("Failed to parse JSON from response:", generatedText);
-      // Fallback: return the raw text as summary with active plot points
-      return {
-        summary: generatedText.trim(),
-        keyPlotPoints: activePoints
-      };
-    }
-    
-    try {
-      const parsed = JSON.parse(jsonMatch[0]);
-      
-      // Merge existing plot points with new ones, removing duplicates
-      const allPoints = [...activePoints];
-      if (parsed.keyPlotPoints && Array.isArray(parsed.keyPlotPoints)) {
-        for (const point of parsed.keyPlotPoints) {
-          if (point && !allPoints.some(p => p.includes(point) || point.includes(p))) {
-            allPoints.push(point);
-          }
-        }
-      }
-      
-      // 최대 개수 제한 (최신 것만 유지)
-      const finalPoints = allPoints.slice(-MAX_PLOT_POINTS);
-      
-      return {
-        summary: parsed.summary || generatedText.trim(),
-        keyPlotPoints: finalPoints
-      };
-    } catch (parseError) {
-      console.error("JSON parse error:", parseError);
-      return {
-        summary: generatedText.trim(),
-        keyPlotPoints: activePoints
-      };
-    }
+    // Return the raw response as summary
+    return {
+      summary: generatedText.trim(),
+      keyPlotPoints: []
+    };
   } catch (error) {
     console.error("Failed to generate summary:", error);
     throw error;

@@ -2359,7 +2359,6 @@ export async function registerRoutes(
               const result = await generateSummary({
                 messages: recentMessages,
                 existingSummary: session.summaryMemory,
-                existingPlotPoints: session.keyPlotPoints,
                 provider: summaryProvider,
                 model: summaryModel,
                 apiKey,
@@ -2509,7 +2508,6 @@ export async function registerRoutes(
       const result = await generateSummary({
         messages: messagesToSummarize,
         existingSummary: session.summaryMemory,
-        existingPlotPoints: session.keyPlotPoints,
         provider: summaryProvider,
         model: summaryModel,
         apiKey,
