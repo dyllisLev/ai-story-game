@@ -484,10 +484,15 @@ export default function PlayStory() {
       if (response.ok) {
         const data = await response.json();
         // Normalize messages with stable clientId for server-loaded messages
-        const normalizedMessages = data.map((msg: any) => ({
-          ...msg,
-          clientId: msg.clientId || `server-${msg.id}`
-        }));
+        // Parse JSON-wrapped responses for backward compatibility with legacy data
+        const normalizedMessages = data.map((msg: any) => {
+          const parsedContent = msg.role === "assistant" ? extractStoryFromJSON(msg.content) : msg.content;
+          return {
+            ...msg,
+            content: parsedContent,
+            clientId: msg.clientId || `server-${msg.id}`
+          };
+        });
         setMessages(normalizedMessages);
       }
     } catch (error) {
@@ -859,47 +864,46 @@ export default function PlayStory() {
                 }
                 
                 if (data.done) {
-                  // Use fullText from server or accumulated content
-                  const textToSave = data.fullText || fullText;
+                  // Server now saves the message and sends it back (already parsed)
+                  const savedMessage = data.savedMessage;
                   
-                  if (textToSave) {
-                    // Use the shared helper function to extract story content
-                    const finalResponse = extractStoryFromJSON(textToSave);
+                  if (savedMessage) {
+                    // Update temp streaming message with server-saved data
+                    // Preserve the streaming clientId to avoid duplicates
+                    const normalizedMessage = {
+                      ...savedMessage,
+                      clientId: streamingClientId,
+                      isStreaming: false
+                    };
                     
-                    // Save the final message
-                    const aiMsg = await saveMessage("assistant", finalResponse, "AI");
-                    if (aiMsg) {
-                      // Update temp streaming message in-place with saved data
-                      // This preserves the DOM node by keeping the same clientId
-                      setMessages(prev => {
-                        const updated = prev.map(m => 
-                          m.clientId === streamingClientId 
-                            ? { ...aiMsg, clientId: streamingClientId, isStreaming: false }
-                            : m
-                        );
-                        // Keep only the most recent 20 messages for performance
-                        return updated.length > 20 ? updated.slice(-20) : updated;
-                      });
+                    setMessages(prev => {
+                      const updated = prev.map(m => 
+                        m.clientId === streamingClientId 
+                          ? normalizedMessage
+                          : m
+                      );
+                      // Keep only the most recent 20 messages for performance
+                      return updated.length > 20 ? updated.slice(-20) : updated;
+                    });
+                    
+                    // Update AI message count (backend increments this automatically)
+                    setAiMessageCount(prev => {
+                      const newCount = prev + 1;
                       
-                      // Update AI message count (backend increments this automatically)
-                      // Use functional updater to avoid stale closure issues
-                      setAiMessageCount(prev => {
-                        const newCount = prev + 1;
-                        
-                        // Check if we need to update summary (only at 20, 40, 60... turns)
-                        if (newCount > 0 && newCount % 20 === 0) {
-                          // Auto-summary was generated at 20th turn, check for updates
-                          setTimeout(() => {
-                            refreshSession();
-                          }, 3000); // 3 second delay to allow summary generation
-                        }
-                        
-                        return newCount;
-                      });
-                    }
+                      // Check if we need to update summary (only at 20, 40, 60... turns)
+                      if (newCount > 0 && newCount % 20 === 0) {
+                        // Auto-summary was generated at 20th turn, check for updates
+                        setTimeout(() => {
+                          refreshSession();
+                        }, 3000); // 3 second delay to allow summary generation
+                      }
+                      
+                      return newCount;
+                    });
+                    
                     setLastError(null);
                   } else {
-                    // No text to save - remove temp message and show error
+                    // No saved message - remove temp message and show error
                     setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
                     setLastError("AI가 빈 응답을 반환했습니다. 다시 시도해주세요.");
                   }

@@ -85,6 +85,74 @@ function splitAndStreamText(text: string, res: Response): void {
   }
 }
 
+// Extract story content from AI response
+// Handles both JSON-wrapped responses and plain text responses
+function extractStoryFromJSON(text: string): string {
+  // First convert HTML entities to actual characters
+  let processedText = text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+  
+  // Remove markdown code blocks if present
+  processedText = processedText
+    .replace(/^```json\n?/, '')
+    .replace(/^```\n?/, '')
+    .replace(/\n?```$/, '')
+    .trim();
+  
+  // Check if it looks like JSON with story content fields
+  const hasStoryField = processedText.includes('"story"') ||
+                        processedText.includes('nextStory') || 
+                        processedText.includes('nextStrory') || 
+                        processedText.includes('next_story') ||
+                        processedText.includes('output_schema');
+  
+  // Only attempt JSON parsing if it starts with { and has story fields
+  if (processedText.startsWith('{') && hasStoryField) {
+    // Try regex extraction first (works for both complete and incomplete JSON)
+    const storyMatch = processedText.match(/"(?:story|next(?:Story|Strory|_story)|output_schema)"\s*:\s*"((?:[^"\\]|\\.)*)(")?/);
+    if (storyMatch && storyMatch[1]) {
+      // Unescape JSON string literals
+      return storyMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'")
+        .replace(/\\t/g, '\t')
+        .replace(/\\\\/g, '\\');
+    }
+    
+    // Try full JSON parse as fallback
+    try {
+      // Fix incomplete JSON
+      let fixedText = processedText;
+      if (!fixedText.endsWith('}')) {
+        const quoteCount = (fixedText.match(/"/g) || []).length;
+        if (quoteCount % 2 === 1) {
+          fixedText += '"';
+        }
+        fixedText += '\n}';
+      }
+      
+      const parsed = JSON.parse(fixedText);
+      const storyContent = parsed.story || parsed.nextStory || parsed.nextStrory || parsed.next_story || parsed.output_schema;
+      if (storyContent) {
+        // Unescape JSON string literals
+        return storyContent
+          .replace(/\\n/g, '\n')
+          .replace(/\\"/g, '"')
+          .replace(/\\'/g, "'")
+          .replace(/\\t/g, '\t')
+          .replace(/\\\\/g, '\\');
+      }
+    } catch (e) {
+      // JSON parse failed, fall through to return as plain text
+    }
+  }
+  
+  // Return as plain text (already has proper formatting from AI)
+  return processedText;
+}
+
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -1991,14 +2059,29 @@ export async function registerRoutes(
           console.error("Stream reading error:", streamErr);
         }
 
-        // Send final message with full text
-        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        // Parse and save AI message to database
+        const parsedContent = extractStoryFromJSON(fullText);
+        const savedMessage = await storage.createMessage({
+          sessionId,
+          role: "assistant",
+          content: parsedContent,
+          character: "AI"
+        });
+
+        // Update AI message count
+        await storage.updateSession(sessionId, {
+          aiMessageCount: (session.aiMessageCount || 0) + 1
+        });
+
+        // Send final message with saved message data
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (Gemini)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ Message ID:", savedMessage.id);
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 📝 AI 응답 전문:");
         console.log("║", fullText.replace(/\n/g, "\n║ "));
@@ -2072,13 +2155,28 @@ export async function registerRoutes(
           console.error("Stream reading error:", streamErr);
         }
 
-        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        // Parse and save AI message to database
+        const parsedContent = extractStoryFromJSON(fullText);
+        const savedMessage = await storage.createMessage({
+          sessionId,
+          role: "assistant",
+          content: parsedContent,
+          character: "AI"
+        });
+
+        // Update AI message count
+        await storage.updateSession(sessionId, {
+          aiMessageCount: (session.aiMessageCount || 0) + 1
+        });
+
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (ChatGPT)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ Message ID:", savedMessage.id);
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 📝 AI 응답 전문:");
         console.log("║", fullText.replace(/\n/g, "\n║ "));
@@ -2152,13 +2250,28 @@ export async function registerRoutes(
           console.error("Stream reading error:", streamErr);
         }
 
-        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        // Parse and save AI message to database
+        const parsedContent = extractStoryFromJSON(fullText);
+        const savedMessage = await storage.createMessage({
+          sessionId,
+          role: "assistant",
+          content: parsedContent,
+          character: "AI"
+        });
+
+        // Update AI message count
+        await storage.updateSession(sessionId, {
+          aiMessageCount: (session.aiMessageCount || 0) + 1
+        });
+
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (Claude)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ Message ID:", savedMessage.id);
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 📝 AI 응답 전문:");
         console.log("║", fullText.replace(/\n/g, "\n║ "));
@@ -2234,13 +2347,28 @@ export async function registerRoutes(
           console.error("Stream reading error:", streamErr);
         }
 
-        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText })}\n\n`);
+        // Parse and save AI message to database
+        const parsedContent = extractStoryFromJSON(fullText);
+        const savedMessage = await storage.createMessage({
+          sessionId,
+          role: "assistant",
+          content: parsedContent,
+          character: "AI"
+        });
+
+        // Update AI message count
+        await storage.updateSession(sessionId, {
+          aiMessageCount: (session.aiMessageCount || 0) + 1
+        });
+
+        res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (Grok)");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
+        console.log("║ Message ID:", savedMessage.id);
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 📝 AI 응답 전문:");
         console.log("║", fullText.replace(/\n/g, "\n║ "));
