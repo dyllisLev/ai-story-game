@@ -161,6 +161,7 @@ interface Message {
   content: string;
   character?: string | null;
   createdAt?: string | null;
+  isStreaming?: boolean;
 }
 
 interface ConversationProfile {
@@ -172,7 +173,7 @@ interface ConversationProfile {
 interface FloatingScrollControlsProps {
   onScrollTop: () => void;
   onScrollBottom: () => void;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   sessionId: number | null;
 }
 
@@ -320,7 +321,6 @@ export default function PlayStory() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
-  const [streamingContent, setStreamingContent] = useState<string>("");
   
   // Utility to convert escaped newlines to actual newlines
   const normalizeNewlines = (text: string | null | undefined): string => {
@@ -744,10 +744,9 @@ export default function PlayStory() {
       setInputValue("");
     }
     
-    // Clear previous error and streaming content
+    // Clear previous error
     setLastError(null);
     setLastUserMessage(userInput);
-    setStreamingContent("");
     
     // Save and display user message (only if not retrying)
     if (!retryMessage) {
@@ -760,6 +759,19 @@ export default function PlayStory() {
         });
       }
     }
+    
+    // Add temporary streaming message to messages array
+    const tempStreamingMessage: Message = {
+      id: -1,
+      sessionId: sessionId || 0,
+      role: "assistant",
+      content: "",
+      character: "AI",
+      isStreaming: true,
+      createdAt: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, tempStreamingMessage]);
     
     // Call AI Streaming API
     setIsGenerating(true);
@@ -778,6 +790,8 @@ export default function PlayStory() {
         const data = await response.json();
         setLastError(data.error || "AI 응답을 생성할 수 없습니다. 설정에서 API 키를 확인해주세요.");
         setIsGenerating(false);
+        // Remove temp message on error
+        setMessages(prev => prev.filter(m => m.id !== -1));
         return;
       }
 
@@ -785,6 +799,8 @@ export default function PlayStory() {
       if (!reader) {
         setLastError("스트리밍을 시작할 수 없습니다.");
         setIsGenerating(false);
+        // Remove temp message on error
+        setMessages(prev => prev.filter(m => m.id !== -1));
         return;
       }
 
@@ -810,12 +826,17 @@ export default function PlayStory() {
                 if (data.error) {
                   setLastError(data.error);
                   setIsGenerating(false);
+                  // Remove temp message on error
+                  setMessages(prev => prev.filter(m => m.id !== -1));
                   return;
                 }
                 
                 if (data.text) {
                   fullText += data.text;
-                  setStreamingContent(fullText);
+                  // Update the temp streaming message content
+                  setMessages(prev => prev.map(m => 
+                    m.id === -1 ? { ...m, content: fullText } : m
+                  ));
                 }
                 
                 if (data.done) {
@@ -829,8 +850,10 @@ export default function PlayStory() {
                     // Save the final message
                     const aiMsg = await saveMessage("assistant", finalResponse, "AI");
                     if (aiMsg) {
+                      // Replace temp message with real saved message
                       setMessages(prev => {
-                        const updated = [...prev, aiMsg];
+                        const filtered = prev.filter(m => m.id !== -1);
+                        const updated = [...filtered, aiMsg];
                         // Keep only the most recent 20 messages for performance
                         return updated.length > 20 ? updated.slice(-20) : updated;
                       });
@@ -852,10 +875,12 @@ export default function PlayStory() {
                       });
                     }
                     setLastError(null);
+                  } else {
+                    // No text to save - remove temp message and show error
+                    setMessages(prev => prev.filter(m => m.id !== -1));
+                    setLastError("AI가 빈 응답을 반환했습니다. 다시 시도해주세요.");
                   }
                   
-                  // Always clear streaming content when done
-                  setStreamingContent("");
                   setIsGenerating(false);
                   return;
                 }
@@ -869,9 +894,10 @@ export default function PlayStory() {
     } catch (error) {
       console.error("Failed to get AI response:", error);
       setLastError("AI 서버에 연결할 수 없습니다.");
+      // Remove temp message on error
+      setMessages(prev => prev.filter(m => m.id !== -1));
     } finally {
       setIsGenerating(false);
-      setStreamingContent("");
     }
   };
 
@@ -1104,19 +1130,24 @@ export default function PlayStory() {
                  messages.map((msg, index) => {
                   if (msg.role === "assistant") {
                      return (
-                        <div key={msg.id} className="group">
+                        <div key={msg.id === -1 ? 'streaming' : msg.id} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                                   <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
                                      {renderAIContent(msg.content)}
+                                     {msg.isStreaming && (
+                                       <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                                     )}
                                   </div>
-                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
-                                     <Button variant="ghost" size="icon" className="h-6 w-6"><Share2 className="w-3 h-3" /></Button>
-                                  </div>
+                                  {!msg.isStreaming && (
+                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                       <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
+                                       <Button variant="ghost" size="icon" className="h-6 w-6"><Share2 className="w-3 h-3" /></Button>
+                                    </div>
+                                  )}
                                </div>
                             </div>
-                            {index < messages.length - 1 && (
+                            {index < messages.length - 1 && !msg.isStreaming && (
                                 <div className="w-full h-px bg-border/50 mt-8" />
                             )}
                         </div>
@@ -1136,28 +1167,6 @@ export default function PlayStory() {
                      </div>
                   )
                  })
-               )}
-               
-               {/* Streaming AI Response */}
-               {isGenerating && streamingContent && (
-                 <div className="group">
-                   <div className="flex gap-4">
-                     <div className="flex-1 space-y-2" style={{ width: '100%' }}>
-                       <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
-                         {renderAIContent(streamingContent)}
-                         <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               )}
-               
-               {/* Loading indicator when streaming hasn't started yet */}
-               {isGenerating && !streamingContent && (
-                 <div className="flex items-center gap-3 text-muted-foreground">
-                   <Loader2 className="w-5 h-5 animate-spin" />
-                   <span className="text-sm">AI가 응답을 생성하고 있습니다...</span>
-                 </div>
                )}
                
                {/* Error Message with Retry Button */}
