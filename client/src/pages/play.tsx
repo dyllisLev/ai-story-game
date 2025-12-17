@@ -357,6 +357,9 @@ export default function PlayStory() {
 
   // Scroll container ref for floating scroll controls
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Track if this is the initial load to auto-scroll to bottom
+  const isInitialLoadRef = useRef(true);
 
   const scrollToTop = () => {
     if (scrollContainerRef.current) {
@@ -546,6 +549,22 @@ export default function PlayStory() {
       loadMessages();
     }
   }, [session, loadMessages]);
+
+  // Auto-scroll to bottom on initial page load
+  useEffect(() => {
+    if (!loading && messages.length > 0 && isInitialLoadRef.current) {
+      // Wait for DOM to render
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({ 
+            top: scrollContainerRef.current.scrollHeight, 
+            behavior: 'auto' // Use 'auto' instead of 'smooth' for instant scroll on initial load
+          });
+        }
+      });
+      isInitialLoadRef.current = false;
+    }
+  }, [loading, messages]);
 
   // Helper function to extract story content from AI response
   // Handles both JSON-wrapped responses and plain text responses
