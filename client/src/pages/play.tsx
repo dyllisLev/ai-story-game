@@ -358,19 +358,26 @@ export default function PlayStory() {
   // Scroll container ref for floating scroll controls
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Helper function to log scroll position for debugging
+  // Helper function to log scroll position for debugging (sends to server for mobile testing)
   const logScrollPosition = (event: string) => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      console.log(`[SCROLL ${event}]`, {
+      const logData = {
+        event,
         timestamp: new Date().toISOString().split('T')[1],
-        scrollTop: container.scrollTop,
-        scrollHeight: container.scrollHeight,
-        clientHeight: container.clientHeight,
-        scrollBottom: container.scrollHeight - container.scrollTop - container.clientHeight
-      });
-    } else {
-      console.log(`[SCROLL ${event}] Container not found`);
+        scrollTop: Math.round(container.scrollTop),
+        scrollHeight: Math.round(container.scrollHeight),
+        clientHeight: Math.round(container.clientHeight),
+        scrollBottom: Math.round(container.scrollHeight - container.scrollTop - container.clientHeight)
+      };
+      // Send to server for mobile debugging
+      fetch('/api/debug/scroll-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logData)
+      }).catch(() => {});
+      // Also log to console for desktop debugging
+      console.log(`[SCROLL ${event}]`, logData);
     }
   };
 
