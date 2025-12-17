@@ -162,6 +162,7 @@ interface Message {
   character?: string | null;
   createdAt?: string | null;
   isStreaming?: boolean;
+  tempKey?: string; // Stable key for streaming messages to prevent DOM re-creation
 }
 
 interface ConversationProfile {
@@ -769,7 +770,8 @@ export default function PlayStory() {
       content: "",
       character: "AI",
       isStreaming: true,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      tempKey: `streaming-${Date.now()}` // Stable key to prevent DOM re-creation
     };
     
     setMessages(prev => [...prev, tempStreamingMessage]);
@@ -791,12 +793,8 @@ export default function PlayStory() {
         const data = await response.json();
         setLastError(data.error || "AI 응답을 생성할 수 없습니다. 설정에서 API 키를 확인해주세요.");
         setIsGenerating(false);
-        // Remove temp message on error
+        // Remove temp message on error (filter is fine here as we're removing, not replacing)
         setMessages(prev => prev.filter(m => m.id !== -1));
-        // Restore focus on error
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 100);
         return;
       }
 
@@ -804,12 +802,8 @@ export default function PlayStory() {
       if (!reader) {
         setLastError("스트리밍을 시작할 수 없습니다.");
         setIsGenerating(false);
-        // Remove temp message on error
+        // Remove temp message on error (filter is fine here as we're removing, not replacing)
         setMessages(prev => prev.filter(m => m.id !== -1));
-        // Restore focus on error
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 100);
         return;
       }
 
@@ -835,12 +829,8 @@ export default function PlayStory() {
                 if (data.error) {
                   setLastError(data.error);
                   setIsGenerating(false);
-                  // Remove temp message on error
+                  // Remove temp message on error (filter is fine here as we're removing, not replacing)
                   setMessages(prev => prev.filter(m => m.id !== -1));
-                  // Restore focus on error
-                  setTimeout(() => {
-                    inputRef.current?.focus();
-                  }, 100);
                   return;
                 }
                 
@@ -863,12 +853,21 @@ export default function PlayStory() {
                     // Save the final message
                     const aiMsg = await saveMessage("assistant", finalResponse, "AI");
                     if (aiMsg) {
-                      // Replace temp message with real saved message
+                      // Step 1: Update content and id while keeping isStreaming=true and tempKey
+                      // This preserves the DOM node by keeping the same key
                       setMessages(prev => {
-                        const filtered = prev.filter(m => m.id !== -1);
-                        const updated = [...filtered, aiMsg];
-                        // Keep only the most recent 20 messages for performance
+                        const updated = prev.map(m => 
+                          m.id === -1 ? { ...aiMsg, isStreaming: true, tempKey: m.tempKey } : m
+                        );
                         return updated.length > 20 ? updated.slice(-20) : updated;
+                      });
+                      
+                      // Step 2: In the next frame, clear isStreaming and tempKey to finalize the message
+                      // This allows the key to transition smoothly from tempKey to id after DOM is stable
+                      requestAnimationFrame(() => {
+                        setMessages(prev => prev.map(m => 
+                          m.tempKey ? { ...m, isStreaming: false, tempKey: undefined } : m
+                        ));
                       });
                       
                       // Update AI message count (backend increments this automatically)
@@ -895,13 +894,6 @@ export default function PlayStory() {
                   }
                   
                   setIsGenerating(false);
-                  
-                  // Restore focus to input on mobile to prevent keyboard from hiding
-                  // This prevents viewport resize and scroll jump
-                  setTimeout(() => {
-                    inputRef.current?.focus();
-                  }, 100);
-                  
                   return;
                 }
               } catch (parseErr) {
@@ -914,12 +906,8 @@ export default function PlayStory() {
     } catch (error) {
       console.error("Failed to get AI response:", error);
       setLastError("AI 서버에 연결할 수 없습니다.");
-      // Remove temp message on error
+      // Remove temp message on error (filter is fine here as we're removing, not replacing)
       setMessages(prev => prev.filter(m => m.id !== -1));
-      // Restore focus on error
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
     } finally {
       setIsGenerating(false);
     }
@@ -1154,7 +1142,7 @@ export default function PlayStory() {
                  messages.map((msg, index) => {
                   if (msg.role === "assistant") {
                      return (
-                        <div key={msg.id === -1 ? 'streaming' : msg.id} className="group">
+                        <div key={msg.isStreaming && msg.tempKey ? msg.tempKey : msg.id} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                                   <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
