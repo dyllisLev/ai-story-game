@@ -321,6 +321,7 @@ export default function PlayStory() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   
   // Utility to convert escaped newlines to actual newlines
   const normalizeNewlines = (text: string | null | undefined): string => {
@@ -792,6 +793,10 @@ export default function PlayStory() {
         setIsGenerating(false);
         // Remove temp message on error
         setMessages(prev => prev.filter(m => m.id !== -1));
+        // Restore focus on error
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
         return;
       }
 
@@ -801,6 +806,10 @@ export default function PlayStory() {
         setIsGenerating(false);
         // Remove temp message on error
         setMessages(prev => prev.filter(m => m.id !== -1));
+        // Restore focus on error
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
         return;
       }
 
@@ -828,6 +837,10 @@ export default function PlayStory() {
                   setIsGenerating(false);
                   // Remove temp message on error
                   setMessages(prev => prev.filter(m => m.id !== -1));
+                  // Restore focus on error
+                  setTimeout(() => {
+                    inputRef.current?.focus();
+                  }, 100);
                   return;
                 }
                 
@@ -882,6 +895,13 @@ export default function PlayStory() {
                   }
                   
                   setIsGenerating(false);
+                  
+                  // Restore focus to input on mobile to prevent keyboard from hiding
+                  // This prevents viewport resize and scroll jump
+                  setTimeout(() => {
+                    inputRef.current?.focus();
+                  }, 100);
+                  
                   return;
                 }
               } catch (parseErr) {
@@ -896,6 +916,10 @@ export default function PlayStory() {
       setLastError("AI 서버에 연결할 수 없습니다.");
       // Remove temp message on error
       setMessages(prev => prev.filter(m => m.id !== -1));
+      // Restore focus on error
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     } finally {
       setIsGenerating(false);
     }
@@ -1240,6 +1264,7 @@ export default function PlayStory() {
          <div className="p-4 bg-background border-t">
             <div className="max-w-3xl mx-auto relative">
                <Textarea 
+                  ref={inputRef}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요 (버튼 클릭으로 전송)..."} 
