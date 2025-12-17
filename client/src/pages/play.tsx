@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -207,17 +207,6 @@ export default function PlayStory() {
   // Session title editing
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
-  
-  // Auto-scroll to bottom (only on initial load)
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const hasInitiallyScrolled = useRef(false);
-  
-  const scrollToBottom = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-    }
-  };
 
   // Centralized helper to refresh session from server
   // Only updates auto-generated fields (summary, turn count) without triggering message reload
@@ -377,26 +366,6 @@ export default function PlayStory() {
       loadMessages();
     }
   }, [session, loadMessages]);
-
-  // Auto-scroll to bottom only on initial page load (not when new messages are added)
-  useEffect(() => {
-    if (messages.length > 0 && !loading && !hasInitiallyScrolled.current) {
-      hasInitiallyScrolled.current = true;
-      // Use setTimeout with longer delay to ensure DOM is fully rendered
-      setTimeout(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-        }
-      }, 300);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
-
-  // Reset scroll flag when session changes (navigating to different session)
-  useEffect(() => {
-    hasInitiallyScrolled.current = false;
-  }, [sessionId]);
-
 
   // Helper function to extract story content from AI response
   // Handles both JSON-wrapped responses and plain text responses
@@ -965,7 +934,7 @@ export default function PlayStory() {
             </div>
          </header>
 
-         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+         <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="max-w-3xl mx-auto space-y-8 px-4 py-6">
                {loading ? (
                  <div className="flex items-center justify-center py-12">
@@ -1092,9 +1061,6 @@ export default function PlayStory() {
                    </Button>
                  </div>
                )}
-               
-               {/* Auto-scroll target */}
-               <div ref={messagesEndRef} />
             </div>
          </div>
 
