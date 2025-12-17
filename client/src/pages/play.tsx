@@ -358,29 +358,6 @@ export default function PlayStory() {
   // Scroll container ref for floating scroll controls
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Helper function to log scroll position for debugging (sends to server for mobile testing)
-  const logScrollPosition = (event: string) => {
-    if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const logData = {
-        event,
-        timestamp: new Date().toISOString().split('T')[1],
-        scrollTop: Math.round(container.scrollTop),
-        scrollHeight: Math.round(container.scrollHeight),
-        clientHeight: Math.round(container.clientHeight),
-        scrollBottom: Math.round(container.scrollHeight - container.scrollTop - container.clientHeight)
-      };
-      // Send to server for mobile debugging
-      fetch('/api/debug/scroll-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logData)
-      }).catch(() => {});
-      // Also log to console for desktop debugging
-      console.log(`[SCROLL ${event}]`, logData);
-    }
-  };
-
   const scrollToTop = () => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -569,25 +546,6 @@ export default function PlayStory() {
       loadMessages();
     }
   }, [session, loadMessages]);
-
-  // Log scroll position after messages change (rendering complete)
-  useEffect(() => {
-    if (messages.length > 0) {
-      // Wait for DOM update
-      requestAnimationFrame(() => {
-        logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
-      });
-    }
-  }, [messages]);
-
-  // Log scroll position after streaming chunks change
-  useEffect(() => {
-    if (streamingChunks.length > 0) {
-      requestAnimationFrame(() => {
-        logScrollPosition(`CHUNKS_RENDERED (count: ${streamingChunks.length})`);
-      });
-    }
-  }, [streamingChunks]);
 
   // Helper function to extract story content from AI response
   // Handles both JSON-wrapped responses and plain text responses
@@ -878,9 +836,6 @@ export default function PlayStory() {
 
       // Clear any previous streaming chunks
       setStreamingChunks([]);
-      
-      // Log scroll position at streaming start
-      logScrollPosition("STREAMING_START");
 
       while (true) {
         const { done, value } = await reader.read();
@@ -910,16 +865,11 @@ export default function PlayStory() {
                   fullText += data.text;
                   // Append new chunk for append-only rendering
                   setStreamingChunks(prev => [...prev, data.text]);
-                  // Log scroll position after each chunk (throttled by using requestAnimationFrame)
-                  requestAnimationFrame(() => logScrollPosition(`CHUNK_ADDED (total: ${fullText.length} chars)`));
                 }
                 
                 if (data.done) {
                   // Server now saves the message and sends it back (already parsed)
                   const savedMessage = data.savedMessage;
-                  
-                  // Log scroll position BEFORE setMessages
-                  logScrollPosition("BEFORE_SET_MESSAGES");
                   
                   if (savedMessage) {
                     // Update temp streaming message with server-saved data
@@ -935,9 +885,6 @@ export default function PlayStory() {
                         ? normalizedMessage
                         : m
                     ));
-                    
-                    // Log scroll position AFTER setMessages (in next tick)
-                    setTimeout(() => logScrollPosition("AFTER_SET_MESSAGES"), 0);
                     
                     // Clear streaming chunks
                     setStreamingChunks([]);

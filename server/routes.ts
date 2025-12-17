@@ -639,20 +639,6 @@ export async function registerRoutes(
     }
   });
 
-  // ==================== DEBUG API (Scroll logging for mobile) ====================
-
-  app.post("/api/debug/scroll-log", (req, res) => {
-    const { event, scrollTop, scrollHeight, clientHeight, scrollBottom, timestamp } = req.body;
-    console.log(`[SCROLL ${event}]`, {
-      timestamp,
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-      scrollBottom
-    });
-    res.json({ ok: true });
-  });
-
   // ==================== IMAGE UPLOAD API ====================
 
   app.use("/uploads", (await import("express")).default.static(uploadDir));
