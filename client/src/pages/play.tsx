@@ -162,6 +162,12 @@ interface Message {
   character?: string | null;
   createdAt?: string | null;
   isStreaming?: boolean;
+  clientId: string; // Stable client-side ID for React key stability
+}
+
+// Generate a simple UUID for client-side message tracking
+function generateClientId(): string {
+  return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 interface ConversationProfile {
@@ -477,7 +483,12 @@ export default function PlayStory() {
       const response = await fetch(`/api/sessions/${sessionId}/messages?limit=20`);
       if (response.ok) {
         const data = await response.json();
-        setMessages(data);
+        // Normalize messages with stable clientId for server-loaded messages
+        const normalizedMessages = data.map((msg: any) => ({
+          ...msg,
+          clientId: msg.clientId || `server-${msg.id}`
+        }));
+        setMessages(normalizedMessages);
       }
     } catch (error) {
       console.error("Failed to load messages:", error);
@@ -495,7 +506,12 @@ export default function PlayStory() {
         body: JSON.stringify({ role, content, character }),
       });
       if (response.ok) {
-        return await response.json();
+        const savedMsg = await response.json();
+        // Normalize with clientId for consistency
+        return {
+          ...savedMsg,
+          clientId: savedMsg.clientId || `server-${savedMsg.id}`
+        };
       }
     } catch (error) {
       console.error("Failed to save message:", error);
@@ -761,7 +777,8 @@ export default function PlayStory() {
       }
     }
     
-    // Add temporary streaming message to messages array
+    // Add temporary streaming message to messages array with stable clientId
+    const streamingClientId = generateClientId();
     const tempStreamingMessage: Message = {
       id: -1,
       sessionId: sessionId || 0,
@@ -769,7 +786,8 @@ export default function PlayStory() {
       content: "",
       character: "AI",
       isStreaming: true,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      clientId: streamingClientId
     };
     
     setMessages(prev => [...prev, tempStreamingMessage]);
@@ -791,8 +809,8 @@ export default function PlayStory() {
         const data = await response.json();
         setLastError(data.error || "AI 응답을 생성할 수 없습니다. 설정에서 API 키를 확인해주세요.");
         setIsGenerating(false);
-        // Remove temp message on error (filter is fine here as we're removing, not replacing)
-        setMessages(prev => prev.filter(m => m.id !== -1));
+        // Remove temp message on error by clientId
+        setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
         return;
       }
 
@@ -800,8 +818,8 @@ export default function PlayStory() {
       if (!reader) {
         setLastError("스트리밍을 시작할 수 없습니다.");
         setIsGenerating(false);
-        // Remove temp message on error (filter is fine here as we're removing, not replacing)
-        setMessages(prev => prev.filter(m => m.id !== -1));
+        // Remove temp message on error by clientId
+        setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
         return;
       }
 
@@ -827,16 +845,16 @@ export default function PlayStory() {
                 if (data.error) {
                   setLastError(data.error);
                   setIsGenerating(false);
-                  // Remove temp message on error (filter is fine here as we're removing, not replacing)
-                  setMessages(prev => prev.filter(m => m.id !== -1));
+                  // Remove temp message on error by clientId
+                  setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
                   return;
                 }
                 
                 if (data.text) {
                   fullText += data.text;
-                  // Update the temp streaming message content
+                  // Update the temp streaming message content by clientId
                   setMessages(prev => prev.map(m => 
-                    m.id === -1 ? { ...m, content: fullText } : m
+                    m.clientId === streamingClientId ? { ...m, content: fullText } : m
                   ));
                 }
                 
@@ -851,34 +869,16 @@ export default function PlayStory() {
                     // Save the final message
                     const aiMsg = await saveMessage("assistant", finalResponse, "AI");
                     if (aiMsg) {
-                      // Preserve scroll position before updating messages (prevents mobile scroll jump)
-                      const container = scrollContainerRef.current;
-                      const scrollTop = container?.scrollTop || 0;
-                      const scrollHeight = container?.scrollHeight || 0;
-                      const clientHeight = container?.clientHeight || 0;
-                      const wasAtBottom = scrollHeight - scrollTop - clientHeight < 50; // Consider "at bottom" if within 50px
-                      
-                      // Replace temp message with real saved message
+                      // Update temp streaming message in-place with saved data
+                      // This preserves the DOM node by keeping the same clientId
                       setMessages(prev => {
-                        const filtered = prev.filter(m => m.id !== -1);
-                        const updated = [...filtered, aiMsg];
+                        const updated = prev.map(m => 
+                          m.clientId === streamingClientId 
+                            ? { ...aiMsg, clientId: streamingClientId, isStreaming: false }
+                            : m
+                        );
                         // Keep only the most recent 20 messages for performance
                         return updated.length > 20 ? updated.slice(-20) : updated;
-                      });
-                      
-                      // Restore scroll position after DOM update
-                      requestAnimationFrame(() => {
-                        if (container) {
-                          if (wasAtBottom) {
-                            // If user was at bottom, keep them at bottom
-                            container.scrollTop = container.scrollHeight;
-                          } else {
-                            // If user scrolled up, preserve their position relative to content growth
-                            const newScrollHeight = container.scrollHeight;
-                            const heightDelta = newScrollHeight - scrollHeight;
-                            container.scrollTop = scrollTop + heightDelta;
-                          }
-                        }
                       });
                       
                       // Update AI message count (backend increments this automatically)
@@ -900,7 +900,7 @@ export default function PlayStory() {
                     setLastError(null);
                   } else {
                     // No text to save - remove temp message and show error
-                    setMessages(prev => prev.filter(m => m.id !== -1));
+                    setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
                     setLastError("AI가 빈 응답을 반환했습니다. 다시 시도해주세요.");
                   }
                   
@@ -917,8 +917,8 @@ export default function PlayStory() {
     } catch (error) {
       console.error("Failed to get AI response:", error);
       setLastError("AI 서버에 연결할 수 없습니다.");
-      // Remove temp message on error (filter is fine here as we're removing, not replacing)
-      setMessages(prev => prev.filter(m => m.id !== -1));
+      // Remove temp message on error by clientId
+      setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
     } finally {
       setIsGenerating(false);
     }
@@ -1153,7 +1153,7 @@ export default function PlayStory() {
                  messages.map((msg, index) => {
                   if (msg.role === "assistant") {
                      return (
-                        <div key={msg.id === -1 ? 'streaming' : msg.id} className="group">
+                        <div key={msg.clientId} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                                   <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
