@@ -24,7 +24,8 @@ import {
   Check,
   Pencil,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  GripVertical
 } from "lucide-react";
 import {
   Dialog,
@@ -180,6 +181,7 @@ function FloatingScrollControls({ onScrollTop, onScrollBottom, containerRef, ses
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const controlRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
 
   // Load position from localStorage on mount
   useEffect(() => {
@@ -192,8 +194,8 @@ function FloatingScrollControls({ onScrollTop, onScrollBottom, containerRef, ses
         // Validate and constrain the saved position
         if (containerRef.current) {
           const containerRect = containerRef.current.getBoundingClientRect();
-          const x = Math.max(0, Math.min(savedPosition.x, containerRect.width - 60));
-          const y = Math.max(0, Math.min(savedPosition.y, containerRect.height - 100));
+          const x = Math.max(0, Math.min(savedPosition.x, containerRect.width - 120));
+          const y = Math.max(0, Math.min(savedPosition.y, containerRect.height - 60));
           setPosition({ x, y });
         } else {
           setPosition(savedPosition);
@@ -226,7 +228,9 @@ function FloatingScrollControls({ onScrollTop, onScrollBottom, containerRef, ses
     });
     setIsDragging(true);
     
-    controlRef.current.setPointerCapture(e.pointerId);
+    if (dragHandleRef.current) {
+      dragHandleRef.current.setPointerCapture(e.pointerId);
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -246,38 +250,42 @@ function FloatingScrollControls({ onScrollTop, onScrollBottom, containerRef, ses
 
   const handlePointerUp = (e: React.PointerEvent) => {
     setIsDragging(false);
-    if (controlRef.current) {
-      controlRef.current.releasePointerCapture(e.pointerId);
+    if (dragHandleRef.current) {
+      dragHandleRef.current.releasePointerCapture(e.pointerId);
     }
   };
 
   return (
     <div
       ref={controlRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
       style={{
         position: 'absolute',
         left: `${position.x}px`,
         top: `${position.y}px`,
         zIndex: 40,
-        touchAction: 'none',
       }}
-      className={cn(
-        "flex flex-col gap-1 p-2 rounded-lg bg-background/70 backdrop-blur-sm border shadow-lg",
-        isDragging ? "cursor-grabbing" : "cursor-grab"
-      )}
+      className="flex flex-row items-center gap-1 p-2 rounded-lg bg-background/70 backdrop-blur-sm border shadow-lg"
     >
+      <div
+        ref={dragHandleRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        className={cn(
+          "flex items-center justify-center h-8 w-8 rounded hover:bg-muted/50 transition-colors",
+          isDragging ? "cursor-grabbing bg-muted/50" : "cursor-grab"
+        )}
+        style={{ touchAction: 'none' }}
+        data-testid="drag-handle"
+      >
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </div>
+      <div className="h-6 w-px bg-border" />
       <Button
         variant="ghost"
         size="icon"
         className="h-8 w-8"
-        onClick={(e) => {
-          e.stopPropagation();
-          onScrollTop();
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onClick={onScrollTop}
         data-testid="button-scroll-top"
       >
         <ChevronUp className="w-4 h-4" />
@@ -286,11 +294,7 @@ function FloatingScrollControls({ onScrollTop, onScrollBottom, containerRef, ses
         variant="ghost"
         size="icon"
         className="h-8 w-8"
-        onClick={(e) => {
-          e.stopPropagation();
-          onScrollBottom();
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onClick={onScrollBottom}
         data-testid="button-scroll-bottom"
       >
         <ChevronDown className="w-4 h-4" />
