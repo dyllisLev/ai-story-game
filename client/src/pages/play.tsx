@@ -352,6 +352,9 @@ export default function PlayStory() {
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
 
+  // Streaming chunks for append-only rendering
+  const [streamingChunks, setStreamingChunks] = useState<string[]>([]);
+
   // Scroll container ref for floating scroll controls
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -832,6 +835,9 @@ export default function PlayStory() {
       let fullText = "";
       let buffer = "";
 
+      // Clear any previous streaming chunks
+      setStreamingChunks([]);
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -852,15 +858,14 @@ export default function PlayStory() {
                   setIsGenerating(false);
                   // Remove temp message on error by clientId
                   setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
+                  setStreamingChunks([]);
                   return;
                 }
                 
                 if (data.text) {
                   fullText += data.text;
-                  // Update the temp streaming message content by clientId
-                  setMessages(prev => prev.map(m => 
-                    m.clientId === streamingClientId ? { ...m, content: fullText } : m
-                  ));
+                  // Append new chunk for append-only rendering
+                  setStreamingChunks(prev => [...prev, data.text]);
                 }
                 
                 if (data.done) {
@@ -886,6 +891,9 @@ export default function PlayStory() {
                       return updated.length > 20 ? updated.slice(-20) : updated;
                     });
                     
+                    // Clear streaming chunks
+                    setStreamingChunks([]);
+                    
                     // Update AI message count (backend increments this automatically)
                     setAiMessageCount(prev => {
                       const newCount = prev + 1;
@@ -905,6 +913,7 @@ export default function PlayStory() {
                   } else {
                     // No saved message - remove temp message and show error
                     setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
+                    setStreamingChunks([]);
                     setLastError("AI가 빈 응답을 반환했습니다. 다시 시도해주세요.");
                   }
                   
@@ -923,6 +932,7 @@ export default function PlayStory() {
       setLastError("AI 서버에 연결할 수 없습니다.");
       // Remove temp message on error by clientId
       setMessages(prev => prev.filter(m => m.clientId !== streamingClientId));
+      setStreamingChunks([]);
     } finally {
       setIsGenerating(false);
     }
@@ -1161,9 +1171,15 @@ export default function PlayStory() {
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                                   <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
-                                     {renderAIContent(msg.content)}
-                                     {msg.isStreaming && (
-                                       <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                                     {msg.isStreaming ? (
+                                       <div className="whitespace-pre-wrap">
+                                         {streamingChunks.map((chunk, chunkIndex) => (
+                                           <span key={chunkIndex}>{chunk}</span>
+                                         ))}
+                                         <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                                       </div>
+                                     ) : (
+                                       renderAIContent(msg.content)
                                      )}
                                   </div>
                                   {!msg.isStreaming && (
