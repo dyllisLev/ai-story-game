@@ -357,10 +357,6 @@ export default function PlayStory() {
 
   // Scroll container ref for floating scroll controls
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Ref to save scroll state before streaming completion (to restore after render)
-  // We save scroll ratio (scrollTop / scrollHeight) to maintain relative position when content height changes
-  const savedScrollRatioRef = useRef<number | null>(null);
 
   // Helper function to log scroll position for debugging (sends to server for mobile testing)
   const logScrollPosition = (event: string) => {
@@ -575,25 +571,11 @@ export default function PlayStory() {
   }, [session, loadMessages]);
 
   // Log scroll position after messages change (rendering complete)
-  // Also restore saved scroll position if streaming just completed
   useEffect(() => {
     if (messages.length > 0) {
       // Wait for DOM update
       requestAnimationFrame(() => {
-        // Restore scroll position if saved (streaming completion case)
-        // We saved scroll ratio within scrollable range, now calculate new scrollTop to maintain relative position
-        // TEMP: Disabled to test scroll behavior
-        // if (scrollContainerRef.current && savedScrollRatioRef.current !== null) {
-        //   const container = scrollContainerRef.current;
-        //   const newScrollableRange = Math.max(0, container.scrollHeight - container.clientHeight);
-        //   const newScrollTop = newScrollableRange * savedScrollRatioRef.current;
-        //   // Clamp to valid range
-        //   container.scrollTop = Math.max(0, Math.min(newScrollTop, newScrollableRange));
-        //   logScrollPosition(`SCROLL_RESTORED (ratio was ${(savedScrollRatioRef.current * 100).toFixed(1)}%)`);
-        //   savedScrollRatioRef.current = null; // Clear after restore
-        // } else {
-          logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
-        // }
+        logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
       });
     }
   }, [messages]);
@@ -833,15 +815,14 @@ export default function PlayStory() {
     setLastError(null);
     setLastUserMessage(userInput);
     
+    // Keep only the most recent 20 messages before streaming starts
+    setMessages(prev => prev.length > 20 ? prev.slice(-20) : prev);
+    
     // Save and display user message (only if not retrying)
     if (!retryMessage) {
       const userMsg = await saveMessage("user", userInput);
       if (userMsg) {
-        setMessages(prev => {
-          const updated = [...prev, userMsg];
-          // Keep only the most recent 20 messages for performance
-          return updated.length > 20 ? updated.slice(-20) : updated;
-        });
+        setMessages(prev => [...prev, userMsg]);
       }
     }
     
@@ -937,15 +918,6 @@ export default function PlayStory() {
                   // Server now saves the message and sends it back (already parsed)
                   const savedMessage = data.savedMessage;
                   
-                  // Save scroll position BEFORE rendering change (streaming -> final)
-                  // Save scroll ratio within scrollable range to maintain relative position when content height changes
-                  // TEMP: Disabled to test scroll behavior
-                  // if (scrollContainerRef.current) {
-                  //   const container = scrollContainerRef.current;
-                  //   const scrollableRange = Math.max(1, container.scrollHeight - container.clientHeight);
-                  //   savedScrollRatioRef.current = Math.min(1, Math.max(0, container.scrollTop / scrollableRange));
-                  // }
-                  
                   // Log scroll position BEFORE setMessages
                   logScrollPosition("BEFORE_SET_MESSAGES");
                   
@@ -958,16 +930,11 @@ export default function PlayStory() {
                       isStreaming: false
                     };
                     
-                    setMessages(prev => {
-                      const updated = prev.map(m => 
-                        m.clientId === streamingClientId 
-                          ? normalizedMessage
-                          : m
-                      );
-                      // Keep only the most recent 20 messages for performance
-                      // return updated.length > 20 ? updated.slice(-20) : updated;
-                      return updated; // TEMP: Disabled message limit to test scroll behavior
-                    });
+                    setMessages(prev => prev.map(m => 
+                      m.clientId === streamingClientId 
+                        ? normalizedMessage
+                        : m
+                    ));
                     
                     // Log scroll position AFTER setMessages (in next tick)
                     setTimeout(() => logScrollPosition("AFTER_SET_MESSAGES"), 0);
