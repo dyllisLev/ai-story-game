@@ -359,8 +359,8 @@ export default function PlayStory() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // Ref to save scroll state before streaming completion (to restore after render)
-  // We save scrollBottom (distance from bottom) since content height shrinks after streaming ends
-  const savedScrollBottomRef = useRef<number | null>(null);
+  // We save scroll ratio (scrollTop / scrollHeight) to maintain relative position when content height changes
+  const savedScrollRatioRef = useRef<number | null>(null);
 
   // Helper function to log scroll position for debugging (sends to server for mobile testing)
   const logScrollPosition = (event: string) => {
@@ -581,14 +581,15 @@ export default function PlayStory() {
       // Wait for DOM update
       requestAnimationFrame(() => {
         // Restore scroll position if saved (streaming completion case)
-        // We saved scrollBottom, now calculate new scrollTop to maintain distance from bottom
-        if (scrollContainerRef.current && savedScrollBottomRef.current !== null) {
+        // We saved scroll ratio within scrollable range, now calculate new scrollTop to maintain relative position
+        if (scrollContainerRef.current && savedScrollRatioRef.current !== null) {
           const container = scrollContainerRef.current;
-          const newScrollTop = container.scrollHeight - container.clientHeight - savedScrollBottomRef.current;
+          const newScrollableRange = Math.max(0, container.scrollHeight - container.clientHeight);
+          const newScrollTop = newScrollableRange * savedScrollRatioRef.current;
           // Clamp to valid range
-          container.scrollTop = Math.max(0, newScrollTop);
-          logScrollPosition(`SCROLL_RESTORED (scrollBottom was ${savedScrollBottomRef.current})`);
-          savedScrollBottomRef.current = null; // Clear after restore
+          container.scrollTop = Math.max(0, Math.min(newScrollTop, newScrollableRange));
+          logScrollPosition(`SCROLL_RESTORED (ratio was ${(savedScrollRatioRef.current * 100).toFixed(1)}%)`);
+          savedScrollRatioRef.current = null; // Clear after restore
         } else {
           logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
         }
@@ -936,10 +937,11 @@ export default function PlayStory() {
                   const savedMessage = data.savedMessage;
                   
                   // Save scroll position BEFORE rendering change (streaming -> final)
-                  // Save scrollBottom (distance from bottom) since content height will shrink
+                  // Save scroll ratio within scrollable range to maintain relative position when content height changes
                   if (scrollContainerRef.current) {
                     const container = scrollContainerRef.current;
-                    savedScrollBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight;
+                    const scrollableRange = Math.max(1, container.scrollHeight - container.clientHeight);
+                    savedScrollRatioRef.current = Math.min(1, Math.max(0, container.scrollTop / scrollableRange));
                   }
                   
                   // Log scroll position BEFORE setMessages
