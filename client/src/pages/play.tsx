@@ -352,6 +352,20 @@ export default function PlayStory() {
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
 
+  // Theme state
+  const [theme, setTheme] = useState<'light' | 'dark' | 'excel'>(() => {
+    const saved = localStorage.getItem('theme');
+    return (saved as 'light' | 'dark' | 'excel') || 'light';
+  });
+
+  // Apply theme to html element
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark', 'excel');
+    root.classList.add(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
   // Streaming chunks for append-only rendering
   const [streamingChunks, setStreamingChunks] = useState<string[]>([]);
 
@@ -1447,6 +1461,38 @@ export default function PlayStory() {
                          💡 20턴마다 요약을 생성하시는 것을 권장합니다.
                        </p>
                      )}
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2 w-[75%]">
+                     <label className="text-xs font-bold text-muted-foreground">화면 스타일</label>
+                     <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          variant={theme === 'light' ? 'default' : 'outline'}
+                          className="h-9 text-xs"
+                          onClick={() => setTheme('light')}
+                          data-testid="button-theme-light"
+                        >
+                          라이트
+                        </Button>
+                        <Button
+                          variant={theme === 'dark' ? 'default' : 'outline'}
+                          className="h-9 text-xs"
+                          onClick={() => setTheme('dark')}
+                          data-testid="button-theme-dark"
+                        >
+                          다크
+                        </Button>
+                        <Button
+                          variant={theme === 'excel' ? 'default' : 'outline'}
+                          className="h-9 text-xs"
+                          onClick={() => setTheme('excel')}
+                          data-testid="button-theme-excel"
+                        >
+                          엑셀
+                        </Button>
+                     </div>
                   </div>
                </div>
             </ScrollArea>
