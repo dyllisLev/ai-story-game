@@ -357,6 +357,10 @@ export default function PlayStory() {
 
   // Scroll container ref for floating scroll controls
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Ref to save scroll state before streaming completion (to restore after render)
+  // We save scrollBottom (distance from bottom) since content height shrinks after streaming ends
+  const savedScrollBottomRef = useRef<number | null>(null);
 
   // Helper function to log scroll position for debugging (sends to server for mobile testing)
   const logScrollPosition = (event: string) => {
@@ -571,11 +575,23 @@ export default function PlayStory() {
   }, [session, loadMessages]);
 
   // Log scroll position after messages change (rendering complete)
+  // Also restore saved scroll position if streaming just completed
   useEffect(() => {
     if (messages.length > 0) {
       // Wait for DOM update
       requestAnimationFrame(() => {
-        logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
+        // Restore scroll position if saved (streaming completion case)
+        // We saved scrollBottom, now calculate new scrollTop to maintain distance from bottom
+        if (scrollContainerRef.current && savedScrollBottomRef.current !== null) {
+          const container = scrollContainerRef.current;
+          const newScrollTop = container.scrollHeight - container.clientHeight - savedScrollBottomRef.current;
+          // Clamp to valid range
+          container.scrollTop = Math.max(0, newScrollTop);
+          logScrollPosition(`SCROLL_RESTORED (scrollBottom was ${savedScrollBottomRef.current})`);
+          savedScrollBottomRef.current = null; // Clear after restore
+        } else {
+          logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
+        }
       });
     }
   }, [messages]);
@@ -918,6 +934,13 @@ export default function PlayStory() {
                 if (data.done) {
                   // Server now saves the message and sends it back (already parsed)
                   const savedMessage = data.savedMessage;
+                  
+                  // Save scroll position BEFORE rendering change (streaming -> final)
+                  // Save scrollBottom (distance from bottom) since content height will shrink
+                  if (scrollContainerRef.current) {
+                    const container = scrollContainerRef.current;
+                    savedScrollBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight;
+                  }
                   
                   // Log scroll position BEFORE setMessages
                   logScrollPosition("BEFORE_SET_MESSAGES");
