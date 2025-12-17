@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -207,6 +207,24 @@ export default function PlayStory() {
   // Session title editing
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState("");
+
+  // Scroll container ref for floating scroll controls
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTop = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ 
+        top: scrollContainerRef.current.scrollHeight, 
+        behavior: 'smooth' 
+      });
+    }
+  };
 
   // Centralized helper to refresh session from server
   // Only updates auto-generated fields (summary, turn count) without triggering message reload
@@ -934,7 +952,7 @@ export default function PlayStory() {
             </div>
          </header>
 
-         <div className="flex-1 overflow-y-auto overflow-x-hidden">
+         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="max-w-3xl mx-auto space-y-8 px-4 py-6">
                {loading ? (
                  <div className="flex items-center justify-center py-12">
