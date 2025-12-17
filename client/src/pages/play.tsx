@@ -162,7 +162,6 @@ interface Message {
   character?: string | null;
   createdAt?: string | null;
   isStreaming?: boolean;
-  tempKey?: string; // Stable key for streaming messages to prevent DOM re-creation
 }
 
 interface ConversationProfile {
@@ -770,8 +769,7 @@ export default function PlayStory() {
       content: "",
       character: "AI",
       isStreaming: true,
-      createdAt: new Date().toISOString(),
-      tempKey: `streaming-${Date.now()}` // Stable key to prevent DOM re-creation
+      createdAt: new Date().toISOString()
     };
     
     setMessages(prev => [...prev, tempStreamingMessage]);
@@ -853,21 +851,34 @@ export default function PlayStory() {
                     // Save the final message
                     const aiMsg = await saveMessage("assistant", finalResponse, "AI");
                     if (aiMsg) {
-                      // Step 1: Update content and id while keeping isStreaming=true and tempKey
-                      // This preserves the DOM node by keeping the same key
+                      // Preserve scroll position before updating messages (prevents mobile scroll jump)
+                      const container = scrollContainerRef.current;
+                      const scrollTop = container?.scrollTop || 0;
+                      const scrollHeight = container?.scrollHeight || 0;
+                      const clientHeight = container?.clientHeight || 0;
+                      const wasAtBottom = scrollHeight - scrollTop - clientHeight < 50; // Consider "at bottom" if within 50px
+                      
+                      // Replace temp message with real saved message
                       setMessages(prev => {
-                        const updated = prev.map(m => 
-                          m.id === -1 ? { ...aiMsg, isStreaming: true, tempKey: m.tempKey } : m
-                        );
+                        const filtered = prev.filter(m => m.id !== -1);
+                        const updated = [...filtered, aiMsg];
+                        // Keep only the most recent 20 messages for performance
                         return updated.length > 20 ? updated.slice(-20) : updated;
                       });
                       
-                      // Step 2: In the next frame, clear isStreaming and tempKey to finalize the message
-                      // This allows the key to transition smoothly from tempKey to id after DOM is stable
+                      // Restore scroll position after DOM update
                       requestAnimationFrame(() => {
-                        setMessages(prev => prev.map(m => 
-                          m.tempKey ? { ...m, isStreaming: false, tempKey: undefined } : m
-                        ));
+                        if (container) {
+                          if (wasAtBottom) {
+                            // If user was at bottom, keep them at bottom
+                            container.scrollTop = container.scrollHeight;
+                          } else {
+                            // If user scrolled up, preserve their position relative to content growth
+                            const newScrollHeight = container.scrollHeight;
+                            const heightDelta = newScrollHeight - scrollHeight;
+                            container.scrollTop = scrollTop + heightDelta;
+                          }
+                        }
                       });
                       
                       // Update AI message count (backend increments this automatically)
@@ -1142,7 +1153,7 @@ export default function PlayStory() {
                  messages.map((msg, index) => {
                   if (msg.role === "assistant") {
                      return (
-                        <div key={msg.isStreaming && msg.tempKey ? msg.tempKey : msg.id} className="group">
+                        <div key={msg.id === -1 ? 'streaming' : msg.id} className="group">
                             <div className="flex gap-4">
                                <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                                   <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>

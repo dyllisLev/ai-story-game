@@ -98,7 +98,6 @@ export const messages = pgTable("messages", {
   role: text("role").notNull(),
   content: text("content").notNull(),
   character: text("character"),
-  clientMessageId: text("client_message_id").unique(), // Stable client-side UUID for React key stability
   createdAt: timestamp("created_at").defaultNow(),
 });
 
