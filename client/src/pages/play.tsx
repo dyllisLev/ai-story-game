@@ -552,20 +552,38 @@ export default function PlayStory() {
 
   // Auto-scroll to bottom on initial page load
   useEffect(() => {
+    console.log('[AUTO-SCROLL] Effect triggered', {
+      loading,
+      messagesLength: messages.length,
+      isInitial: isInitialLoadRef.current,
+      hasContainer: !!scrollContainerRef.current
+    });
+    
     if (!loading && messages.length > 0 && isInitialLoadRef.current) {
+      console.log('[AUTO-SCROLL] Conditions met, scheduling scroll');
       // Double requestAnimationFrame to ensure layout is complete
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (scrollContainerRef.current) {
             const container = scrollContainerRef.current;
+            console.log('[AUTO-SCROLL] Container dimensions', {
+              scrollHeight: container.scrollHeight,
+              clientHeight: container.clientHeight,
+              isScrollable: container.scrollHeight > container.clientHeight
+            });
             // Only scroll if content is actually scrollable
             if (container.scrollHeight > container.clientHeight) {
+              console.log('[AUTO-SCROLL] Scrolling to bottom');
               container.scrollTo({ 
                 top: container.scrollHeight, 
                 behavior: 'auto'
               });
               isInitialLoadRef.current = false;
+            } else {
+              console.log('[AUTO-SCROLL] Content not scrollable yet');
             }
+          } else {
+            console.log('[AUTO-SCROLL] Container not found');
           }
         });
       });
