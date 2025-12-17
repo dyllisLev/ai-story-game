@@ -563,6 +563,25 @@ export default function PlayStory() {
     }
   }, [session, loadMessages]);
 
+  // Log scroll position after messages change (rendering complete)
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Wait for DOM update
+      requestAnimationFrame(() => {
+        logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
+      });
+    }
+  }, [messages]);
+
+  // Log scroll position after streaming chunks change
+  useEffect(() => {
+    if (streamingChunks.length > 0) {
+      requestAnimationFrame(() => {
+        logScrollPosition(`CHUNKS_RENDERED (count: ${streamingChunks.length})`);
+      });
+    }
+  }, [streamingChunks]);
+
   // Helper function to extract story content from AI response
   // Handles both JSON-wrapped responses and plain text responses
   const extractStoryFromJSON = (text: string): string => {
@@ -853,6 +872,9 @@ export default function PlayStory() {
 
       // Clear any previous streaming chunks
       setStreamingChunks([]);
+      
+      // Log scroll position at streaming start
+      logScrollPosition("STREAMING_START");
 
       while (true) {
         const { done, value } = await reader.read();
@@ -882,11 +904,16 @@ export default function PlayStory() {
                   fullText += data.text;
                   // Append new chunk for append-only rendering
                   setStreamingChunks(prev => [...prev, data.text]);
+                  // Log scroll position after each chunk (throttled by using requestAnimationFrame)
+                  requestAnimationFrame(() => logScrollPosition(`CHUNK_ADDED (total: ${fullText.length} chars)`));
                 }
                 
                 if (data.done) {
                   // Server now saves the message and sends it back (already parsed)
                   const savedMessage = data.savedMessage;
+                  
+                  // Log scroll position BEFORE setMessages
+                  logScrollPosition("BEFORE_SET_MESSAGES");
                   
                   if (savedMessage) {
                     // Update temp streaming message with server-saved data
@@ -906,6 +933,9 @@ export default function PlayStory() {
                       // Keep only the most recent 20 messages for performance
                       return updated.length > 20 ? updated.slice(-20) : updated;
                     });
+                    
+                    // Log scroll position AFTER setMessages (in next tick)
+                    setTimeout(() => logScrollPosition("AFTER_SET_MESSAGES"), 0);
                     
                     // Clear streaming chunks
                     setStreamingChunks([]);
