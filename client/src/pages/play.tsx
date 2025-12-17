@@ -22,7 +22,9 @@ import {
   X,
   Copy,
   Check,
-  Pencil
+  Pencil,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import {
   Dialog,
@@ -164,6 +166,137 @@ interface ConversationProfile {
   id: string;
   name: string;
   content: string;
+}
+
+interface FloatingScrollControlsProps {
+  onScrollTop: () => void;
+  onScrollBottom: () => void;
+  containerRef: React.RefObject<HTMLDivElement>;
+  sessionId: number | null;
+}
+
+function FloatingScrollControls({ onScrollTop, onScrollBottom, containerRef, sessionId }: FloatingScrollControlsProps) {
+  const [position, setPosition] = useState({ x: 20, y: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const controlRef = useRef<HTMLDivElement>(null);
+
+  // Load position from localStorage on mount
+  useEffect(() => {
+    if (!sessionId) return;
+    const storageKey = `floatingScrollControl_${sessionId}`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const savedPosition = JSON.parse(saved);
+        // Validate and constrain the saved position
+        if (containerRef.current) {
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const x = Math.max(0, Math.min(savedPosition.x, containerRect.width - 60));
+          const y = Math.max(0, Math.min(savedPosition.y, containerRect.height - 100));
+          setPosition({ x, y });
+        } else {
+          setPosition(savedPosition);
+        }
+      } catch (e) {
+        console.error('Failed to parse saved position', e);
+      }
+    }
+  }, [sessionId, containerRef]);
+
+  // Save position to localStorage when it changes (debounced)
+  useEffect(() => {
+    if (!sessionId || isDragging) return;
+    const storageKey = `floatingScrollControl_${sessionId}`;
+    const timer = setTimeout(() => {
+      localStorage.setItem(storageKey, JSON.stringify(position));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [position, sessionId, isDragging]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!controlRef.current || !containerRef.current) return;
+    
+    const rect = controlRef.current.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    setIsDragging(true);
+    
+    controlRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging || !containerRef.current || !controlRef.current) return;
+    
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const controlRect = controlRef.current.getBoundingClientRect();
+    
+    let newX = e.clientX - containerRect.left - dragOffset.x;
+    let newY = e.clientY - containerRect.top - dragOffset.y;
+    
+    newX = Math.max(0, Math.min(newX, containerRect.width - controlRect.width));
+    newY = Math.max(0, Math.min(newY, containerRect.height - controlRect.height));
+    
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    if (controlRef.current) {
+      controlRef.current.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  return (
+    <div
+      ref={controlRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      style={{
+        position: 'absolute',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        zIndex: 40,
+        touchAction: 'none',
+      }}
+      className={cn(
+        "flex flex-col gap-1 p-2 rounded-lg bg-background/70 backdrop-blur-sm border shadow-lg",
+        isDragging ? "cursor-grabbing" : "cursor-grab"
+      )}
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={(e) => {
+          e.stopPropagation();
+          onScrollTop();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        data-testid="button-scroll-top"
+      >
+        <ChevronUp className="w-4 h-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={(e) => {
+          e.stopPropagation();
+          onScrollBottom();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        data-testid="button-scroll-bottom"
+      >
+        <ChevronDown className="w-4 h-4" />
+      </Button>
+    </div>
+  );
 }
 
 export default function PlayStory() {
@@ -952,8 +1085,9 @@ export default function PlayStory() {
             </div>
          </header>
 
-         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="max-w-3xl mx-auto space-y-8 px-4 py-6">
+         <div className="flex-1 relative">
+            <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto overflow-x-hidden">
+               <div className="max-w-3xl mx-auto space-y-8 px-4 py-6">
                {loading ? (
                  <div className="flex items-center justify-center py-12">
                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -1079,7 +1213,15 @@ export default function PlayStory() {
                    </Button>
                  </div>
                )}
+               </div>
             </div>
+
+            <FloatingScrollControls
+              onScrollTop={scrollToTop}
+              onScrollBottom={scrollToBottom}
+              containerRef={scrollContainerRef}
+              sessionId={sessionId}
+            />
          </div>
 
          <div className="p-4 bg-background border-t">
