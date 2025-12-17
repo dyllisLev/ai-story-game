@@ -582,17 +582,18 @@ export default function PlayStory() {
       requestAnimationFrame(() => {
         // Restore scroll position if saved (streaming completion case)
         // We saved scroll ratio within scrollable range, now calculate new scrollTop to maintain relative position
-        if (scrollContainerRef.current && savedScrollRatioRef.current !== null) {
-          const container = scrollContainerRef.current;
-          const newScrollableRange = Math.max(0, container.scrollHeight - container.clientHeight);
-          const newScrollTop = newScrollableRange * savedScrollRatioRef.current;
-          // Clamp to valid range
-          container.scrollTop = Math.max(0, Math.min(newScrollTop, newScrollableRange));
-          logScrollPosition(`SCROLL_RESTORED (ratio was ${(savedScrollRatioRef.current * 100).toFixed(1)}%)`);
-          savedScrollRatioRef.current = null; // Clear after restore
-        } else {
+        // TEMP: Disabled to test scroll behavior
+        // if (scrollContainerRef.current && savedScrollRatioRef.current !== null) {
+        //   const container = scrollContainerRef.current;
+        //   const newScrollableRange = Math.max(0, container.scrollHeight - container.clientHeight);
+        //   const newScrollTop = newScrollableRange * savedScrollRatioRef.current;
+        //   // Clamp to valid range
+        //   container.scrollTop = Math.max(0, Math.min(newScrollTop, newScrollableRange));
+        //   logScrollPosition(`SCROLL_RESTORED (ratio was ${(savedScrollRatioRef.current * 100).toFixed(1)}%)`);
+        //   savedScrollRatioRef.current = null; // Clear after restore
+        // } else {
           logScrollPosition(`MESSAGES_RENDERED (count: ${messages.length})`);
-        }
+        // }
       });
     }
   }, [messages]);
@@ -938,11 +939,12 @@ export default function PlayStory() {
                   
                   // Save scroll position BEFORE rendering change (streaming -> final)
                   // Save scroll ratio within scrollable range to maintain relative position when content height changes
-                  if (scrollContainerRef.current) {
-                    const container = scrollContainerRef.current;
-                    const scrollableRange = Math.max(1, container.scrollHeight - container.clientHeight);
-                    savedScrollRatioRef.current = Math.min(1, Math.max(0, container.scrollTop / scrollableRange));
-                  }
+                  // TEMP: Disabled to test scroll behavior
+                  // if (scrollContainerRef.current) {
+                  //   const container = scrollContainerRef.current;
+                  //   const scrollableRange = Math.max(1, container.scrollHeight - container.clientHeight);
+                  //   savedScrollRatioRef.current = Math.min(1, Math.max(0, container.scrollTop / scrollableRange));
+                  // }
                   
                   // Log scroll position BEFORE setMessages
                   logScrollPosition("BEFORE_SET_MESSAGES");
@@ -963,7 +965,8 @@ export default function PlayStory() {
                           : m
                       );
                       // Keep only the most recent 20 messages for performance
-                      return updated.length > 20 ? updated.slice(-20) : updated;
+                      // return updated.length > 20 ? updated.slice(-20) : updated;
+                      return updated; // TEMP: Disabled message limit to test scroll behavior
                     });
                     
                     // Log scroll position AFTER setMessages (in next tick)
