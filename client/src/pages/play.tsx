@@ -1033,8 +1033,8 @@ export default function PlayStory() {
 
   // Calculate AI message count
   // Use session's aiMessageCount instead of counting visible messages
-  // This ensures the turn count reflects the actual total, not just the visible 20 messages
-  const shouldHighlightSummary = aiMessageCount > 0 && aiMessageCount % 20 === 0;
+  // This ensures the turn count reflects the actual total, not just the visible 10 messages
+  const shouldHighlightSummary = aiMessageCount > 0 && aiMessageCount % 10 === 0;
 
   if (loading && !session) {
     return (
@@ -1457,11 +1457,11 @@ export default function PlayStory() {
                           <History className={cn("w-4 h-4", shouldHighlightSummary && "animate-bounce")} />
                         )}
                         {isGeneratingSummary ? "요약 생성 중..." : "요약 생성"}
-                        {shouldHighlightSummary && <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded ml-auto font-bold">20턴!</span>}
+                        {shouldHighlightSummary && <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded ml-auto font-bold">10턴!</span>}
                      </Button>
                      {shouldHighlightSummary && (
                        <p className="text-xs text-muted-foreground px-1">
-                         💡 20턴마다 요약을 생성하시는 것을 권장합니다.
+                         💡 10턴마다 요약을 생성하시는 것을 권장합니다.
                        </p>
                      )}
                   </div>
