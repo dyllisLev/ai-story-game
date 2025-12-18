@@ -2,6 +2,10 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    if (res.status === 401) {
+      window.location.href = '/auth';
+      throw new Error('인증이 필요합니다');
+    }
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }

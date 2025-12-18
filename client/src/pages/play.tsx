@@ -45,6 +45,16 @@ import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
+// Helper function to handle 401 errors and redirect to login
+async function fetchWithAuth(url: string, options?: RequestInit): Promise<Response> {
+  const response = await fetch(url, options);
+  if (response.status === 401) {
+    window.location.href = '/auth';
+    throw new Error('인증이 필요합니다');
+  }
+  return response;
+}
+
 // Parse and style special AI response tags
 function parseAIResponse(content: string) {
   const parts: Array<{ type: 'narration' | 'dialogue' | 'summary' | 'text', content: string, character?: string }> = [];
@@ -396,7 +406,7 @@ export default function PlayStory() {
     if (!sessionId) return;
     
     try {
-      const response = await fetch(`/api/sessions/${sessionId}`);
+      const response = await fetchWithAuth(`/api/sessions/${sessionId}`);
       if (response.ok) {
         const sessionData = await response.json();
         // Do NOT call setSession() - it triggers message reload and scroll reset
@@ -415,7 +425,7 @@ export default function PlayStory() {
       return;
     }
     try {
-      const response = await fetch(`/api/sessions/${sessionId}`);
+      const response = await fetchWithAuth(`/api/sessions/${sessionId}`);
       if (response.ok) {
         const sessionData = await response.json();
         setSession(sessionData);
@@ -430,13 +440,13 @@ export default function PlayStory() {
         setAiMessageCount(sessionData.aiMessageCount || 0);
         
         // Load story
-        const storyResponse = await fetch(`/api/stories/${sessionData.storyId}`);
+        const storyResponse = await fetchWithAuth(`/api/stories/${sessionData.storyId}`);
         if (storyResponse.ok) {
           const storyData = await storyResponse.json();
           setStory(storyData);
           
           // Load sessions for this story
-          const sessionsResponse = await fetch(`/api/stories/${sessionData.storyId}/sessions`);
+          const sessionsResponse = await fetchWithAuth(`/api/stories/${sessionData.storyId}/sessions`);
           if (sessionsResponse.ok) {
             const sessionsData = await sessionsResponse.json();
             // Sort sessions by createdAt descending (newest first)
@@ -462,7 +472,7 @@ export default function PlayStory() {
     setIsSavingSettings(true);
     try {
       const updateData: Record<string, string | number> = { [field]: value };
-      await fetch(`/api/sessions/${sessionId}`, {
+      await fetchWithAuth(`/api/sessions/${sessionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updateData),
@@ -477,7 +487,7 @@ export default function PlayStory() {
 
   const loadSavedProfiles = useCallback(async () => {
     try {
-      const response = await fetch("/api/auth/conversation-profiles", {
+      const response = await fetchWithAuth("/api/auth/conversation-profiles", {
         credentials: "include",
       });
       if (response.ok) {
@@ -500,7 +510,7 @@ export default function PlayStory() {
     setLoading(true);
     try {
       // Load only the most recent 20 messages for better performance
-      const response = await fetch(`/api/sessions/${sessionId}/messages?limit=20`);
+      const response = await fetchWithAuth(`/api/sessions/${sessionId}/messages?limit=20`);
       if (response.ok) {
         const data = await response.json();
         // Normalize messages with stable clientId for server-loaded messages
@@ -525,7 +535,7 @@ export default function PlayStory() {
   const saveMessage = async (role: string, content: string, character?: string) => {
     if (!sessionId) return null;
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/messages`, {
+      const response = await fetchWithAuth(`/api/sessions/${sessionId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role, content, character }),
@@ -830,7 +840,7 @@ export default function PlayStory() {
     // Call AI Streaming API
     setIsGenerating(true);
     try {
-      const response = await fetch("/api/ai/chat/stream", {
+      const response = await fetchWithAuth("/api/ai/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -976,8 +986,8 @@ export default function PlayStory() {
       if (lastMsg.role === "assistant" && messages.length >= 2) {
         const secondLastMsg = messages[messages.length - 2];
         if (secondLastMsg.role === "user") {
-          await fetch(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
-          await fetch(`/api/messages/${secondLastMsg.id}`, { method: "DELETE" });
+          await fetchWithAuth(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
+          await fetchWithAuth(`/api/messages/${secondLastMsg.id}`, { method: "DELETE" });
           setMessages(prev => prev.slice(0, -2));
           setLastError(null);
           // Refresh session to get updated AI count after deleting assistant message
@@ -986,7 +996,7 @@ export default function PlayStory() {
         }
       }
       
-      await fetch(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
+      await fetchWithAuth(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
       setMessages(prev => prev.slice(0, -1));
       setLastError(null);
       // If deleted message was assistant, refresh count
@@ -1003,7 +1013,7 @@ export default function PlayStory() {
     
     setIsGeneratingSummary(true);
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/summary`, {
+      const response = await fetchWithAuth(`/api/sessions/${sessionId}/summary`, {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });
@@ -1120,9 +1130,9 @@ export default function PlayStory() {
                           e.stopPropagation();
                           if (confirm("정말로 이 세션을 삭제하시겠습니까?")) {
                             try {
-                              await fetch(`/api/sessions/${s.id}`, { method: "DELETE" });
+                              await fetchWithAuth(`/api/sessions/${s.id}`, { method: "DELETE" });
                               // Reload sessions
-                              const sessionsResponse = await fetch(`/api/stories/${story.id}/sessions`);
+                              const sessionsResponse = await fetchWithAuth(`/api/stories/${story.id}/sessions`);
                               if (sessionsResponse.ok) {
                                 const sessionsData = await sessionsResponse.json();
                                 // Sort sessions by createdAt descending (newest first)
@@ -1524,7 +1534,7 @@ export default function PlayStory() {
                 onClick={async () => {
                   if (!editingSessionId || !editingSessionTitle.trim()) return;
                   try {
-                    await fetch(`/api/sessions/${editingSessionId}`, {
+                    await fetchWithAuth(`/api/sessions/${editingSessionId}`, {
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ title: editingSessionTitle.trim() })
