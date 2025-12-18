@@ -183,8 +183,13 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       }
       
       // Use max_completion_tokens for newer models (GPT-4.5, GPT-5, reasoning models)
-      if (model.includes("gpt-5") || model.includes("gpt-4.5") || isReasoningModel) {
-        requestBody.max_completion_tokens = 2048;
+      // GPT-5 and reasoning models need more tokens for internal reasoning + actual output
+      if (model.includes("gpt-5") || isReasoningModel) {
+        // Reasoning models use tokens for both reasoning and output
+        // Set to 16384 to ensure enough space for both
+        requestBody.max_completion_tokens = 16384;
+      } else if (model.includes("gpt-4.5")) {
+        requestBody.max_completion_tokens = 4096;
       } else {
         requestBody.max_tokens = 2048;
       }
