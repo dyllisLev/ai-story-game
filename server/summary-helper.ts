@@ -171,7 +171,7 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
         ]
       };
       
-      // Reasoning models (o1, o3, o4) don't support temperature
+      // Reasoning models (o1, o3, o4) don't support temperature and reasoning_effort
       const isReasoningModel = model.includes("o1") || model.includes("o3") || model.includes("o4");
       
       // GPT-5 and newer models use temperature: 1 (default only)
@@ -183,12 +183,20 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
         requestBody.temperature = isGPT5OrNewer ? 1 : 0.5;
       }
       
+      // Add reasoning_effort for GPT-5 models (for speed optimization)
+      if (isGPT5OrNewer && !isReasoningModel) {
+        // "low" = faster response, suitable for summarization tasks
+        requestBody.reasoning_effort = "low";
+      }
+      
       // Use max_completion_tokens for newer models (GPT-4.5, GPT-5, reasoning models)
-      // GPT-5 and reasoning models need more tokens for internal reasoning + actual output
-      if (model.includes("gpt-5") || isReasoningModel) {
-        // Reasoning models use tokens for both reasoning and output
-        // Set to 16384 to ensure enough space for both
-        requestBody.max_completion_tokens = 16384;
+      // Optimized token limits for faster response times
+      if (model.includes("gpt-5")) {
+        // GPT-5/GPT-5-mini: 5000 tokens for summaries (optimized for speed)
+        requestBody.max_completion_tokens = 5000;
+      } else if (isReasoningModel) {
+        // o1/o3/o4: Higher limit for complex reasoning tasks
+        requestBody.max_completion_tokens = 10000;
       } else if (model.includes("gpt-4.5")) {
         requestBody.max_completion_tokens = 4096;
       } else {
