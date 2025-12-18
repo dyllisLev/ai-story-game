@@ -163,20 +163,28 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       generatedText = candidate.content.parts.map((p: any) => p.text).join("");
     } else if (provider === "chatgpt") {
       // OpenAI ChatGPT API
+      const requestBody: any = {
+        model: model,
+        messages: [
+          { role: "user", content: summaryPrompt }
+        ],
+        temperature: 0.5
+      };
+      
+      // Use max_completion_tokens for newer models (GPT-4.5, GPT-5, etc)
+      if (model.includes("gpt-5") || model.includes("gpt-4.5") || model.includes("o1") || model.includes("o3")) {
+        requestBody.max_completion_tokens = 2048;
+      } else {
+        requestBody.max_tokens = 2048;
+      }
+      
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: "user", content: summaryPrompt }
-          ],
-          temperature: 0.5,
-          max_tokens: 2048
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
@@ -222,20 +230,28 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       generatedText = data.content[0].text;
     } else if (provider === "grok") {
       // xAI Grok API (OpenAI-compatible)
+      const requestBody: any = {
+        model: model,
+        messages: [
+          { role: "user", content: summaryPrompt }
+        ],
+        temperature: 0.5
+      };
+      
+      // Use max_completion_tokens for newer Grok models
+      if (model.includes("grok-4") || model.includes("grok-3")) {
+        requestBody.max_completion_tokens = 2048;
+      } else {
+        requestBody.max_tokens = 2048;
+      }
+      
       const response = await fetch("https://api.x.ai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: "user", content: summaryPrompt }
-          ],
-          temperature: 0.5,
-          max_tokens: 2048
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();

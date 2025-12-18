@@ -14,6 +14,8 @@ export interface SelectedModels {
 
 export const MODEL_CATALOG: Record<Provider, ModelInfo[]> = {
   gemini: [
+    { id: "gemini-3-pro-preview", name: "Gemini 3 Pro Preview" },
+    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
     { id: "gemini-2.5-pro-preview-06-05", name: "Gemini 2.5 Pro Preview" },
     { id: "gemini-2.5-flash-preview-05-20", name: "Gemini 2.5 Flash Preview" },
     { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
@@ -23,6 +25,9 @@ export const MODEL_CATALOG: Record<Provider, ModelInfo[]> = {
     { id: "gemini-1.5-flash-8b", name: "Gemini 1.5 Flash 8B" },
   ],
   chatgpt: [
+    { id: "gpt-5.2-pro", name: "GPT-5.2 Pro" },
+    { id: "gpt-5.2", name: "GPT-5.2" },
+    { id: "gpt-5", name: "GPT-5" },
     { id: "gpt-4.1", name: "GPT-4.1" },
     { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
     { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
@@ -39,6 +44,9 @@ export const MODEL_CATALOG: Record<Provider, ModelInfo[]> = {
     { id: "o4-mini", name: "o4 Mini" },
   ],
   claude: [
+    { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
+    { id: "claude-sonnet-4-5-20250929", name: "Claude Sonnet 4.5" },
+    { id: "claude-opus-4-1-20250805", name: "Claude Opus 4.1" },
     { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
     { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
     { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
@@ -48,6 +56,8 @@ export const MODEL_CATALOG: Record<Provider, ModelInfo[]> = {
     { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
   ],
   grok: [
+    { id: "grok-4-fast-non-reasoning", name: "Grok 4 Fast (Non-Reasoning)" },
+    { id: "grok-4-1-fast-non-reasoning", name: "Grok 4.1 Fast (Non-Reasoning)" },
     { id: "grok-3", name: "Grok 3" },
     { id: "grok-3-fast", name: "Grok 3 Fast" },
     { id: "grok-3-mini", name: "Grok 3 Mini" },
