@@ -2076,17 +2076,87 @@ export async function registerRoutes(
           character: "AI"
         });
 
-        // Update AI message count
-        await storage.updateSession(sessionId, {
-          aiMessageCount: (session.aiMessageCount || 0) + 1
-        });
-
         // Send final message with saved message data
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (Gemini)");
+        
+        // Auto-summary logic runs in background (don't block response)
+        (async () => {
+          try {
+            const newCount = await storage.incrementAIMessageCount(sessionId);
+            console.log(`[AUTO-SUMMARY] AI message count incremented to ${newCount} for session ${sessionId}`);
+            
+            const latestSession = await storage.getSession(sessionId);
+            if (!latestSession) throw new Error("Session not found");
+            
+            const lastSummaryTurn = latestSession.lastSummaryTurn || 0;
+            const messagesSinceLastSummary = newCount - lastSummaryTurn;
+            
+            // Trigger summary if:
+            // 1. Regular schedule: every 10 turns (10, 20, 30, 40...)
+            // 2. Retry after failure: 10+ messages since last successful summary
+            const isRegularSchedule = newCount % 10 === 0;
+            const needsRetry = messagesSinceLastSummary >= 10;
+            
+            if (newCount >= 10 && (isRegularSchedule || needsRetry)) {
+              const reason = isRegularSchedule ? 'regular schedule' : 'retry after failure';
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (${reason}, last summary: turn ${lastSummaryTurn}, ${messagesSinceLastSummary} new messages)`);
+              
+              // Get all messages after last summary
+              const messagesToSummarize = await storage.getAIMessagesAfterTurn(sessionId, lastSummaryTurn);
+              console.log(`[AUTO-SUMMARY] Got ${messagesToSummarize.length} messages after turn ${lastSummaryTurn} (total count: ${newCount})`);
+              
+              // Get global summary model settings (prioritize over session settings)
+              const summaryProviderSetting = await storage.getSetting("summaryProvider");
+              const summaryModelSetting = await storage.getSetting("summaryModel");
+              const summaryProvider = summaryProviderSetting?.value || latestSession.sessionProvider || "gemini";
+              const summaryModel = summaryModelSetting?.value || latestSession.sessionModel || "gemini-2.0-flash-exp";
+              console.log(`[AUTO-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
+              
+              const apiKey = await getUserApiKeyForProvider(latestSession.userId, summaryProvider);
+              
+              if (!apiKey) {
+                console.error(`[AUTO-SUMMARY] No API key found for provider ${summaryProvider}, skipping`);
+                return;
+              }
+              
+              const summaryPromptSetting = await storage.getSetting("summaryPrompt");
+              const summaryPromptTemplate = summaryPromptSetting?.value;
+              
+              console.log(`[AUTO-SUMMARY] Calling generateSummary...`);
+              const { generateSummary } = await import("./summary-helper");
+              const result = await generateSummary({
+                messages: messagesToSummarize,
+                existingSummary: latestSession.summaryMemory,
+                provider: summaryProvider,
+                model: summaryModel,
+                apiKey,
+                summaryPromptTemplate,
+                userId: latestSession.userId,
+                sessionId
+              });
+              
+              console.log(`[AUTO-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
+              console.log(`[AUTO-SUMMARY] Plot points: ${JSON.stringify(result.keyPlotPoints)}`);
+              
+              await storage.updateSession(sessionId, {
+                summaryMemory: result.summary,
+                keyPlotPoints: JSON.stringify(result.keyPlotPoints),
+                lastSummaryTurn: newCount
+              });
+              
+              console.log(`[AUTO-SUMMARY] Successfully saved to database for session ${sessionId}`);
+            }
+          } catch (summaryError: any) {
+            console.error("[AUTO-SUMMARY] Failed:", summaryError?.message || summaryError);
+            console.error("[AUTO-SUMMARY] Stack:", summaryError?.stack);
+          }
+        })();
+
+        console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
         console.log("║ Message ID:", savedMessage.id);
@@ -2185,16 +2255,86 @@ export async function registerRoutes(
           character: "AI"
         });
 
-        // Update AI message count
-        await storage.updateSession(sessionId, {
-          aiMessageCount: (session.aiMessageCount || 0) + 1
-        });
-
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (ChatGPT)");
+        
+        // Auto-summary logic runs in background (don't block response)
+        (async () => {
+          try {
+            const newCount = await storage.incrementAIMessageCount(sessionId);
+            console.log(`[AUTO-SUMMARY] AI message count incremented to ${newCount} for session ${sessionId}`);
+            
+            const latestSession = await storage.getSession(sessionId);
+            if (!latestSession) throw new Error("Session not found");
+            
+            const lastSummaryTurn = latestSession.lastSummaryTurn || 0;
+            const messagesSinceLastSummary = newCount - lastSummaryTurn;
+            
+            // Trigger summary if:
+            // 1. Regular schedule: every 10 turns (10, 20, 30, 40...)
+            // 2. Retry after failure: 10+ messages since last successful summary
+            const isRegularSchedule = newCount % 10 === 0;
+            const needsRetry = messagesSinceLastSummary >= 10;
+            
+            if (newCount >= 10 && (isRegularSchedule || needsRetry)) {
+              const reason = isRegularSchedule ? 'regular schedule' : 'retry after failure';
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (${reason}, last summary: turn ${lastSummaryTurn}, ${messagesSinceLastSummary} new messages)`);
+              
+              // Get all messages after last summary
+              const messagesToSummarize = await storage.getAIMessagesAfterTurn(sessionId, lastSummaryTurn);
+              console.log(`[AUTO-SUMMARY] Got ${messagesToSummarize.length} messages after turn ${lastSummaryTurn} (total count: ${newCount})`);
+              
+              // Get global summary model settings (prioritize over session settings)
+              const summaryProviderSetting = await storage.getSetting("summaryProvider");
+              const summaryModelSetting = await storage.getSetting("summaryModel");
+              const summaryProvider = summaryProviderSetting?.value || latestSession.sessionProvider || "gemini";
+              const summaryModel = summaryModelSetting?.value || latestSession.sessionModel || "gemini-2.0-flash-exp";
+              console.log(`[AUTO-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
+              
+              const apiKey = await getUserApiKeyForProvider(latestSession.userId, summaryProvider);
+              
+              if (!apiKey) {
+                console.error(`[AUTO-SUMMARY] No API key found for provider ${summaryProvider}, skipping`);
+                return;
+              }
+              
+              const summaryPromptSetting = await storage.getSetting("summaryPrompt");
+              const summaryPromptTemplate = summaryPromptSetting?.value;
+              
+              console.log(`[AUTO-SUMMARY] Calling generateSummary...`);
+              const { generateSummary } = await import("./summary-helper");
+              const result = await generateSummary({
+                messages: messagesToSummarize,
+                existingSummary: latestSession.summaryMemory,
+                provider: summaryProvider,
+                model: summaryModel,
+                apiKey,
+                summaryPromptTemplate,
+                userId: latestSession.userId,
+                sessionId
+              });
+              
+              console.log(`[AUTO-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
+              console.log(`[AUTO-SUMMARY] Plot points: ${JSON.stringify(result.keyPlotPoints)}`);
+              
+              await storage.updateSession(sessionId, {
+                summaryMemory: result.summary,
+                keyPlotPoints: JSON.stringify(result.keyPlotPoints),
+                lastSummaryTurn: newCount
+              });
+              
+              console.log(`[AUTO-SUMMARY] Successfully saved to database for session ${sessionId}`);
+            }
+          } catch (summaryError: any) {
+            console.error("[AUTO-SUMMARY] Failed:", summaryError?.message || summaryError);
+            console.error("[AUTO-SUMMARY] Stack:", summaryError?.stack);
+          }
+        })();
+
+        console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
         console.log("║ Message ID:", savedMessage.id);
@@ -2293,16 +2433,86 @@ export async function registerRoutes(
           character: "AI"
         });
 
-        // Update AI message count
-        await storage.updateSession(sessionId, {
-          aiMessageCount: (session.aiMessageCount || 0) + 1
-        });
-
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (Claude)");
+        
+        // Auto-summary logic runs in background (don't block response)
+        (async () => {
+          try {
+            const newCount = await storage.incrementAIMessageCount(sessionId);
+            console.log(`[AUTO-SUMMARY] AI message count incremented to ${newCount} for session ${sessionId}`);
+            
+            const latestSession = await storage.getSession(sessionId);
+            if (!latestSession) throw new Error("Session not found");
+            
+            const lastSummaryTurn = latestSession.lastSummaryTurn || 0;
+            const messagesSinceLastSummary = newCount - lastSummaryTurn;
+            
+            // Trigger summary if:
+            // 1. Regular schedule: every 10 turns (10, 20, 30, 40...)
+            // 2. Retry after failure: 10+ messages since last successful summary
+            const isRegularSchedule = newCount % 10 === 0;
+            const needsRetry = messagesSinceLastSummary >= 10;
+            
+            if (newCount >= 10 && (isRegularSchedule || needsRetry)) {
+              const reason = isRegularSchedule ? 'regular schedule' : 'retry after failure';
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (${reason}, last summary: turn ${lastSummaryTurn}, ${messagesSinceLastSummary} new messages)`);
+              
+              // Get all messages after last summary
+              const messagesToSummarize = await storage.getAIMessagesAfterTurn(sessionId, lastSummaryTurn);
+              console.log(`[AUTO-SUMMARY] Got ${messagesToSummarize.length} messages after turn ${lastSummaryTurn} (total count: ${newCount})`);
+              
+              // Get global summary model settings (prioritize over session settings)
+              const summaryProviderSetting = await storage.getSetting("summaryProvider");
+              const summaryModelSetting = await storage.getSetting("summaryModel");
+              const summaryProvider = summaryProviderSetting?.value || latestSession.sessionProvider || "gemini";
+              const summaryModel = summaryModelSetting?.value || latestSession.sessionModel || "gemini-2.0-flash-exp";
+              console.log(`[AUTO-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
+              
+              const apiKey = await getUserApiKeyForProvider(latestSession.userId, summaryProvider);
+              
+              if (!apiKey) {
+                console.error(`[AUTO-SUMMARY] No API key found for provider ${summaryProvider}, skipping`);
+                return;
+              }
+              
+              const summaryPromptSetting = await storage.getSetting("summaryPrompt");
+              const summaryPromptTemplate = summaryPromptSetting?.value;
+              
+              console.log(`[AUTO-SUMMARY] Calling generateSummary...`);
+              const { generateSummary } = await import("./summary-helper");
+              const result = await generateSummary({
+                messages: messagesToSummarize,
+                existingSummary: latestSession.summaryMemory,
+                provider: summaryProvider,
+                model: summaryModel,
+                apiKey,
+                summaryPromptTemplate,
+                userId: latestSession.userId,
+                sessionId
+              });
+              
+              console.log(`[AUTO-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
+              console.log(`[AUTO-SUMMARY] Plot points: ${JSON.stringify(result.keyPlotPoints)}`);
+              
+              await storage.updateSession(sessionId, {
+                summaryMemory: result.summary,
+                keyPlotPoints: JSON.stringify(result.keyPlotPoints),
+                lastSummaryTurn: newCount
+              });
+              
+              console.log(`[AUTO-SUMMARY] Successfully saved to database for session ${sessionId}`);
+            }
+          } catch (summaryError: any) {
+            console.error("[AUTO-SUMMARY] Failed:", summaryError?.message || summaryError);
+            console.error("[AUTO-SUMMARY] Stack:", summaryError?.stack);
+          }
+        })();
+
+        console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
         console.log("║ Message ID:", savedMessage.id);
@@ -2403,16 +2613,86 @@ export async function registerRoutes(
           character: "AI"
         });
 
-        // Update AI message count
-        await storage.updateSession(sessionId, {
-          aiMessageCount: (session.aiMessageCount || 0) + 1
-        });
-
         res.write(`data: ${JSON.stringify({ text: "", done: true, fullText, savedMessage })}\n\n`);
         res.end();
 
         console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("║ ✅ AI 응답 완료 (Grok)");
+        
+        // Auto-summary logic runs in background (don't block response)
+        (async () => {
+          try {
+            const newCount = await storage.incrementAIMessageCount(sessionId);
+            console.log(`[AUTO-SUMMARY] AI message count incremented to ${newCount} for session ${sessionId}`);
+            
+            const latestSession = await storage.getSession(sessionId);
+            if (!latestSession) throw new Error("Session not found");
+            
+            const lastSummaryTurn = latestSession.lastSummaryTurn || 0;
+            const messagesSinceLastSummary = newCount - lastSummaryTurn;
+            
+            // Trigger summary if:
+            // 1. Regular schedule: every 10 turns (10, 20, 30, 40...)
+            // 2. Retry after failure: 10+ messages since last successful summary
+            const isRegularSchedule = newCount % 10 === 0;
+            const needsRetry = messagesSinceLastSummary >= 10;
+            
+            if (newCount >= 10 && (isRegularSchedule || needsRetry)) {
+              const reason = isRegularSchedule ? 'regular schedule' : 'retry after failure';
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (${reason}, last summary: turn ${lastSummaryTurn}, ${messagesSinceLastSummary} new messages)`);
+              
+              // Get all messages after last summary
+              const messagesToSummarize = await storage.getAIMessagesAfterTurn(sessionId, lastSummaryTurn);
+              console.log(`[AUTO-SUMMARY] Got ${messagesToSummarize.length} messages after turn ${lastSummaryTurn} (total count: ${newCount})`);
+              
+              // Get global summary model settings (prioritize over session settings)
+              const summaryProviderSetting = await storage.getSetting("summaryProvider");
+              const summaryModelSetting = await storage.getSetting("summaryModel");
+              const summaryProvider = summaryProviderSetting?.value || latestSession.sessionProvider || "gemini";
+              const summaryModel = summaryModelSetting?.value || latestSession.sessionModel || "gemini-2.0-flash-exp";
+              console.log(`[AUTO-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
+              
+              const apiKey = await getUserApiKeyForProvider(latestSession.userId, summaryProvider);
+              
+              if (!apiKey) {
+                console.error(`[AUTO-SUMMARY] No API key found for provider ${summaryProvider}, skipping`);
+                return;
+              }
+              
+              const summaryPromptSetting = await storage.getSetting("summaryPrompt");
+              const summaryPromptTemplate = summaryPromptSetting?.value;
+              
+              console.log(`[AUTO-SUMMARY] Calling generateSummary...`);
+              const { generateSummary } = await import("./summary-helper");
+              const result = await generateSummary({
+                messages: messagesToSummarize,
+                existingSummary: latestSession.summaryMemory,
+                provider: summaryProvider,
+                model: summaryModel,
+                apiKey,
+                summaryPromptTemplate,
+                userId: latestSession.userId,
+                sessionId
+              });
+              
+              console.log(`[AUTO-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
+              console.log(`[AUTO-SUMMARY] Plot points: ${JSON.stringify(result.keyPlotPoints)}`);
+              
+              await storage.updateSession(sessionId, {
+                summaryMemory: result.summary,
+                keyPlotPoints: JSON.stringify(result.keyPlotPoints),
+                lastSummaryTurn: newCount
+              });
+              
+              console.log(`[AUTO-SUMMARY] Successfully saved to database for session ${sessionId}`);
+            }
+          } catch (summaryError: any) {
+            console.error("[AUTO-SUMMARY] Failed:", summaryError?.message || summaryError);
+            console.error("[AUTO-SUMMARY] Stack:", summaryError?.stack);
+          }
+        })();
+
+        console.log("\n╔════════════════════════════════════════════════════════════");
         console.log("╠════════════════════════════════════════════════════════════");
         console.log("║ 응답 길이:", fullText.length, "자");
         console.log("║ Message ID:", savedMessage.id);
