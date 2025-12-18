@@ -368,6 +368,7 @@ export default function Settings() {
     "description": "{description}",
     "story_settings": "{storySettings}",
     "conversation_profile": "{conversationProfile}",
+    "conversation_profile_name": "{conversationProfileName}",
     "user_note": "{userNote}",
     "summary_memory": "{summaryMemory}",
     "recent_messages": "{recentMessages}",
@@ -394,7 +395,8 @@ export default function Settings() {
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{promptTemplate}"}</code> 프롬프트 템플릿</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{exampleUserInput}"}</code> 예시 유저 입력</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{exampleAiResponse}"}</code> 예시 AI 응답</div>
-                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{conversationProfile}"}</code> 대화 프로필</div>
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{conversationProfile}"}</code> 대화 프로필 내용</div>
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{conversationProfileName}"}</code> 대화 프로필 이름</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{userNote}"}</code> 유저 노트</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{summaryMemory}"}</code> 요약 메모리</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{recentMessages}"}</code> 최근 대화 (최대 20개)</div>
