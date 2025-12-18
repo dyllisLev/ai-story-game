@@ -426,6 +426,26 @@ export class Storage implements IStorage {
     return newCount;
   }
 
+  async decrementAIMessageCount(sessionId: number): Promise<number> {
+    const session = await this.getSession(sessionId);
+    if (!session) throw new Error("Session not found");
+    
+    const newCount = Math.max(0, (session.aiMessageCount || 0) - 1);
+    
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ 
+        ai_message_count: newCount,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return newCount;
+  }
+
   async getRecentAIMessages(sessionId: number, limit: number): Promise<Message[]> {
     const { data, error } = await supabase
       .from('messages')

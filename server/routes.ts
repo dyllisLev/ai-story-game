@@ -2566,9 +2566,18 @@ export async function registerRoutes(
         return res.status(403).json({ error: "이 메시지를 삭제할 권한이 없습니다" });
       }
 
+      // Delete the message first
       await storage.deleteMessage(messageId);
+      
+      // If it was an AI message, decrement the count
+      if (message.role === "assistant") {
+        await storage.decrementAIMessageCount(message.sessionId);
+        console.log(`[MESSAGE-DELETE] Decremented AI message count for session ${message.sessionId}`);
+      }
+      
       res.json({ success: true });
     } catch (error) {
+      console.error("[MESSAGE-DELETE] Error:", error);
       res.status(500).json({ error: "Failed to delete message" });
     }
   });
