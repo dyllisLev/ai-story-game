@@ -15,7 +15,8 @@ interface SummaryRequest {
 }
 
 interface SummaryResult {
-  summary: string;
+  summary: string; // Full summary (existing + new)
+  newSummary: string; // Only the newly generated part
   keyPlotPoints: string[];
 }
 
@@ -328,9 +329,24 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       responseTime,
     }).catch(logErr => console.error('[API-LOG] Failed to save success log:', logErr));
     
-    // Return the raw response as summary
+    // New summary is what AI generated (only new content)
+    const newSummary = generatedText.trim();
+    
+    // Full summary is existing + new (append mode)
+    let fullSummary: string;
+    if (existingSummary && existingSummary.trim().length > 0) {
+      // Append new summary to existing one
+      fullSummary = existingSummary.trim() + "\n" + newSummary;
+    } else {
+      // First summary - no existing summary
+      fullSummary = newSummary;
+    }
+    
+    console.log(`[SUMMARY] Existing summary length: ${existingSummary?.length || 0}, New summary length: ${newSummary.length}, Full summary length: ${fullSummary.length}`);
+    
     return {
-      summary: generatedText.trim(),
+      summary: fullSummary,
+      newSummary: newSummary,
       keyPlotPoints: []
     };
   } catch (error: any) {

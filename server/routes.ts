@@ -2652,9 +2652,9 @@ export async function registerRoutes(
         sessionId
       });
       
-      console.log(`[MANUAL-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
+      console.log(`[MANUAL-SUMMARY] Generated new summary length: ${result.newSummary.length}, full summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
       
-      // Update session with new summary
+      // Update session with full summary (existing + new)
       await storage.updateSession(sessionId, {
         summaryMemory: result.summary,
         keyPlotPoints: JSON.stringify(result.keyPlotPoints),
@@ -2665,7 +2665,8 @@ export async function registerRoutes(
       
       res.json({
         success: true,
-        summary: result.summary,
+        summary: result.summary, // Send full summary to client
+        newSummary: result.newSummary, // Send new part separately (for debugging/display)
         keyPlotPoints: result.keyPlotPoints,
         messageCount: aiMessages.length
       });
