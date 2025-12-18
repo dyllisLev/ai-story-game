@@ -2467,10 +2467,14 @@ export async function registerRoutes(
             const messagesSinceLastSummary = newCount - lastSummaryTurn;
             
             // Trigger summary if:
-            // 1. At least 10 total messages AND
-            // 2. At least 10 new messages since last summary
-            if (newCount >= 10 && messagesSinceLastSummary >= 10) {
-              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (last summary was at turn ${lastSummaryTurn}, ${messagesSinceLastSummary} new messages)`);
+            // 1. Regular schedule: every 10 turns (10, 20, 30, 40...)
+            // 2. Retry after failure: 10+ messages since last successful summary
+            const isRegularSchedule = newCount % 10 === 0;
+            const needsRetry = messagesSinceLastSummary >= 10;
+            
+            if (newCount >= 10 && (isRegularSchedule || needsRetry)) {
+              const reason = isRegularSchedule ? 'regular schedule' : 'retry after failure';
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (${reason}, last summary: turn ${lastSummaryTurn}, ${messagesSinceLastSummary} new messages)`);
               
               // Get all messages after last summary
               const messagesToSummarize = await storage.getAIMessagesAfterTurn(sessionId, lastSummaryTurn);
