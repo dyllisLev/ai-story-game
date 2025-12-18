@@ -2468,8 +2468,11 @@ export async function registerRoutes(
               const recentMessages = await storage.getRecentAIMessages(sessionId, 20);
               console.log(`[AUTO-SUMMARY] Got ${recentMessages.length} recent messages`);
               
-              const summaryProvider = session.sessionProvider || "gemini";
-              const summaryModel = session.sessionModel || "gemini-2.0-flash";
+              // Get global summary model settings (prioritize over session settings)
+              const summaryProviderSetting = await storage.getSetting("summaryProvider");
+              const summaryModelSetting = await storage.getSetting("summaryModel");
+              const summaryProvider = summaryProviderSetting?.value || session.sessionProvider || "gemini";
+              const summaryModel = summaryModelSetting?.value || session.sessionModel || "gemini-2.0-flash-exp";
               console.log(`[AUTO-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
               
               const apiKey = await getUserApiKeyForProvider(session.userId, summaryProvider);
@@ -2617,8 +2620,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "요약할 새 메시지가 없습니다" });
       }
       
-      const summaryProvider = session.sessionProvider || "gemini";
-      const summaryModel = session.sessionModel || "gemini-2.0-flash";
+      // Get global summary model settings (prioritize over session settings)
+      const summaryProviderSetting = await storage.getSetting("summaryProvider");
+      const summaryModelSetting = await storage.getSetting("summaryModel");
+      const summaryProvider = summaryProviderSetting?.value || session.sessionProvider || "gemini";
+      const summaryModel = summaryModelSetting?.value || session.sessionModel || "gemini-2.0-flash-exp";
       console.log(`[MANUAL-SUMMARY] Using provider: ${summaryProvider}, model: ${summaryModel}`);
       
       const apiKey = await getUserApiKeyForProvider(session.userId, summaryProvider);

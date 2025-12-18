@@ -30,6 +30,8 @@ export default function Settings() {
   const [storyGeneratePrompt, setStoryGeneratePrompt] = useState("");
   const [prologueGeneratePrompt, setPrologueGeneratePrompt] = useState("");
   const [summaryPrompt, setSummaryPrompt] = useState("");
+  const [summaryProvider, setSummaryProvider] = useState("gemini");
+  const [summaryModel, setSummaryModel] = useState("gemini-2.0-flash-exp");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -102,6 +104,10 @@ export default function Settings() {
           setPrologueGeneratePrompt(normalizeNewlines(setting.value));
         } else if (setting.key === "summaryPrompt") {
           setSummaryPrompt(normalizeNewlines(setting.value));
+        } else if (setting.key === "summaryProvider") {
+          setSummaryProvider(setting.value);
+        } else if (setting.key === "summaryModel") {
+          setSummaryModel(setting.value);
         }
       }
     } catch (error) {
@@ -144,6 +150,8 @@ export default function Settings() {
         { key: "storyGeneratePrompt", value: storyGeneratePrompt },
         { key: "prologueGeneratePrompt", value: prologueGeneratePrompt },
         { key: "summaryPrompt", value: summaryPrompt },
+        { key: "summaryProvider", value: summaryProvider },
+        { key: "summaryModel", value: summaryModel },
       ];
 
       await fetch("/api/settings/batch", {
@@ -494,11 +502,79 @@ export default function Settings() {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div>
-                  <h2 className="text-lg font-semibold mb-1">요약 생성 프롬프트</h2>
+                  <h2 className="text-lg font-semibold mb-1">요약 생성 설정</h2>
                   <p className="text-sm text-muted-foreground">
-                    대화 내용을 요약할 때 사용되는 프롬프트입니다. 타임라인과 핵심 분기점을 생성합니다.
+                    대화 내용을 요약할 때 사용되는 모델과 프롬프트를 설정합니다.
                   </p>
                 </div>
+                
+                <div className="pt-4 border-t border-muted space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-primary" />
+                      <Label className="text-sm font-semibold">요약 생성 모델</Label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="summary-provider" className="text-xs text-muted-foreground">AI 제공업체</Label>
+                        <select
+                          id="summary-provider"
+                          value={summaryProvider}
+                          onChange={(e) => {
+                            setSummaryProvider(e.target.value);
+                            // Reset to default model for new provider
+                            const defaultModels: Record<string, string> = {
+                              gemini: "gemini-2.0-flash-exp",
+                              chatgpt: "gpt-4o-mini",
+                              claude: "claude-3-5-sonnet-20241022",
+                              grok: "grok-2-1212"
+                            };
+                            setSummaryModel(defaultModels[e.target.value] || "");
+                          }}
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          data-testid="select-summary-provider"
+                        >
+                          <option value="gemini">Google Gemini</option>
+                          <option value="chatgpt">OpenAI ChatGPT</option>
+                          <option value="claude">Anthropic Claude</option>
+                          <option value="grok">xAI Grok</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="summary-model" className="text-xs text-muted-foreground">모델</Label>
+                        <select
+                          id="summary-model"
+                          value={summaryModel}
+                          onChange={(e) => setSummaryModel(e.target.value)}
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          data-testid="select-summary-model"
+                        >
+                          {summaryProvider === "gemini" && MODEL_CATALOG.gemini.map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                          {summaryProvider === "chatgpt" && MODEL_CATALOG.chatgpt.map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                          {summaryProvider === "claude" && MODEL_CATALOG.claude.map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                          {summaryProvider === "grok" && MODEL_CATALOG.grok.map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      선택한 모델: <span className="font-medium text-foreground">{PROVIDER_LABELS[summaryProvider as Provider]} - {MODEL_CATALOG[summaryProvider as Provider]?.find(m => m.id === summaryModel)?.name || summaryModel}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-muted">
+                  <Label className="text-sm font-semibold mb-2 block">요약 생성 프롬프트</Label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    대화 내용을 요약할 때 사용되는 프롬프트입니다.
+                  </p>
                 <Textarea
                   placeholder={`예: 당신은 인터랙티브 스토리의 타임라인을 작성하는 AI입니다.
 다음 규칙을 반드시 따르세요:
@@ -525,6 +601,7 @@ export default function Settings() {
                   className="min-h-[300px] font-mono text-sm"
                   data-testid="textarea-summary-prompt"
                 />
+                </div>
               </CardContent>
             </Card>
 
