@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { 
   Menu, 
   MoreHorizontal, 
@@ -1580,28 +1581,11 @@ export default function PlayStory() {
                 <label className="text-sm font-medium">저장된 프로필에서 불러오기</label>
                 <Select
                   value=""
-                  onValueChange={async (profileId) => {
+                  onValueChange={(profileId) => {
                     const profile = savedProfiles.find(p => p.id === profileId);
                     if (profile) {
                       setConversationProfile(profile.content);
                       setConversationProfileName(profile.name);
-                      // Save both profile content and name
-                      if (!sessionId) return;
-                      setIsSavingSettings(true);
-                      try {
-                        await fetchWithAuth(`/api/sessions/${sessionId}`, {
-                          method: "PUT",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ 
-                            conversationProfile: profile.content,
-                            conversationProfileName: profile.name
-                          }),
-                        });
-                      } catch (error) {
-                        console.error("Failed to save profile:", error);
-                      } finally {
-                        setIsSavingSettings(false);
-                      }
                     }
                   }}
                 >
@@ -1620,13 +1604,19 @@ export default function PlayStory() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">프로필 선택 시 자동으로 적용됩니다. 수정 후 저장 버튼을 클릭하세요.</p>
+                <p className="text-xs text-muted-foreground">프로필 선택 시 내용과 이름이 자동으로 입력됩니다.</p>
               </div>
             )}
-            {editingField === "conversationProfile" && conversationProfileName && (
-              <div className="bg-muted/50 rounded-lg p-3 border">
-                <p className="text-sm text-muted-foreground">현재 프로필</p>
-                <p className="font-medium" data-testid="text-current-profile-name">{conversationProfileName}</p>
+            {editingField === "conversationProfile" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">프로필 이름</label>
+                <Input
+                  placeholder="프로필 이름을 입력하세요 (선택사항)"
+                  value={conversationProfileName}
+                  onChange={(e) => setConversationProfileName(e.target.value)}
+                  data-testid="input-profile-name"
+                />
+                <p className="text-xs text-muted-foreground">이 세션에서 사용할 프로필 이름입니다.</p>
               </div>
             )}
             <Textarea
@@ -1655,7 +1645,6 @@ export default function PlayStory() {
               <Button 
                 onClick={async () => {
                   if (editingField === "conversationProfile") {
-                    // When manually editing, clear the profile name since it's no longer from a saved profile
                     if (!sessionId) return;
                     setIsSavingSettings(true);
                     try {
@@ -1664,7 +1653,7 @@ export default function PlayStory() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
                           conversationProfile: conversationProfile,
-                          conversationProfileName: "" // Clear name when manually editing
+                          conversationProfileName: conversationProfileName
                         }),
                       });
                       setEditingField(null);
