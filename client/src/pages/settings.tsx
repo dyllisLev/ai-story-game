@@ -533,7 +533,6 @@ export default function Settings() {
                 <p className="text-xs font-semibold text-foreground">사용 가능한 변수</p>
                 <div className="space-y-1.5 text-xs text-muted-foreground">
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{existingSummary}"}</code> 기존 타임라인 요약</div>
-                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{messageCount}"}</code> 요약할 메시지 개수</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{aiMessages}"}</code> 최근 AI 응답 내용</div>
                 </div>
               </CardContent>
