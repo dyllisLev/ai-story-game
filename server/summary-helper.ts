@@ -200,6 +200,8 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       
       const data = await response.json();
       
+      console.log('[CHATGPT-API] Full response:', JSON.stringify(data, null, 2));
+      
       if (data.error) {
         throw new Error(`ChatGPT API Error: ${data.error.message}`);
       }
@@ -208,7 +210,14 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
         throw new Error("ChatGPT API returned empty response");
       }
       
-      generatedText = data.choices[0].message.content;
+      const messageContent = data.choices[0].message?.content;
+      
+      if (!messageContent) {
+        console.error('[CHATGPT-API] Empty content in response:', data.choices[0]);
+        throw new Error("ChatGPT API returned null or empty content");
+      }
+      
+      generatedText = messageContent;
     } else if (provider === "claude") {
       // Anthropic Claude API
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -294,6 +303,15 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
     
     // Save to API logs database (success)
     const responseTime = Date.now() - startTimeMs;
+    
+    // Ensure we have valid generated text
+    if (!generatedText || generatedText.trim().length === 0) {
+      console.error('[SUMMARY] Generated text is empty!');
+      throw new Error('AI generated empty response');
+    }
+    
+    console.log(`[API-LOG] Saving success log - output length: ${generatedText.length}`);
+    
     await storage.createApiLog({
       type: 'summary',
       provider,
