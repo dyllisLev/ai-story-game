@@ -161,6 +161,94 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       }
       
       generatedText = candidate.content.parts.map((p: any) => p.text).join("");
+    } else if (provider === "chatgpt") {
+      // OpenAI ChatGPT API
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "user", content: summaryPrompt }
+          ],
+          temperature: 0.5,
+          max_tokens: 2048
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(`ChatGPT API Error: ${data.error.message}`);
+      }
+      
+      if (!data.choices || data.choices.length === 0) {
+        throw new Error("ChatGPT API returned empty response");
+      }
+      
+      generatedText = data.choices[0].message.content;
+    } else if (provider === "claude") {
+      // Anthropic Claude API
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 2048,
+          temperature: 0.5,
+          messages: [
+            { role: "user", content: summaryPrompt }
+          ]
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(`Claude API Error: ${data.error.message}`);
+      }
+      
+      if (!data.content || data.content.length === 0) {
+        throw new Error("Claude API returned empty response");
+      }
+      
+      generatedText = data.content[0].text;
+    } else if (provider === "grok") {
+      // xAI Grok API (OpenAI-compatible)
+      const response = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "user", content: summaryPrompt }
+          ],
+          temperature: 0.5,
+          max_tokens: 2048
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(`Grok API Error: ${data.error.message}`);
+      }
+      
+      if (!data.choices || data.choices.length === 0) {
+        throw new Error("Grok API returned empty response");
+      }
+      
+      generatedText = data.choices[0].message.content;
     } else {
       throw new Error(`Provider ${provider} not supported for summary generation yet`);
     }
