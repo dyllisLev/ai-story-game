@@ -1387,7 +1387,10 @@ export default function PlayStory() {
                      <Button 
                        variant="ghost" 
                        className="w-full justify-start gap-3 font-normal h-10 hover:bg-muted"
-                       onClick={() => setEditingField("summaryMemory")}
+                       onClick={async () => {
+                         await refreshSession(); // 최신 데이터 조회
+                         setEditingField("summaryMemory");
+                       }}
                      >
                         <History className="w-4 h-4 text-muted-foreground" /> 요약 메모리
                         {summaryMemory && <span className="text-[10px] bg-green-100 text-green-600 px-1 rounded ml-auto">설정됨</span>}
