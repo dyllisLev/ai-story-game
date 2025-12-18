@@ -514,59 +514,79 @@ export default function Settings() {
                       <Cpu className="w-4 h-4 text-primary" />
                       <Label className="text-sm font-semibold">요약 생성 모델</Label>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="summary-provider" className="text-xs text-muted-foreground">AI 제공업체</Label>
-                        <select
-                          id="summary-provider"
-                          value={summaryProvider}
-                          onChange={(e) => {
-                            setSummaryProvider(e.target.value);
-                            // Reset to default model for new provider
-                            const defaultModels: Record<string, string> = {
-                              gemini: "gemini-2.0-flash-exp",
-                              chatgpt: "gpt-4o-mini",
-                              claude: "claude-3-5-sonnet-20241022",
-                              grok: "grok-2-1212"
-                            };
-                            setSummaryModel(defaultModels[e.target.value] || "");
-                          }}
-                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          data-testid="select-summary-provider"
-                        >
-                          <option value="gemini">Google Gemini</option>
-                          <option value="chatgpt">OpenAI ChatGPT</option>
-                          <option value="claude">Anthropic Claude</option>
-                          <option value="grok">xAI Grok</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="summary-model" className="text-xs text-muted-foreground">모델</Label>
-                        <select
-                          id="summary-model"
-                          value={summaryModel}
-                          onChange={(e) => setSummaryModel(e.target.value)}
-                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          data-testid="select-summary-model"
-                        >
-                          {summaryProvider === "gemini" && MODEL_CATALOG.gemini.map(m => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
-                          {summaryProvider === "chatgpt" && MODEL_CATALOG.chatgpt.map(m => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
-                          {summaryProvider === "claude" && MODEL_CATALOG.claude.map(m => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
-                          {summaryProvider === "grok" && MODEL_CATALOG.grok.map(m => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      선택한 모델: <span className="font-medium text-foreground">{PROVIDER_LABELS[summaryProvider as Provider]} - {MODEL_CATALOG[summaryProvider as Provider]?.find(m => m.id === summaryModel)?.name || summaryModel}</span>
-                    </p>
+                    {(() => {
+                      // Get available providers (providers with selected models)
+                      const availableProviders = (["gemini", "chatgpt", "claude", "grok"] as const).filter(
+                        p => selectedModels[p] && selectedModels[p].length > 0
+                      );
+                      
+                      // Get models for current provider
+                      const currentProviderModels = summaryProvider && selectedModels[summaryProvider as Provider]
+                        ? selectedModels[summaryProvider as Provider].map(modelId => {
+                            const modelInfo = MODEL_CATALOG[summaryProvider as Provider]?.find(m => m.id === modelId);
+                            return modelInfo || { id: modelId, name: modelId };
+                          })
+                        : [];
+                      
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor="summary-provider" className="text-xs text-muted-foreground">AI 제공업체</Label>
+                              <select
+                                id="summary-provider"
+                                value={summaryProvider}
+                                onChange={(e) => {
+                                  setSummaryProvider(e.target.value);
+                                  // Reset to first available model for new provider
+                                  const newProviderModels = selectedModels[e.target.value as Provider] || [];
+                                  if (newProviderModels.length > 0) {
+                                    setSummaryModel(newProviderModels[0]);
+                                  }
+                                }}
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                data-testid="select-summary-provider"
+                              >
+                                {availableProviders.length === 0 && (
+                                  <option value="">모델을 먼저 설정하세요</option>
+                                )}
+                                {availableProviders.map(p => (
+                                  <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="summary-model" className="text-xs text-muted-foreground">모델</Label>
+                              <select
+                                id="summary-model"
+                                value={summaryModel}
+                                onChange={(e) => setSummaryModel(e.target.value)}
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                data-testid="select-summary-model"
+                                disabled={currentProviderModels.length === 0}
+                              >
+                                {currentProviderModels.length === 0 && (
+                                  <option value="">사용 가능한 모델 없음</option>
+                                )}
+                                {currentProviderModels.map(m => (
+                                  <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          {currentProviderModels.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              선택한 모델: <span className="font-medium text-foreground">{PROVIDER_LABELS[summaryProvider as Provider]} - {currentProviderModels.find(m => m.id === summaryModel)?.name || summaryModel}</span>
+                            </p>
+                          )}
+                          {availableProviders.length === 0 && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              "모델" 탭에서 사용할 모델을 먼저 선택하세요.
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
