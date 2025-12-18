@@ -673,7 +673,11 @@ export default function PlayStory() {
   const renderAIContent = (content: string) => {
     const processedContent = extractStoryFromJSON(content);
     
-    const parts = parseAIResponse(processedContent);
+    // Filter out instructional comments that match the pattern:
+    // # (Never describe {name}'s actions, dialogues, or feelings predictively.)
+    const filteredContent = processedContent.replace(/^#\s*\(Never describe .+?'s actions, dialogues, or feelings predictively\.\)\s*$/gm, '');
+    
+    const parts = parseAIResponse(filteredContent);
     
     const markdownComponents = {
       code({ node, inline, className, children, ...props }: any) {
