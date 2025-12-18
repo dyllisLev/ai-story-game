@@ -537,11 +537,6 @@ export default function Settings() {
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{messageCount}"}</code> 요약할 메시지 개수</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{aiMessages}"}</code> 최근 AI 응답 내용</div>
                 </div>
-                <div className="pt-2 border-t border-muted">
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    반드시 JSON 형식으로 <code className="bg-background px-1 rounded">summary</code>와 <code className="bg-background px-1 rounded">keyPlotPoints</code>를 반환하도록 작성하세요.
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
