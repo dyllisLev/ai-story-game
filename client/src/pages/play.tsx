@@ -1575,6 +1575,12 @@ export default function PlayStory() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {editingField === "conversationProfile" && conversationProfileName && (
+              <div className="bg-muted/50 rounded-lg p-3 border">
+                <p className="text-sm text-muted-foreground">현재 프로필</p>
+                <p className="font-medium" data-testid="text-current-profile-name">{conversationProfileName}</p>
+              </div>
+            )}
             {editingField === "conversationProfile" && savedProfiles.length > 0 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">저장된 프로필에서 불러오기</label>
