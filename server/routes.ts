@@ -1862,6 +1862,8 @@ export async function registerRoutes(
   // ==================== AI CHAT STREAMING API ====================
 
   app.post("/api/ai/chat/stream", isAuthenticated, async (req, res) => {
+    const startTimeMs = Date.now();
+    
     try {
       const { sessionId, userMessage, storyId } = req.body;
       const userId = req.session.userId!;
@@ -2087,6 +2089,19 @@ export async function registerRoutes(
         console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
 
+        // Save to API logs database (success)
+        const responseTime = Date.now() - startTimeMs;
+        await storage.createApiLog({
+          type: 'story',
+          provider: selectedProvider,
+          model: selectedModel,
+          inputPrompt: systemPrompt + '\n' + userMessage,
+          outputResponse: fullText,
+          userId,
+          sessionId,
+          responseTime,
+        }).catch(logErr => console.error('[API-LOG] Failed to save story log:', logErr));
+
       } else if (selectedProvider === "chatgpt") {
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -2182,6 +2197,19 @@ export async function registerRoutes(
         console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
 
+        // Save to API logs database (success)
+        const responseTime = Date.now() - startTimeMs;
+        await storage.createApiLog({
+          type: 'story',
+          provider: selectedProvider,
+          model: selectedModel,
+          inputPrompt: systemPrompt + '\n' + userMessage,
+          outputResponse: fullText,
+          userId,
+          sessionId,
+          responseTime,
+        }).catch(logErr => console.error('[API-LOG] Failed to save story log:', logErr));
+
       } else if (selectedProvider === "claude") {
         console.log("Claude API 요청 시작 - Model:", selectedModel);
         const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -2276,6 +2304,19 @@ export async function registerRoutes(
         console.log("║ 📝 AI 응답 전문:");
         console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
+
+        // Save to API logs database (success)
+        const responseTime = Date.now() - startTimeMs;
+        await storage.createApiLog({
+          type: 'story',
+          provider: selectedProvider,
+          model: selectedModel,
+          inputPrompt: systemPrompt + '\n' + userMessage,
+          outputResponse: fullText,
+          userId,
+          sessionId,
+          responseTime,
+        }).catch(logErr => console.error('[API-LOG] Failed to save story log:', logErr));
 
       } else if (selectedProvider === "grok") {
         console.log("Grok API 요청 시작 - Model:", selectedModel);
@@ -2374,6 +2415,19 @@ export async function registerRoutes(
         console.log("║", fullText.replace(/\n/g, "\n║ "));
         console.log("╚════════════════════════════════════════════════════════════\n");
 
+        // Save to API logs database (success)
+        const responseTime = Date.now() - startTimeMs;
+        await storage.createApiLog({
+          type: 'story',
+          provider: selectedProvider,
+          model: selectedModel,
+          inputPrompt: systemPrompt + '\n' + userMessage,
+          outputResponse: fullText,
+          userId,
+          sessionId,
+          responseTime,
+        }).catch(logErr => console.error('[API-LOG] Failed to save story log:', logErr));
+
       } else {
         // Fallback for unknown providers
         res.write(`data: ${JSON.stringify({ error: "지원하지 않는 AI 프로바이더입니다." })}\n\n`);
@@ -2382,6 +2436,34 @@ export async function registerRoutes(
 
     } catch (error: any) {
       console.error("AI streaming error:", error);
+      
+      // Try to save error log (get variables from scope if available)
+      try {
+        const { sessionId } = req.body;
+        const userId = req.session.userId;
+        
+        if (sessionId && userId) {
+          const session = await storage.getSession(sessionId);
+          const selectedProvider = session?.sessionProvider || "unknown";
+          const selectedModel = session?.sessionModel || "unknown";
+          const responseTime = Date.now() - startTimeMs;
+          
+          await storage.createApiLog({
+            type: 'story',
+            provider: selectedProvider,
+            model: selectedModel,
+            inputPrompt: req.body.userMessage || 'Error before prompt creation',
+            errorMessage: error?.message || String(error),
+            errorStack: error?.stack,
+            userId,
+            sessionId,
+            responseTime,
+          }).catch(logErr => console.error('[API-LOG] Failed to save error log:', logErr));
+        }
+      } catch (logError) {
+        console.error('[API-LOG] Error saving error log:', logError);
+      }
+      
       res.write(`data: ${JSON.stringify({ error: error.message || "Streaming failed" })}\n\n`);
       res.end();
     }
