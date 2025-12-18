@@ -326,6 +326,7 @@ export class Storage implements IStorage {
     const dbUpdate = {
       ...(session.title && { title: session.title }),
       ...(session.conversationProfile !== undefined && { conversation_profile: session.conversationProfile }),
+      ...(session.conversationProfileName !== undefined && { conversation_profile_name: session.conversationProfileName }),
       ...(session.userNote !== undefined && { user_note: session.userNote }),
       ...(session.summaryMemory !== undefined && { summary_memory: session.summaryMemory }),
       ...(session.keyPlotPoints !== undefined && { key_plot_points: session.keyPlotPoints }),
