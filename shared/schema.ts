@@ -101,6 +101,21 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const apiLogs = pgTable("api_logs", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(), // 'summary', 'chat', 'story_generation', etc.
+  provider: text("provider").notNull(), // 'gemini', 'chatgpt', 'claude', 'grok'
+  model: text("model").notNull(),
+  inputPrompt: text("input_prompt").notNull(),
+  outputResponse: text("output_response"),
+  errorMessage: text("error_message"),
+  errorStack: text("error_stack"),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  sessionId: integer("session_id").references(() => sessions.id, { onDelete: "set null" }),
+  responseTime: integer("response_time"), // milliseconds
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertSettingSchema = createInsertSchema(settings).omit({
   id: true,
 });
@@ -122,6 +137,11 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+export const insertApiLogSchema = createInsertSchema(apiLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
 export type Setting = typeof settings.$inferSelect;
 
@@ -133,6 +153,9 @@ export type Session = typeof sessions.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export type InsertApiLog = z.infer<typeof insertApiLogSchema>;
+export type ApiLog = typeof apiLogs.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,

@@ -2493,7 +2493,9 @@ export async function registerRoutes(
                 provider: summaryProvider,
                 model: summaryModel,
                 apiKey,
-                summaryPromptTemplate
+                summaryPromptTemplate,
+                userId: session.userId,
+                sessionId
               });
               
               console.log(`[AUTO-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);
@@ -2645,7 +2647,9 @@ export async function registerRoutes(
         provider: summaryProvider,
         model: summaryModel,
         apiKey,
-        summaryPromptTemplate
+        summaryPromptTemplate,
+        userId: session.userId,
+        sessionId
       });
       
       console.log(`[MANUAL-SUMMARY] Generated summary length: ${result.summary.length}, plot points: ${result.keyPlotPoints.length}`);

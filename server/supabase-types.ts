@@ -295,6 +295,50 @@ export interface Database {
           created_at?: string | null
         }
       }
+      api_logs: {
+        Row: {
+          id: number
+          type: string
+          provider: string
+          model: string
+          input_prompt: string
+          output_response: string | null
+          error_message: string | null
+          error_stack: string | null
+          user_id: number | null
+          session_id: number | null
+          response_time: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          type: string
+          provider: string
+          model: string
+          input_prompt: string
+          output_response?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          user_id?: number | null
+          session_id?: number | null
+          response_time?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          type?: string
+          provider?: string
+          model?: string
+          input_prompt?: string
+          output_response?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          user_id?: number | null
+          session_id?: number | null
+          response_time?: number | null
+          created_at?: string | null
+        }
+      }
     }
   }
 }

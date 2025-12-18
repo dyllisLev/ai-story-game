@@ -1,6 +1,7 @@
 import type { Session, Message } from "../shared/schema";
 import { promises as fs } from "fs";
 import path from "path";
+import { storage } from "./storage";
 
 interface SummaryRequest {
   messages: Message[];
@@ -9,6 +10,8 @@ interface SummaryRequest {
   model: string;
   apiKey: string;
   summaryPromptTemplate?: string;
+  userId?: number;
+  sessionId?: number;
 }
 
 interface SummaryResult {
@@ -70,11 +73,23 @@ END OF LOG
 }
 
 export async function generateSummary(request: SummaryRequest): Promise<SummaryResult> {
-  const { messages, existingSummary, provider, model, apiKey, summaryPromptTemplate } = request;
+  const { messages, existingSummary, provider, model, apiKey, summaryPromptTemplate, userId, sessionId } = request;
+  const startTimeMs = Date.now();
   const startTime = new Date().toISOString();
   
   if (!apiKey) {
-    throw new Error("API key is required for summary generation");
+    const error = new Error("API key is required for summary generation");
+    await storage.createApiLog({
+      type: 'summary',
+      provider,
+      model,
+      inputPrompt: 'API key missing',
+      errorMessage: error.message,
+      userId,
+      sessionId,
+      responseTime: Date.now() - startTimeMs,
+    }).catch(logErr => console.error('[API-LOG] Failed to save error log:', logErr));
+    throw error;
   }
   
   const aiMessages = messages
@@ -83,7 +98,18 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
     .join("\n\n");
   
   if (!summaryPromptTemplate) {
-    throw new Error("Summary prompt template is required but not configured in settings");
+    const error = new Error("Summary prompt template is required but not configured in settings");
+    await storage.createApiLog({
+      type: 'summary',
+      provider,
+      model,
+      inputPrompt: 'Prompt template missing',
+      errorMessage: error.message,
+      userId,
+      sessionId,
+      responseTime: Date.now() - startTimeMs,
+    }).catch(logErr => console.error('[API-LOG] Failed to save error log:', logErr));
+    throw error;
   }
   
   const summaryPrompt = summaryPromptTemplate
@@ -151,13 +177,41 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
       responseLength: generatedText.length
     });
     
+    // Save to API logs database (success)
+    const responseTime = Date.now() - startTimeMs;
+    await storage.createApiLog({
+      type: 'summary',
+      provider,
+      model,
+      inputPrompt: summaryPrompt,
+      outputResponse: generatedText,
+      userId,
+      sessionId,
+      responseTime,
+    }).catch(logErr => console.error('[API-LOG] Failed to save success log:', logErr));
+    
     // Return the raw response as summary
     return {
       summary: generatedText.trim(),
       keyPlotPoints: []
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to generate summary:", error);
+    
+    // Save to API logs database (error)
+    const responseTime = Date.now() - startTimeMs;
+    await storage.createApiLog({
+      type: 'summary',
+      provider,
+      model,
+      inputPrompt: summaryPrompt,
+      errorMessage: error?.message || String(error),
+      errorStack: error?.stack,
+      userId,
+      sessionId,
+      responseTime,
+    }).catch(logErr => console.error('[API-LOG] Failed to save error log:', logErr));
+    
     throw error;
   }
 }

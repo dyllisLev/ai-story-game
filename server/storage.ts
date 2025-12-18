@@ -7,7 +7,8 @@ import {
   dbSettingToSetting, settingToDbSettingInsert,
   dbGroupToGroup, groupToDbGroupInsert,
   dbUserGroupToUserGroup, userGroupToDbUserGroupInsert,
-  dbStoryGroupToStoryGroup, storyGroupToDbStoryGroupInsert
+  dbStoryGroupToStoryGroup, storyGroupToDbStoryGroupInsert,
+  dbApiLogToApiLog, apiLogToDbApiLogInsert
 } from "./supabase-mappers";
 import { 
   type InsertSetting, type Setting,
@@ -18,7 +19,8 @@ import {
   type InsertGroup, type Group,
   type InsertUserGroup, type UserGroup,
   type InsertStoryGroup, type StoryGroup,
-  type SelectedModels, type DefaultModel
+  type SelectedModels, type DefaultModel,
+  type InsertApiLog, type ApiLog
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -67,6 +69,12 @@ export interface IStorage {
   hashPassword(password: string): string;
   deleteUser(userId: number): Promise<boolean>;
   deleteMessagesBySession(sessionId: number): Promise<void>;
+  
+  // API Logs
+  createApiLog(log: InsertApiLog): Promise<ApiLog>;
+  getApiLogs(limit?: number): Promise<ApiLog[]>;
+  getApiLogsBySession(sessionId: number, limit?: number): Promise<ApiLog[]>;
+  getApiLogsByType(type: string, limit?: number): Promise<ApiLog[]>;
   
   // Groups
   getGroup(id: number): Promise<Group | undefined>;
@@ -937,6 +945,53 @@ export class Storage implements IStorage {
     }
 
     return false;
+  }
+
+  // API Logs
+  async createApiLog(log: InsertApiLog): Promise<ApiLog> {
+    const { data, error } = await supabase
+      .from('api_logs')
+      .insert(apiLogToDbApiLogInsert(log))
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return dbApiLogToApiLog(data);
+  }
+
+  async getApiLogs(limit: number = 100): Promise<ApiLog[]> {
+    const { data, error } = await supabase
+      .from('api_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return (data || []).map(dbApiLogToApiLog);
+  }
+
+  async getApiLogsBySession(sessionId: number, limit: number = 100): Promise<ApiLog[]> {
+    const { data, error } = await supabase
+      .from('api_logs')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return (data || []).map(dbApiLogToApiLog);
+  }
+
+  async getApiLogsByType(type: string, limit: number = 100): Promise<ApiLog[]> {
+    const { data, error } = await supabase
+      .from('api_logs')
+      .select('*')
+      .eq('type', type)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return (data || []).map(dbApiLogToApiLog);
   }
 }
 

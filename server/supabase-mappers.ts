@@ -9,7 +9,8 @@ import type {
   Setting, InsertSetting,
   Group, InsertGroup,
   UserGroup, InsertUserGroup,
-  StoryGroup, InsertStoryGroup
+  StoryGroup, InsertStoryGroup,
+  ApiLog, InsertApiLog
 } from '@shared/schema';
 
 type DbUser = Database['public']['Tables']['users']['Row'];
@@ -26,6 +27,8 @@ type DbUserGroup = Database['public']['Tables']['user_groups']['Row'];
 type DbUserGroupInsert = Database['public']['Tables']['user_groups']['Insert'];
 type DbStoryGroup = Database['public']['Tables']['story_groups']['Row'];
 type DbStoryGroupInsert = Database['public']['Tables']['story_groups']['Insert'];
+type DbApiLog = Database['public']['Tables']['api_logs']['Row'];
+type DbApiLogInsert = Database['public']['Tables']['api_logs']['Insert'];
 
 // User mappers
 export function dbUserToUser(dbUser: DbUser): User {
@@ -243,5 +246,38 @@ export function storyGroupToDbStoryGroupInsert(storyGroup: InsertStoryGroup): Db
     story_id: storyGroup.storyId,
     group_id: storyGroup.groupId,
     permission: storyGroup.permission,
+  };
+}
+
+// ApiLog mappers
+export function dbApiLogToApiLog(dbApiLog: DbApiLog): ApiLog {
+  return {
+    id: dbApiLog.id,
+    type: dbApiLog.type,
+    provider: dbApiLog.provider,
+    model: dbApiLog.model,
+    inputPrompt: dbApiLog.input_prompt,
+    outputResponse: dbApiLog.output_response,
+    errorMessage: dbApiLog.error_message,
+    errorStack: dbApiLog.error_stack,
+    userId: dbApiLog.user_id,
+    sessionId: dbApiLog.session_id,
+    responseTime: dbApiLog.response_time,
+    createdAt: dbApiLog.created_at ? new Date(dbApiLog.created_at) : null,
+  };
+}
+
+export function apiLogToDbApiLogInsert(apiLog: InsertApiLog): DbApiLogInsert {
+  return {
+    type: apiLog.type,
+    provider: apiLog.provider,
+    model: apiLog.model,
+    input_prompt: apiLog.inputPrompt,
+    output_response: apiLog.outputResponse,
+    error_message: apiLog.errorMessage,
+    error_stack: apiLog.errorStack,
+    user_id: apiLog.userId,
+    session_id: apiLog.sessionId,
+    response_time: apiLog.responseTime,
   };
 }
