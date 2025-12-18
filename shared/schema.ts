@@ -80,6 +80,7 @@ export const sessions = pgTable("sessions", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   conversationProfile: text("conversation_profile"),
+  conversationProfileName: text("conversation_profile_name"),
   userNote: text("user_note"),
   summaryMemory: text("summary_memory"),
   keyPlotPoints: text("key_plot_points"),

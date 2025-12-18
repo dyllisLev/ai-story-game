@@ -347,6 +347,7 @@ export default function PlayStory() {
 
   // Session settings
   const [conversationProfile, setConversationProfile] = useState("");
+  const [conversationProfileName, setConversationProfileName] = useState("");
   const [userNote, setUserNote] = useState("");
   const [summaryMemory, setSummaryMemory] = useState("");
   const [sessionProvider, setSessionProvider] = useState("");
@@ -432,6 +433,7 @@ export default function PlayStory() {
         
         // Load session settings
         setConversationProfile(sessionData.conversationProfile || "");
+        setConversationProfileName(sessionData.conversationProfileName || "");
         setUserNote(sessionData.userNote || "");
         setSummaryMemory(normalizeNewlines(sessionData.summaryMemory));
         setSessionProvider(sessionData.sessionProvider || "");
@@ -1578,11 +1580,28 @@ export default function PlayStory() {
                 <label className="text-sm font-medium">저장된 프로필에서 불러오기</label>
                 <Select
                   value=""
-                  onValueChange={(profileId) => {
+                  onValueChange={async (profileId) => {
                     const profile = savedProfiles.find(p => p.id === profileId);
                     if (profile) {
                       setConversationProfile(profile.content);
-                      saveSessionSettings("conversationProfile", profile.content);
+                      setConversationProfileName(profile.name);
+                      // Save both profile content and name
+                      if (!sessionId) return;
+                      setIsSavingSettings(true);
+                      try {
+                        await fetchWithAuth(`/api/sessions/${sessionId}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ 
+                            conversationProfile: profile.content,
+                            conversationProfileName: profile.name
+                          }),
+                        });
+                      } catch (error) {
+                        console.error("Failed to save profile:", error);
+                      } finally {
+                        setIsSavingSettings(false);
+                      }
                     }
                   }}
                 >
@@ -1628,10 +1647,33 @@ export default function PlayStory() {
                 <X className="w-4 h-4 mr-2" /> 취소
               </Button>
               <Button 
-                onClick={() => {
-                  if (editingField === "conversationProfile") saveSessionSettings("conversationProfile", conversationProfile);
-                  else if (editingField === "userNote") saveSessionSettings("userNote", userNote);
-                  else if (editingField === "summaryMemory") saveSessionSettings("summaryMemory", summaryMemory);
+                onClick={async () => {
+                  if (editingField === "conversationProfile") {
+                    // When manually editing, clear the profile name since it's no longer from a saved profile
+                    if (!sessionId) return;
+                    setIsSavingSettings(true);
+                    try {
+                      await fetchWithAuth(`/api/sessions/${sessionId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                          conversationProfile: conversationProfile,
+                          conversationProfileName: "" // Clear name when manually editing
+                        }),
+                      });
+                      setEditingField(null);
+                    } catch (error) {
+                      console.error("Failed to save:", error);
+                    } finally {
+                      setIsSavingSettings(false);
+                    }
+                  } else if (editingField === "userNote") {
+                    await saveSessionSettings("userNote", userNote);
+                    setEditingField(null);
+                  } else if (editingField === "summaryMemory") {
+                    await saveSessionSettings("summaryMemory", summaryMemory);
+                    setEditingField(null);
+                  }
                 }}
                 disabled={isSavingSettings}
                 data-testid="button-save-setting"
