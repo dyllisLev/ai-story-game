@@ -2460,12 +2460,12 @@ export async function registerRoutes(
             const newCount = await storage.incrementAIMessageCount(sessionId);
             console.log(`[AUTO-SUMMARY] AI message count incremented to ${newCount} for session ${sessionId}`);
             
-            if (newCount > 0 && newCount % 20 === 0) {
+            if (newCount > 0 && newCount % 10 === 0) {
               console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount}`);
               const session = await storage.getSession(sessionId);
               if (!session) throw new Error("Session not found");
               
-              const recentMessages = await storage.getRecentAIMessages(sessionId, 20);
+              const recentMessages = await storage.getRecentAIMessages(sessionId, 10);
               console.log(`[AUTO-SUMMARY] Got ${recentMessages.length} recent messages`);
               
               // Get global summary model settings (prioritize over session settings)
