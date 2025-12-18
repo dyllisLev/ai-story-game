@@ -459,6 +459,22 @@ export class Storage implements IStorage {
     return (data || []).reverse().map(dbMessageToMessage);
   }
 
+  async getAIMessagesAfterTurn(sessionId: number, afterTurn: number): Promise<Message[]> {
+    // Get all AI messages
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .eq('role', 'assistant')
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    
+    // Return messages after the specified turn (index-based, so turn 20 means skip first 20)
+    const allMessages = (data || []).map(dbMessageToMessage);
+    return allMessages.slice(afterTurn);
+  }
+
   async deleteMessage(id: number): Promise<void> {
     const { error } = await supabase
       .from('messages')

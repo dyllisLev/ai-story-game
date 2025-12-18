@@ -2460,13 +2460,18 @@ export async function registerRoutes(
             const newCount = await storage.incrementAIMessageCount(sessionId);
             console.log(`[AUTO-SUMMARY] AI message count incremented to ${newCount} for session ${sessionId}`);
             
-            if (newCount > 0 && newCount % 10 === 0) {
-              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount}`);
-              const session = await storage.getSession(sessionId);
-              if (!session) throw new Error("Session not found");
+            const session = await storage.getSession(sessionId);
+            if (!session) throw new Error("Session not found");
+            
+            const lastSummaryTurn = session.lastSummaryTurn || 0;
+            
+            // Trigger summary if count >= 10 AND we haven't summarized at this count yet
+            if (newCount >= 10 && lastSummaryTurn < newCount) {
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (last summary was at turn ${lastSummaryTurn})`);
               
-              const recentMessages = await storage.getRecentAIMessages(sessionId, 10);
-              console.log(`[AUTO-SUMMARY] Got ${recentMessages.length} recent messages`);
+              // Get all messages after last summary
+              const messagesToSummarize = await storage.getAIMessagesAfterTurn(sessionId, lastSummaryTurn);
+              console.log(`[AUTO-SUMMARY] Got ${messagesToSummarize.length} messages after turn ${lastSummaryTurn} (total count: ${newCount})`);
               
               // Get global summary model settings (prioritize over session settings)
               const summaryProviderSetting = await storage.getSetting("summaryProvider");
@@ -2488,7 +2493,7 @@ export async function registerRoutes(
               console.log(`[AUTO-SUMMARY] Calling generateSummary...`);
               const { generateSummary } = await import("./summary-helper");
               const result = await generateSummary({
-                messages: recentMessages,
+                messages: messagesToSummarize,
                 existingSummary: session.summaryMemory,
                 provider: summaryProvider,
                 model: summaryModel,
