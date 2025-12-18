@@ -1612,10 +1612,12 @@ export async function registerRoutes(
 
       const messages = await storage.getMessagesBySession(sessionId);
       
-      const recentMessages = messages.slice(-20).map(msg => {
-        const role = msg.role === 'user' ? '사용자' : 'AI';
-        return `${role}: ${msg.content}`;
-      }).join('\n\n');
+      // AI 응답만 포함 (사용자 메시지 제외)
+      const recentMessages = messages
+        .filter(msg => msg.role === 'assistant')
+        .slice(-20)
+        .map(msg => `AI: ${msg.content}`)
+        .join('\n\n');
       
       let selectedProvider = session.sessionProvider || "";
       let selectedModel = session.sessionModel || "";
@@ -1916,10 +1918,12 @@ export async function registerRoutes(
       const commonPromptSetting = await storage.getSetting("commonPrompt");
       let systemPrompt = commonPromptSetting?.value || `당신은 경험 많은 스토리텔러입니다. 다음 스토리를 이어서 작성해주세요.`;
 
-      // Build recent messages string (최대 20개)
-      const recentMessages = messages.slice(-20).map(m => 
-        `${m.role === 'user' ? '유저' : 'AI'}: ${m.content}`
-      ).join('\n\n');
+      // Build recent messages string (AI 응답만, 최대 20개)
+      const recentMessages = messages
+        .filter(m => m.role === 'assistant')
+        .slice(-20)
+        .map(m => `AI: ${m.content}`)
+        .join('\n\n');
 
       // Replace all variables
       systemPrompt = systemPrompt
