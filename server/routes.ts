@@ -2464,10 +2464,13 @@ export async function registerRoutes(
             if (!session) throw new Error("Session not found");
             
             const lastSummaryTurn = session.lastSummaryTurn || 0;
+            const messagesSinceLastSummary = newCount - lastSummaryTurn;
             
-            // Trigger summary if count >= 10 AND we haven't summarized at this count yet
-            if (newCount >= 10 && lastSummaryTurn < newCount) {
-              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (last summary was at turn ${lastSummaryTurn})`);
+            // Trigger summary if:
+            // 1. At least 10 total messages AND
+            // 2. At least 10 new messages since last summary
+            if (newCount >= 10 && messagesSinceLastSummary >= 10) {
+              console.log(`[AUTO-SUMMARY] Triggering summary generation at turn ${newCount} (last summary was at turn ${lastSummaryTurn}, ${messagesSinceLastSummary} new messages)`);
               
               // Get all messages after last summary
               const messagesToSummarize = await storage.getAIMessagesAfterTurn(sessionId, lastSummaryTurn);
