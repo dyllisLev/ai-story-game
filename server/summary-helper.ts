@@ -167,12 +167,23 @@ export async function generateSummary(request: SummaryRequest): Promise<SummaryR
         model: model,
         messages: [
           { role: "user", content: summaryPrompt }
-        ],
-        temperature: 0.5
+        ]
       };
       
-      // Use max_completion_tokens for newer models (GPT-4.5, GPT-5, etc)
-      if (model.includes("gpt-5") || model.includes("gpt-4.5") || model.includes("o1") || model.includes("o3")) {
+      // Reasoning models (o1, o3, o4) don't support temperature
+      const isReasoningModel = model.includes("o1") || model.includes("o3") || model.includes("o4");
+      
+      // GPT-5 and newer models use temperature: 1 (default only)
+      const isGPT5OrNewer = model.includes("gpt-5");
+      
+      if (!isReasoningModel) {
+        // GPT-5+ only supports temperature: 1
+        // Older models support 0-2 range
+        requestBody.temperature = isGPT5OrNewer ? 1 : 0.5;
+      }
+      
+      // Use max_completion_tokens for newer models (GPT-4.5, GPT-5, reasoning models)
+      if (model.includes("gpt-5") || model.includes("gpt-4.5") || isReasoningModel) {
         requestBody.max_completion_tokens = 2048;
       } else {
         requestBody.max_tokens = 2048;
