@@ -1677,21 +1677,9 @@ export async function registerRoutes(
 
       let generatedText = "";
 
-      // Build conversation history for API
-      const conversationHistory = messages.map(msg => ({
-        role: msg.role === "assistant" ? "assistant" : "user",
-        content: msg.content
-      }));
-      conversationHistory.push({ role: "user", content: userMessage });
-
       if (selectedProvider === "gemini") {
         const geminiContents = [
-          { role: "user", parts: [{ text: systemPrompt }] },
-          { role: "model", parts: [{ text: "알겠습니다. 해당 스토리 세계관에 맞게 응답하겠습니다." }] },
-          ...conversationHistory.map(msg => ({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }]
-          }))
+          { role: "user", parts: [{ text: systemPrompt + "\n\n사용자 입력: " + userMessage }] }
         ];
 
         // Apply thinking config based on model version
@@ -1760,7 +1748,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [
               { role: "system", content: systemPrompt },
-              ...conversationHistory
+              { role: "user", content: userMessage }
             ],
             temperature: 0.9,
             max_completion_tokens: 8192
@@ -1783,7 +1771,9 @@ export async function registerRoutes(
             model: selectedModel,
             max_tokens: 8192,
             system: systemPrompt,
-            messages: conversationHistory
+            messages: [
+              { role: "user", content: userMessage }
+            ]
           })
         });
         const data = await response.json();
@@ -1802,7 +1792,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [
               { role: "system", content: systemPrompt },
-              ...conversationHistory
+              { role: "user", content: userMessage }
             ],
             temperature: 0.9,
             max_tokens: 8192
