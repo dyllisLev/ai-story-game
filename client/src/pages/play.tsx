@@ -670,7 +670,7 @@ export default function PlayStory() {
   };
 
   // Render AI response with special styling
-  const renderAIContent = (content: string) => {
+  const renderAIContent = (content: string, isStreaming: boolean = false) => {
     const processedContent = extractStoryFromJSON(content);
     
     // Filter out instructional comments that match the pattern:
@@ -756,7 +756,9 @@ export default function PlayStory() {
       },
     };
 
-    return parts.map((part, index) => {
+    const renderedParts = parts.map((part, index) => {
+      const isLastPart = index === parts.length - 1;
+      
       switch (part.type) {
         case 'narration':
           return (
@@ -765,6 +767,9 @@ export default function PlayStory() {
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
+                {isStreaming && isLastPart && (
+                  <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                )}
               </div>
             </div>
           );
@@ -777,6 +782,9 @@ export default function PlayStory() {
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
+                {isStreaming && isLastPart && (
+                  <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                )}
               </div>
             </div>
           );
@@ -787,6 +795,9 @@ export default function PlayStory() {
               <div className="text-xs font-medium text-muted-foreground mb-2">상태 정보</div>
               <pre className="text-xs font-mono text-muted-foreground/80 whitespace-pre-wrap">
                 {part.content}
+                {isStreaming && isLastPart && (
+                  <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                )}
               </pre>
             </div>
           );
@@ -799,11 +810,16 @@ export default function PlayStory() {
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
+                {isStreaming && isLastPart && (
+                  <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
+                )}
               </div>
             </div>
           );
       }
     });
+    
+    return <>{renderedParts}</>;
   };
 
   const handleSendMessage = async (retryMessage?: string) => {
@@ -1212,12 +1228,7 @@ export default function PlayStory() {
                                <div className="flex-1 space-y-2" style={{ width: '100%' }}>
                                   <div className="leading-loose max-w-full break-words" style={{ fontSize: `${fontSize}px` }}>
                                      {msg.isStreaming ? (
-                                       <div className="whitespace-pre-wrap">
-                                         {streamingChunks.map((chunk, chunkIndex) => (
-                                           <span key={chunkIndex}>{chunk}</span>
-                                         ))}
-                                         <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
-                                       </div>
+                                       renderAIContent(streamingChunks.join(''), true)
                                      ) : (
                                        renderAIContent(msg.content)
                                      )}
