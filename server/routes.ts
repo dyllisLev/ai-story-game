@@ -1942,14 +1942,6 @@ export async function registerRoutes(
         .replace(/\{userMessage\}/g, userMessage || "")
         .replace(/\{recentMessages\}/g, recentMessages || "");
 
-      // Build conversation history (최대 20개로 제한하여 토큰 절약)
-      const recentMessagesForApi = messages.slice(-20);
-      const conversationHistory = recentMessagesForApi.map(msg => ({
-        role: msg.role === "assistant" ? "assistant" : "user",
-        content: msg.content
-      }));
-      conversationHistory.push({ role: "user", content: userMessage });
-
       // Set up SSE headers
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
@@ -1962,30 +1954,16 @@ export async function registerRoutes(
       console.log("║ Provider:", selectedProvider);
       console.log("║ Model:", selectedModel);
       console.log("║ Session ID:", sessionId);
-      console.log("║ 대화 기록 개수:", conversationHistory.length, "개 (최근 20개)");
       console.log("╠════════════════════════════════════════════════════════════");
       console.log("║ 💬 사용자 메시지:");
       console.log("║", userMessage.replace(/\n/g, "\n║ "));
       console.log("╠════════════════════════════════════════════════════════════");
-      console.log("║ 📋 시스템 프롬프트 전문:");
-      console.log("║", systemPrompt.replace(/\n/g, "\n║ "));
-      console.log("╠════════════════════════════════════════════════════════════");
-      console.log("║ 📚 대화 기록 (최근", conversationHistory.length - 1, "개):");
-      conversationHistory.slice(0, -1).forEach((msg, idx) => {
-        console.log("║ ---", idx + 1, "---");
-        console.log("║ Role:", msg.role);
-        console.log("║", msg.content.substring(0, 150).replace(/\n/g, "\n║ ") + (msg.content.length > 150 ? "..." : ""));
-      });
+      console.log("║ 📋 시스템 프롬프트 길이:", systemPrompt.length, "자");
       console.log("╚════════════════════════════════════════════════════════════\n");
 
       if (selectedProvider === "gemini") {
         const geminiContents = [
-          { role: "user", parts: [{ text: systemPrompt }] },
-          { role: "model", parts: [{ text: "알겠습니다. 해당 스토리 세계관에 맞게 응답하겠습니다." }] },
-          ...conversationHistory.map(msg => ({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }]
-          }))
+          { role: "user", parts: [{ text: systemPrompt + "\n\n사용자 입력: " + userMessage }] }
         ];
 
         const isGemini3Model = selectedModel.includes("gemini-3");
@@ -2171,7 +2149,7 @@ export async function registerRoutes(
           type: 'story',
           provider: selectedProvider,
           model: selectedModel,
-          inputPrompt: systemPrompt + '\n' + userMessage,
+          inputPrompt: systemPrompt + "\n\n사용자 입력: " + userMessage,
           outputResponse: fullText,
           userId,
           sessionId,
@@ -2189,7 +2167,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [
               { role: "system", content: systemPrompt },
-              ...conversationHistory
+              { role: "user", content: userMessage }
             ],
             temperature: 0.9,
             max_completion_tokens: 8192,
@@ -2349,7 +2327,7 @@ export async function registerRoutes(
           type: 'story',
           provider: selectedProvider,
           model: selectedModel,
-          inputPrompt: systemPrompt + '\n' + userMessage,
+          inputPrompt: systemPrompt + "\n\n사용자 입력: " + userMessage,
           outputResponse: fullText,
           userId,
           sessionId,
@@ -2369,7 +2347,9 @@ export async function registerRoutes(
             model: selectedModel,
             max_tokens: 8192,
             system: systemPrompt,
-            messages: conversationHistory,
+            messages: [
+              { role: "user", content: userMessage }
+            ],
             stream: true
           })
         });
@@ -2527,7 +2507,7 @@ export async function registerRoutes(
           type: 'story',
           provider: selectedProvider,
           model: selectedModel,
-          inputPrompt: systemPrompt + '\n' + userMessage,
+          inputPrompt: systemPrompt + "\n\n사용자 입력: " + userMessage,
           outputResponse: fullText,
           userId,
           sessionId,
@@ -2546,7 +2526,7 @@ export async function registerRoutes(
             model: selectedModel,
             messages: [
               { role: "system", content: systemPrompt },
-              ...conversationHistory
+              { role: "user", content: userMessage }
             ],
             temperature: 0.9,
             max_tokens: 8192,
@@ -2707,7 +2687,7 @@ export async function registerRoutes(
           type: 'story',
           provider: selectedProvider,
           model: selectedModel,
-          inputPrompt: systemPrompt + '\n' + userMessage,
+          inputPrompt: systemPrompt + "\n\n사용자 입력: " + userMessage,
           outputResponse: fullText,
           userId,
           sessionId,
