@@ -675,7 +675,8 @@ export default function PlayStory() {
     
     // Filter out instructional comments that match the pattern:
     // (Never describe {name}'s actions, dialogues, or feelings predictively.)
-    const filteredContent = processedContent.replace(/^#?\s*\(Never describe .+?'s actions, dialogues, or feelings predictively\.\)\s*$/gm, '');
+    // Handle variations like "연 actions" or "character's actions"
+    const filteredContent = processedContent.replace(/^#?\s*\(Never describe .+?\s+actions,\s+dialogues,\s+or\s+feelings\s+predictively\.\)\s*$/gm, '');
     
     const parts = parseAIResponse(filteredContent);
     
