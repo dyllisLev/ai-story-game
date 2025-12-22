@@ -26,7 +26,9 @@ import {
   Pencil,
   ChevronUp,
   ChevronDown,
-  GripVertical
+  GripVertical,
+  Camera,
+  MessageSquare
 } from "lucide-react";
 import {
   Dialog,
@@ -1340,8 +1342,56 @@ export default function PlayStory() {
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요 (버튼 클릭으로 전송)..."} 
                   disabled={isGenerating}
-                  className="min-h-[50px] pl-4 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
+                  className="min-h-[50px] pl-24 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
                />
+               <div className="absolute left-2 bottom-2 flex gap-1">
+                  <Button 
+                     size="icon" 
+                     variant="outline"
+                     className="h-8 w-8 rounded-full border-primary/30 hover:bg-primary/10 hover:border-primary"
+                     onClick={() => {
+                       if (!inputRef.current) return;
+                       const textarea = inputRef.current;
+                       const start = textarea.selectionStart;
+                       const end = textarea.selectionEnd;
+                       const newValue = inputValue.substring(0, start) + "()" + inputValue.substring(end);
+                       setInputValue(newValue);
+                       setTimeout(() => {
+                         textarea.focus();
+                         textarea.setSelectionRange(start + 1, start + 1);
+                       }, 0);
+                     }}
+                     disabled={isGenerating}
+                     title="장면 입력"
+                     aria-label="장면 입력 - 괄호 삽입"
+                     data-testid="button-insert-scene"
+                  >
+                     <Camera className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                     size="icon" 
+                     variant="outline"
+                     className="h-8 w-8 rounded-full border-primary/30 hover:bg-primary/10 hover:border-primary"
+                     onClick={() => {
+                       if (!inputRef.current) return;
+                       const textarea = inputRef.current;
+                       const start = textarea.selectionStart;
+                       const end = textarea.selectionEnd;
+                       const newValue = inputValue.substring(0, start) + '""' + inputValue.substring(end);
+                       setInputValue(newValue);
+                       setTimeout(() => {
+                         textarea.focus();
+                         textarea.setSelectionRange(start + 1, start + 1);
+                       }, 0);
+                     }}
+                     disabled={isGenerating}
+                     title="대사 입력"
+                     aria-label="대사 입력 - 따옴표 삽입"
+                     data-testid="button-insert-dialogue"
+                  >
+                     <MessageSquare className="w-4 h-4" />
+                  </Button>
+               </div>
                <Button 
                   size="icon" 
                   className="absolute right-2 top-2 h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-white"
