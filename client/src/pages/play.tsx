@@ -28,7 +28,8 @@ import {
   ChevronDown,
   GripVertical,
   Camera,
-  MessageSquare
+  MessageSquare,
+  RotateCcw
 } from "lucide-react";
 import {
   Dialog,
