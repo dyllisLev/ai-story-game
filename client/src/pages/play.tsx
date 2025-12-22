@@ -1380,7 +1380,7 @@ export default function PlayStory() {
                   ref={inputRef}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요 (버튼 클릭으로 전송)..."} 
+                  placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요"} 
                   disabled={isGenerating}
                   className="min-h-[50px] pl-20 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
                />
