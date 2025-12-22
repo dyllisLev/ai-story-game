@@ -1049,15 +1049,9 @@ export default function PlayStory() {
       const userMessageContent = secondLastMsg.content;
       
       await fetchWithAuth(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
-      await fetchWithAuth(`/api/messages/${secondLastMsg.id}`, { method: "DELETE" });
-      setMessages(prev => prev.slice(0, -2));
+      setMessages(prev => prev.slice(0, -1));
       setLastError(null);
       await refreshSession();
-      
-      const userMsg = await saveMessage("user", userMessageContent);
-      if (userMsg) {
-        setMessages(prev => [...prev, userMsg]);
-      }
       
       await handleSendMessage(userMessageContent);
     } catch (error) {
