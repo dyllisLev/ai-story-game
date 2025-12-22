@@ -1035,6 +1035,30 @@ export default function PlayStory() {
     }
   };
 
+  const handleRegenerateLastMessage = async () => {
+    if (messages.length < 2 || isGenerating) return;
+    
+    const lastMsg = messages[messages.length - 1];
+    const secondLastMsg = messages[messages.length - 2];
+    
+    if (lastMsg.role !== "assistant" || secondLastMsg.role !== "user") {
+      return;
+    }
+    
+    try {
+      const userMessageContent = secondLastMsg.content;
+      
+      await fetchWithAuth(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
+      setMessages(prev => prev.slice(0, -1));
+      setLastError(null);
+      await refreshSession();
+      
+      await handleSendMessage(userMessageContent);
+    } catch (error) {
+      console.error("Failed to regenerate message:", error);
+    }
+  };
+
   const handleGenerateSummary = async () => {
     if (!sessionId || isGeneratingSummary) return;
     
