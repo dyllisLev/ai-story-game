@@ -1049,9 +1049,15 @@ export default function PlayStory() {
       const userMessageContent = secondLastMsg.content;
       
       await fetchWithAuth(`/api/messages/${lastMsg.id}`, { method: "DELETE" });
-      setMessages(prev => prev.slice(0, -1));
+      await fetchWithAuth(`/api/messages/${secondLastMsg.id}`, { method: "DELETE" });
+      setMessages(prev => prev.slice(0, -2));
       setLastError(null);
       await refreshSession();
+      
+      const userMsg = await saveMessage("user", userMessageContent);
+      if (userMsg) {
+        setMessages(prev => [...prev, userMsg]);
+      }
       
       await handleSendMessage(userMessageContent);
     } catch (error) {
@@ -1335,7 +1341,22 @@ export default function PlayStory() {
                
                {/* Delete Last Message Button (when no error) */}
                {!lastError && messages.length > 0 && !isGenerating && (
-                 <div className="flex justify-end">
+                 <div className="flex justify-end gap-2">
+                   <Button
+                     onClick={handleRegenerateLastMessage}
+                     size="sm"
+                     variant="ghost"
+                     className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                     data-testid="button-regenerate-last-message"
+                     disabled={
+                       messages.length < 2 ||
+                       messages[messages.length - 1]?.role !== "assistant" ||
+                       messages[messages.length - 2]?.role !== "user"
+                     }
+                   >
+                     <RotateCcw className="w-4 h-4 mr-1" />
+                     재시도
+                   </Button>
                    <Button
                      onClick={handleDeleteLastMessages}
                      size="sm"
