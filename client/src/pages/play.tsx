@@ -1389,6 +1389,7 @@ export default function PlayStory() {
                      size="sm"
                      variant="ghost"
                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 text-xs font-normal rounded-full border border-muted-foreground/20"
+                     onMouseDown={(e) => e.preventDefault()}
                      onClick={() => {
                        if (!inputRef.current) return;
                        const textarea = inputRef.current;
@@ -1412,6 +1413,7 @@ export default function PlayStory() {
                      size="sm"
                      variant="ghost"
                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 text-xs font-normal rounded-full border border-muted-foreground/20"
+                     onMouseDown={(e) => e.preventDefault()}
                      onClick={() => {
                        if (!inputRef.current) return;
                        const textarea = inputRef.current;
