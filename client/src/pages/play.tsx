@@ -1344,11 +1344,11 @@ export default function PlayStory() {
                   disabled={isGenerating}
                   className="min-h-[50px] pl-20 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
                />
-               <div className="absolute left-3 bottom-3 flex gap-0.5 items-center">
+               <div className="absolute left-3 bottom-3 flex gap-1.5 items-center">
                   <Button 
                      size="sm"
                      variant="ghost"
-                     className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-transparent text-xs font-normal"
+                     className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 text-xs font-normal rounded-full border border-muted-foreground/20"
                      onClick={() => {
                        if (!inputRef.current) return;
                        const textarea = inputRef.current;
@@ -1368,11 +1368,10 @@ export default function PlayStory() {
                   >
                      ()
                   </Button>
-                  <span className="text-muted-foreground/30 text-xs">|</span>
                   <Button 
                      size="sm"
                      variant="ghost"
-                     className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-transparent text-xs font-normal"
+                     className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 text-xs font-normal rounded-full border border-muted-foreground/20"
                      onClick={() => {
                        if (!inputRef.current) return;
                        const textarea = inputRef.current;
