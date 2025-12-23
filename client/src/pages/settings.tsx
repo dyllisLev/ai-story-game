@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff, History } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff, History, Pencil } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/hooks/useAuth";
 import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
 
@@ -36,6 +37,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
+  const [promptEditorTab, setPromptEditorTab] = useState<"edit" | "preview">("edit");
   
   const [selectedModels, setSelectedModels] = useState<SelectedModels>({
     gemini: [],
@@ -352,34 +354,73 @@ export default function Settings() {
                 <div>
                   <h2 className="text-lg font-semibold mb-1">AI 페르소나 설정</h2>
                   <p className="text-sm text-muted-foreground">
-                    대화창에서 AI가 응답할 때 사용되는 시스템 프롬프트입니다.
+                    대화창에서 AI가 응답할 때 사용되는 시스템 프롬프트입니다. 마크다운 형식을 지원합니다.
                   </p>
                 </div>
-                <Textarea
-                  placeholder={`예:
-{
-  "role_definition": {
-    "identity": "You are an experienced novelist.",
-    "task": "Based on the given world-building and settings, you vividly develop the story according to the user's choices."
-  },
-  "input_info": {
-    "title": "{title}",
-    "genre": "{genre}",
-    "description": "{description}",
-    "story_settings": "{storySettings}",
-    "conversation_profile": "{conversationProfile}",
-    "conversation_profile_name": "{conversationProfileName}",
-    "user_note": "{userNote}",
-    "summary_memory": "{summaryMemory}",
-    "recent_messages": "{recentMessages}",
-    "user_message": "{userMessage}"
-  }
-}`}
-                  value={commonPrompt}
-                  onChange={(e) => setCommonPrompt(e.target.value)}
-                  className="min-h-[280px] font-mono text-sm"
-                  data-testid="textarea-system-prompt"
-                />
+                
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="flex border-b bg-muted/30">
+                    <button
+                      type="button"
+                      onClick={() => setPromptEditorTab("edit")}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                        promptEditorTab === "edit"
+                          ? "bg-background text-foreground border-b-2 border-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      data-testid="tab-prompt-edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      편집
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPromptEditorTab("preview")}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                        promptEditorTab === "preview"
+                          ? "bg-background text-foreground border-b-2 border-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      data-testid="tab-prompt-preview"
+                    >
+                      <Eye className="w-4 h-4" />
+                      미리보기
+                    </button>
+                  </div>
+                  
+                  {promptEditorTab === "edit" ? (
+                    <Textarea
+                      placeholder={`예:
+# AI 역할 정의
+
+당신은 경험 많은 소설가입니다.
+
+## 역할
+- 주어진 세계관과 설정을 바탕으로 스토리를 전개합니다
+- 사용자의 선택에 따라 생생하게 이야기를 발전시킵니다
+
+## 입력 정보
+- **제목**: {title}
+- **장르**: {genre}
+- **설명**: {description}`}
+                      value={commonPrompt}
+                      onChange={(e) => setCommonPrompt(e.target.value)}
+                      className="min-h-[280px] md:min-h-[400px] lg:min-h-[500px] font-mono text-sm border-0 rounded-none focus-visible:ring-0 resize-y"
+                      data-testid="textarea-system-prompt"
+                    />
+                  ) : (
+                    <div 
+                      className="min-h-[280px] md:min-h-[400px] lg:min-h-[500px] p-4 overflow-auto bg-background prose prose-sm dark:prose-invert max-w-none"
+                      data-testid="preview-system-prompt"
+                    >
+                      {commonPrompt ? (
+                        <ReactMarkdown>{commonPrompt}</ReactMarkdown>
+                      ) : (
+                        <p className="text-muted-foreground italic">프롬프트를 입력하면 미리보기가 표시됩니다.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
