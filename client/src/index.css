@@ -171,4 +171,20 @@
     max-width: 100% !important;
     width: 100%;
   }
+  
+  /* Override code block styles for proper theme support */
+  .prose :where(pre):not(:where(.not-prose *)) {
+    background-color: rgb(245 245 245) !important;
+    color: rgb(38 38 38) !important;
+  }
+  
+  .dark .prose :where(pre):not(:where(.not-prose *)) {
+    background-color: rgb(23 23 23) !important;
+    color: rgb(229 229 229) !important;
+  }
+  
+  .excel .prose :where(pre):not(:where(.not-prose *)) {
+    background-color: rgb(245 245 245) !important;
+    color: rgb(38 38 38) !important;
+  }
 }
