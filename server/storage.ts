@@ -160,11 +160,33 @@ export class Storage implements IStorage {
   async getAllStories(): Promise<Story[]> {
     const { data, error } = await supabase
       .from('stories')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
     
     if (error) throw error;
-    return (data || []).map(dbStoryToStory);
+    const stories = (data || []).map(dbStoryToStory);
+
+    // Get the most recent session updated_at for each story
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from('sessions')
+      .select('story_id, updated_at')
+      .order('updated_at', { ascending: false });
+
+    if (sessionsError) throw sessionsError;
+
+    // Create a map of story_id to most recent session updated_at
+    const storyLastActivity = new Map<number, Date>();
+    (sessionsData || []).forEach((session: any) => {
+      if (!storyLastActivity.has(session.story_id)) {
+        storyLastActivity.set(session.story_id, new Date(session.updated_at));
+      }
+    });
+
+    // Sort stories by last activity (or created_at if no sessions)
+    return stories.sort((a, b) => {
+      const aLastActivity = storyLastActivity.get(a.id) || a.createdAt || new Date(0);
+      const bLastActivity = storyLastActivity.get(b.id) || b.createdAt || new Date(0);
+      return bLastActivity.getTime() - aLastActivity.getTime();
+    });
   }
 
   async getStoriesForUser(userId: number): Promise<Story[]> {
@@ -211,11 +233,34 @@ export class Storage implements IStorage {
     const { data: storiesData, error: storiesError } = await supabase
       .from('stories')
       .select('*')
-      .in('id', allStoryIds)
-      .order('created_at', { ascending: false });
+      .in('id', allStoryIds);
 
     if (storiesError) throw storiesError;
-    return (storiesData || []).map(dbStoryToStory);
+    const stories = (storiesData || []).map(dbStoryToStory);
+
+    // Get the most recent session updated_at for each story
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from('sessions')
+      .select('story_id, updated_at')
+      .in('story_id', allStoryIds)
+      .order('updated_at', { ascending: false });
+
+    if (sessionsError) throw sessionsError;
+
+    // Create a map of story_id to most recent session updated_at
+    const storyLastActivity = new Map<number, Date>();
+    (sessionsData || []).forEach((session: any) => {
+      if (!storyLastActivity.has(session.story_id)) {
+        storyLastActivity.set(session.story_id, new Date(session.updated_at));
+      }
+    });
+
+    // Sort stories by last activity (or created_at if no sessions)
+    return stories.sort((a, b) => {
+      const aLastActivity = storyLastActivity.get(a.id) || a.createdAt || new Date(0);
+      const bLastActivity = storyLastActivity.get(b.id) || b.createdAt || new Date(0);
+      return bLastActivity.getTime() - aLastActivity.getTime();
+    });
   }
 
   async createStory(story: InsertStory): Promise<Story> {
