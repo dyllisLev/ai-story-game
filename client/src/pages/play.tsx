@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { ModelSelector } from "@/components/model-selector";
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -758,6 +759,46 @@ export default function PlayStory() {
           </p>
         );
       },
+      table({ children, ...props }: any) {
+        return (
+          <div className="my-4 overflow-x-auto">
+            <table className="min-w-full border-collapse border border-border" style={{ fontSize: 'inherit' }} {...props}>
+              {children}
+            </table>
+          </div>
+        );
+      },
+      thead({ children, ...props }: any) {
+        return (
+          <thead className="bg-muted/50" {...props}>
+            {children}
+          </thead>
+        );
+      },
+      tbody({ children, ...props }: any) {
+        return <tbody {...props}>{children}</tbody>;
+      },
+      tr({ children, ...props }: any) {
+        return (
+          <tr className="border-b border-border" {...props}>
+            {children}
+          </tr>
+        );
+      },
+      th({ children, ...props }: any) {
+        return (
+          <th className="px-3 py-2 text-left font-semibold border border-border" style={{ fontSize: 'inherit' }} {...props}>
+            {children}
+          </th>
+        );
+      },
+      td({ children, ...props }: any) {
+        return (
+          <td className="px-3 py-2 border border-border" style={{ fontSize: 'inherit' }} {...props}>
+            {children}
+          </td>
+        );
+      },
     };
 
     const renderedParts = parts.map((part, index) => {
@@ -768,7 +809,7 @@ export default function PlayStory() {
           return (
             <div key={index} className="mb-6">
               <div className="prose dark:prose-invert w-full max-w-full whitespace-pre-line" style={{ fontSize: 'inherit' }}>
-                <ReactMarkdown components={markdownComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
                 {isStreaming && isLastPart && (
@@ -783,7 +824,7 @@ export default function PlayStory() {
           return (
             <div key={index} className="mb-6">
               <div className="prose dark:prose-invert w-full max-w-full pl-4" style={{ fontSize: 'inherit' }}>
-                <ReactMarkdown components={markdownComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
                 {isStreaming && isLastPart && (
@@ -811,7 +852,7 @@ export default function PlayStory() {
           return (
             <div key={index} className="mb-6">
               <div className="prose dark:prose-invert w-full max-w-full whitespace-pre-line" style={{ fontSize: 'inherit' }}>
-                <ReactMarkdown components={markdownComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
                 {isStreaming && isLastPart && (
