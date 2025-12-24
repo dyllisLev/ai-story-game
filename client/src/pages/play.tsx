@@ -767,7 +767,7 @@ export default function PlayStory() {
         case 'narration':
           return (
             <div key={index} className="mb-6">
-              <div className="prose prose-sm dark:prose-invert w-full max-w-full whitespace-pre-line">
+              <div className="prose dark:prose-invert w-full max-w-full whitespace-pre-line" style={{ fontSize: 'inherit' }}>
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
@@ -782,7 +782,7 @@ export default function PlayStory() {
           // Render dialogue content with markdown support
           return (
             <div key={index} className="mb-6">
-              <div className="prose prose-sm dark:prose-invert w-full max-w-full pl-4">
+              <div className="prose dark:prose-invert w-full max-w-full pl-4" style={{ fontSize: 'inherit' }}>
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
@@ -795,9 +795,9 @@ export default function PlayStory() {
           
         case 'summary':
           return (
-            <div key={index} className="my-6 p-4 bg-muted/30 border-l-2 border-muted-foreground/30 rounded-r">
-              <div className="text-xs font-medium text-muted-foreground mb-2">상태 정보</div>
-              <pre className="text-xs font-mono text-muted-foreground/80 whitespace-pre-wrap">
+            <div key={index} className="my-6 p-4 bg-muted/30 border-l-2 border-muted-foreground/30 rounded-r" style={{ fontSize: 'inherit' }}>
+              <div className="font-medium text-muted-foreground mb-2">상태 정보</div>
+              <pre className="font-mono text-muted-foreground/80 whitespace-pre-wrap" style={{ fontSize: 'inherit' }}>
                 {part.content}
                 {isStreaming && isLastPart && (
                   <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />
@@ -810,7 +810,7 @@ export default function PlayStory() {
         default:
           return (
             <div key={index} className="mb-6">
-              <div className="prose prose-sm dark:prose-invert w-full max-w-full whitespace-pre-line">
+              <div className="prose dark:prose-invert w-full max-w-full whitespace-pre-line" style={{ fontSize: 'inherit' }}>
                 <ReactMarkdown components={markdownComponents}>
                   {part.content}
                 </ReactMarkdown>
@@ -1279,7 +1279,7 @@ export default function PlayStory() {
                   return (
                      <div key={msg.id} className="group">
                         <div className="flex flex-col items-start gap-2">
-                            <div className="max-w-[90%] bg-primary/10 rounded-lg p-3 text-sm whitespace-pre-wrap break-words">
+                            <div className="max-w-[90%] bg-primary/10 rounded-lg p-3 whitespace-pre-wrap break-words" style={{ fontSize: `${fontSize}px` }}>
                                {msg.content}
                             </div>
                         </div>
