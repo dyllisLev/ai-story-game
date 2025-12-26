@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff, History, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MessageSquare, Sparkles, BookOpen, Info, Cpu, RefreshCw, Key, Eye, EyeOff, History, Pencil, Image } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/hooks/useAuth";
 import { MODEL_CATALOG, PROVIDER_LABELS, type Provider, type SelectedModels } from "@shared/models";
@@ -33,6 +33,8 @@ export default function Settings() {
   const [summaryPrompt, setSummaryPrompt] = useState("");
   const [summaryProvider, setSummaryProvider] = useState("gemini");
   const [summaryModel, setSummaryModel] = useState("gemini-2.0-flash-exp");
+  const [imageGenerationProvider, setImageGenerationProvider] = useState("gemini");
+  const [imageGenerationModel, setImageGenerationModel] = useState("gemini-2.5-flash-image");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -110,6 +112,10 @@ export default function Settings() {
           setSummaryProvider(setting.value);
         } else if (setting.key === "summaryModel") {
           setSummaryModel(setting.value);
+        } else if (setting.key === "imageGenerationProvider") {
+          setImageGenerationProvider(setting.value);
+        } else if (setting.key === "imageGenerationModel") {
+          setImageGenerationModel(setting.value);
         }
       }
     } catch (error) {
@@ -154,6 +160,8 @@ export default function Settings() {
         { key: "summaryPrompt", value: summaryPrompt },
         { key: "summaryProvider", value: summaryProvider },
         { key: "summaryModel", value: summaryModel },
+        { key: "imageGenerationProvider", value: imageGenerationProvider },
+        { key: "imageGenerationModel", value: imageGenerationModel },
       ];
 
       await fetch("/api/settings/batch", {
@@ -320,7 +328,7 @@ export default function Settings() {
       <main className="container mx-auto px-6 py-6 max-w-3xl flex-1">
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="chat" className="gap-2" data-testid="tab-chat">
               <MessageSquare className="w-4 h-4" />
               <span className="hidden sm:inline">채팅 프롬프트</span>
@@ -340,6 +348,11 @@ export default function Settings() {
               <History className="w-4 h-4" />
               <span className="hidden sm:inline">요약 생성</span>
               <span className="sm:hidden">요약</span>
+            </TabsTrigger>
+            <TabsTrigger value="image" className="gap-2" data-testid="tab-image">
+              <Image className="w-4 h-4" />
+              <span className="hidden sm:inline">이미지 생성</span>
+              <span className="sm:hidden">이미지</span>
             </TabsTrigger>
             <TabsTrigger value="models" className="gap-2" data-testid="tab-models">
               <Cpu className="w-4 h-4" />
@@ -674,6 +687,115 @@ export default function Settings() {
                 <div className="space-y-1.5 text-xs text-muted-foreground">
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{existingSummary}"}</code> 기존 타임라인 요약</div>
                   <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{aiMessages}"}</code> 최근 AI 응답 내용</div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="image" className="space-y-4 animate-in fade-in-50 duration-300">
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">이미지 생성 설정</h2>
+                  <p className="text-sm text-muted-foreground">
+                    메시지 내용을 기반으로 이미지를 생성할 때 사용되는 모델을 설정합니다.
+                  </p>
+                </div>
+                
+                <div className="pt-4 border-t border-muted space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-primary" />
+                      <Label className="text-sm font-semibold">이미지 생성 모델</Label>
+                    </div>
+                    {(() => {
+                      // Get available providers (providers with selected models)
+                      const availableProviders = (["gemini", "chatgpt", "claude", "grok"] as const).filter(
+                        p => selectedModels[p] && selectedModels[p].length > 0
+                      );
+                      
+                      // Get models for current provider
+                      const currentProviderModels = imageGenerationProvider && selectedModels[imageGenerationProvider as Provider]
+                        ? selectedModels[imageGenerationProvider as Provider].map(modelId => {
+                            const modelInfo = MODEL_CATALOG[imageGenerationProvider as Provider]?.find(m => m.id === modelId);
+                            return modelInfo || { id: modelId, name: modelId };
+                          })
+                        : [];
+                      
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor="image-provider" className="text-xs text-muted-foreground">AI 제공업체</Label>
+                              <select
+                                id="image-provider"
+                                value={imageGenerationProvider}
+                                onChange={(e) => {
+                                  setImageGenerationProvider(e.target.value);
+                                  // Reset to first available model for new provider
+                                  const newProviderModels = selectedModels[e.target.value as Provider] || [];
+                                  if (newProviderModels.length > 0) {
+                                    setImageGenerationModel(newProviderModels[0]);
+                                  }
+                                }}
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                data-testid="select-image-provider"
+                              >
+                                {availableProviders.length === 0 && (
+                                  <option value="">모델을 먼저 설정하세요</option>
+                                )}
+                                {availableProviders.map(p => (
+                                  <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="image-model" className="text-xs text-muted-foreground">모델</Label>
+                              <select
+                                id="image-model"
+                                value={imageGenerationModel}
+                                onChange={(e) => setImageGenerationModel(e.target.value)}
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                data-testid="select-image-model"
+                                disabled={currentProviderModels.length === 0}
+                              >
+                                {currentProviderModels.length === 0 && (
+                                  <option value="">사용 가능한 모델 없음</option>
+                                )}
+                                {currentProviderModels.map(m => (
+                                  <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          {currentProviderModels.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              선택한 모델: <span className="font-medium text-foreground">{PROVIDER_LABELS[imageGenerationProvider as Provider]} - {currentProviderModels.find(m => m.id === imageGenerationModel)?.name || imageGenerationModel}</span>
+                            </p>
+                          )}
+                          {availableProviders.length === 0 && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              "모델" 탭에서 사용할 모델을 먼저 선택하세요.
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-muted/30">
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs font-semibold text-foreground">사용 정보</p>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <p>
+                    메시지 옆의 이미지 생성 버튼을 클릭하면 해당 메시지의 내용이 프롬프트로 사용되어 이미지가 생성됩니다.
+                  </p>
+                  <p className="text-amber-600 dark:text-amber-400">
+                    <strong>권장:</strong> Gemini의 <code className="bg-background px-1.5 py-0.5 rounded">gemini-2.5-flash-image</code> (Nano Banana Pro) 모델을 이미지 생성에 사용하세요.
+                  </p>
                 </div>
               </CardContent>
             </Card>

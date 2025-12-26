@@ -18,6 +18,7 @@ export const MODEL_CATALOG: Record<Provider, ModelInfo[]> = {
     { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
     { id: "gemini-2.5-pro-preview-06-05", name: "Gemini 2.5 Pro Preview" },
     { id: "gemini-2.5-flash-preview-05-20", name: "Gemini 2.5 Flash Preview" },
+    { id: "gemini-2.5-flash-image", name: "Gemini 2.5 Flash Image (Nano Banana Pro)" },
     { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
     { id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite" },
     { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
