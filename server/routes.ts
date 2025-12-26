@@ -3047,6 +3047,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "유효한 messageId가 필요합니다" });
       }
       
+      const startTimeMs = Date.now();
       console.log(`[IMAGE-GEN] Starting image generation for message ${messageId}`);
       
       // SECURITY: Fetch message first, then derive session from it (never trust client-supplied sessionId)
@@ -3242,6 +3243,19 @@ export async function registerRoutes(
       }
       
       console.log(`[IMAGE-GEN] Message updated with image URL`);
+      
+      // Save to API logs database
+      const responseTime = Date.now() - startTimeMs;
+      await storage.createApiLog({
+        type: 'image',
+        provider: provider,
+        model: model,
+        inputPrompt: finalPrompt,
+        outputResponse: `Image generated and uploaded: ${publicUrl}`,
+        userId: req.session!.userId,
+        sessionId: message.sessionId,
+        responseTime,
+      }).catch(logErr => console.error('[API-LOG] Failed to save image generation log:', logErr));
       
       res.json({
         success: true,
