@@ -677,10 +677,9 @@ export default function PlayStory() {
   const renderAIContent = (content: string, isStreaming: boolean = false) => {
     const processedContent = extractStoryFromJSON(content);
     
-    // Filter out instructional comments that match the pattern:
-    // (Never describe {name}'s actions, dialogues, or feelings predictively.)
-    // Handle variations like "연 actions" or "character's actions"
-    const filteredContent = processedContent.replace(/^#?\s*\(Never describe .+?\s+actions,\s+dialogues,\s+or\s+feelings\s+predictively\.\)\s*$/gm, '');
+    // Filter out markdown comment lines that start with [//]:
+    // This hides instructional comments from the AI output
+    const filteredContent = processedContent.replace(/^\[\/\/\]:.*$/gm, '');
     
     const parts = parseAIResponse(filteredContent);
     
