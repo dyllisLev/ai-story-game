@@ -3202,7 +3202,7 @@ export async function registerRoutes(
       
       // Upload to Supabase Storage
       const { supabase } = await import("./supabase");
-      const fileName = `session-${sessionId}-msg-${messageId}-${Date.now()}.jpg`;
+      const fileName = `session-${message.sessionId}-msg-${messageId}-${Date.now()}.jpg`;
       const filePath = `generated-images/${fileName}`;
       
       console.log(`[IMAGE-GEN] Uploading to Supabase Storage: ${filePath}`);
