@@ -11,10 +11,8 @@ import {
   Settings, 
   Users, 
   BookOpen, 
-  Volume2,
   History,
   ChevronRight,
-  Share2,
   CornerDownLeft,
   Home,
   Loader2,
@@ -29,7 +27,8 @@ import {
   GripVertical,
   Camera,
   MessageSquare,
-  RotateCcw
+  RotateCcw,
+  ImageIcon
 } from "lucide-react";
 import {
   Dialog,
@@ -1303,8 +1302,9 @@ export default function PlayStory() {
                                   </div>
                                   {!msg.isStreaming && (
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                       <Button variant="ghost" size="icon" className="h-6 w-6"><Volume2 className="w-3 h-3" /></Button>
-                                       <Button variant="ghost" size="icon" className="h-6 w-6"><Share2 className="w-3 h-3" /></Button>
+                                       <Button variant="ghost" size="icon" className="h-6 w-6" title="이미지 생성">
+                                         <ImageIcon className="w-3 h-3" />
+                                       </Button>
                                     </div>
                                   )}
                                </div>
