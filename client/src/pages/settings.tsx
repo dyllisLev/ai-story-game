@@ -33,6 +33,7 @@ export default function Settings() {
   const [summaryPrompt, setSummaryPrompt] = useState("");
   const [summaryProvider, setSummaryProvider] = useState("gemini");
   const [summaryModel, setSummaryModel] = useState("gemini-2.0-flash-exp");
+  const [imageGenerationPrompt, setImageGenerationPrompt] = useState("");
   const [imageGenerationProvider, setImageGenerationProvider] = useState("gemini");
   const [imageGenerationModel, setImageGenerationModel] = useState("gemini-2.5-flash-image");
   const [saved, setSaved] = useState(false);
@@ -112,6 +113,8 @@ export default function Settings() {
           setSummaryProvider(setting.value);
         } else if (setting.key === "summaryModel") {
           setSummaryModel(setting.value);
+        } else if (setting.key === "imageGenerationPrompt") {
+          setImageGenerationPrompt(normalizeNewlines(setting.value));
         } else if (setting.key === "imageGenerationProvider") {
           setImageGenerationProvider(setting.value);
         } else if (setting.key === "imageGenerationModel") {
@@ -160,6 +163,7 @@ export default function Settings() {
         { key: "summaryPrompt", value: summaryPrompt },
         { key: "summaryProvider", value: summaryProvider },
         { key: "summaryModel", value: summaryModel },
+        { key: "imageGenerationPrompt", value: imageGenerationPrompt },
         { key: "imageGenerationProvider", value: imageGenerationProvider },
         { key: "imageGenerationModel", value: imageGenerationModel },
       ];
@@ -783,20 +787,40 @@ export default function Settings() {
                     })()}
                   </div>
                 </div>
+
+                <div className="pt-4 border-t border-muted">
+                  <Label className="text-sm font-semibold mb-2 block">이미지 생성 프롬프트</Label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    메시지 내용을 이미지로 생성할 때 사용되는 프롬프트 템플릿입니다. 비워두면 메시지 내용을 그대로 사용합니다.
+                  </p>
+                <Textarea
+                  placeholder={`예: 다음 내용을 바탕으로 고품질의 이미지를 생성해주세요:
+
+{messageContent}
+
+스타일: 사실적이고 생생한 묘사
+품질: 4K, 고해상도
+분위기: {genre}에 어울리는 분위기`}
+                  value={imageGenerationPrompt}
+                  onChange={(e) => setImageGenerationPrompt(e.target.value)}
+                  className="min-h-[200px] font-mono text-sm"
+                  data-testid="textarea-image-generation-prompt"
+                />
+                </div>
               </CardContent>
             </Card>
 
             <Card className="bg-muted/30">
               <CardContent className="p-4 space-y-3">
-                <p className="text-xs font-semibold text-foreground">사용 정보</p>
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <p>
-                    메시지 옆의 이미지 생성 버튼을 클릭하면 해당 메시지의 내용이 프롬프트로 사용되어 이미지가 생성됩니다.
-                  </p>
-                  <p className="text-amber-600 dark:text-amber-400">
-                    <strong>권장:</strong> Gemini의 <code className="bg-background px-1.5 py-0.5 rounded">gemini-2.5-flash-image</code> (Nano Banana Pro) 모델을 이미지 생성에 사용하세요.
-                  </p>
+                <p className="text-xs font-semibold text-foreground">사용 가능한 변수</p>
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{messageContent}"}</code> 클릭한 메시지의 내용</div>
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{genre}"}</code> 스토리 장르</div>
+                  <div><code className="bg-background px-1.5 py-0.5 rounded text-primary">{"{title}"}</code> 스토리 제목</div>
                 </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 pt-2 border-t border-muted">
+                  <strong>권장:</strong> Gemini의 <code className="bg-background px-1.5 py-0.5 rounded">gemini-2.5-flash-image</code> (Nano Banana Pro) 모델을 이미지 생성에 사용하세요.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
