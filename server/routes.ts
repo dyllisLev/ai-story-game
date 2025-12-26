@@ -3109,23 +3109,28 @@ export async function registerRoutes(
       
       console.log(`[IMAGE-GEN] Final prompt: ${finalPrompt.substring(0, 100)}...`);
       
-      // Download and encode reference image if exists
-      let referenceImageBase64: string | null = null;
+      // Download and encode all reference images
+      const referenceImages: { base64: string; mimeType: string }[] = [];
       if (imageUrls.length > 0) {
-        const lastImageUrl = imageUrls[imageUrls.length - 1];
-        console.log(`[IMAGE-GEN] Downloading reference image: ${lastImageUrl}`);
+        console.log(`[IMAGE-GEN] Downloading ${imageUrls.length} reference images...`);
         
-        try {
-          const imageResponse = await fetch(lastImageUrl);
-          if (imageResponse.ok) {
-            const arrayBuffer = await imageResponse.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            referenceImageBase64 = buffer.toString('base64');
-            console.log(`[IMAGE-GEN] Reference image encoded, size: ${referenceImageBase64.length} bytes`);
+        for (const imageUrl of imageUrls) {
+          try {
+            const imageResponse = await fetch(imageUrl);
+            if (imageResponse.ok) {
+              const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+              const mimeType = contentType.split(';')[0].trim();
+              const arrayBuffer = await imageResponse.arrayBuffer();
+              const buffer = Buffer.from(arrayBuffer);
+              const base64 = buffer.toString('base64');
+              referenceImages.push({ base64, mimeType });
+              console.log(`[IMAGE-GEN] Reference image encoded: ${imageUrl.substring(0, 50)}... (${base64.length} bytes, ${mimeType})`);
+            }
+          } catch (error) {
+            console.error(`[IMAGE-GEN] Failed to download reference image ${imageUrl}:`, error);
           }
-        } catch (error) {
-          console.error(`[IMAGE-GEN] Failed to download reference image:`, error);
         }
+        console.log(`[IMAGE-GEN] Successfully downloaded ${referenceImages.length}/${imageUrls.length} images`);
       }
       
       // Only Gemini supports image generation currently
@@ -3136,12 +3141,12 @@ export async function registerRoutes(
       // Prepare Gemini API request with image generation config
       const parts: any[] = [{ text: finalPrompt }];
       
-      // Add reference image if available
-      if (referenceImageBase64) {
+      // Add all reference images
+      for (const refImg of referenceImages) {
         parts.push({
           inlineData: {
-            mimeType: "image/jpeg",
-            data: referenceImageBase64
+            mimeType: refImg.mimeType,
+            data: refImg.base64
           }
         });
       }
