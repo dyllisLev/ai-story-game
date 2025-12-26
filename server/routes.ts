@@ -3228,7 +3228,16 @@ export async function registerRoutes(
       console.log(`[IMAGE-GEN] Image uploaded successfully: ${publicUrl}`);
       
       // Update message content with image using Supabase directly
-      const updatedContent = message.content + `\n\n![Generated Image](${publicUrl})`;
+      // Check if message ends with unclosed code block and close it first
+      let contentToUpdate = message.content;
+      const codeBlockMatches = contentToUpdate.match(/```/g);
+      const hasUnclosedCodeBlock = codeBlockMatches && codeBlockMatches.length % 2 !== 0;
+      
+      if (hasUnclosedCodeBlock) {
+        contentToUpdate = contentToUpdate + '\n```';
+      }
+      
+      const updatedContent = contentToUpdate + `\n\n![Generated Image](${publicUrl})`;
       
       const { supabase: supabaseClient } = await import("./supabase");
       // @ts-ignore - Supabase type issue with update
