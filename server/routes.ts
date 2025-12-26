@@ -3036,6 +3036,199 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== IMAGE GENERATION ====================
+  
+  app.post("/api/ai/generate-image", isAuthenticated, async (req, res) => {
+    try {
+      const { messageId, sessionId } = req.body;
+      
+      if (!messageId || !sessionId) {
+        return res.status(400).json({ error: "messageId와 sessionId가 필요합니다" });
+      }
+      
+      console.log(`[IMAGE-GEN] Starting image generation for message ${messageId} in session ${sessionId}`);
+      
+      // Get message and session
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).json({ error: "메시지를 찾을 수 없습니다" });
+      }
+      
+      const session = await storage.getSessionById(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "세션을 찾을 수 없습니다" });
+      }
+      
+      const story = await storage.getStoryById(session.storyId);
+      if (!story) {
+        return res.status(404).json({ error: "스토리를 찾을 수 없습니다" });
+      }
+      
+      // Get image generation settings
+      const imageGenProviderSetting = await storage.getSetting("imageGenerationProvider");
+      const imageGenModelSetting = await storage.getSetting("imageGenerationModel");
+      const imageGenPromptSetting = await storage.getSetting("imageGenerationPrompt");
+      
+      const provider = imageGenProviderSetting?.value || "gemini";
+      const model = imageGenModelSetting?.value || "gemini-2.0-flash-exp";
+      const promptTemplate = imageGenPromptSetting?.value || "{messageContent}";
+      
+      console.log(`[IMAGE-GEN] Using provider: ${provider}, model: ${model}`);
+      
+      // Get API key
+      const apiKey = await getUserApiKeyForProvider(req.session.userId, provider);
+      if (!apiKey) {
+        return res.status(400).json({ error: `${provider} API 키가 설정되지 않았습니다` });
+      }
+      
+      // Extract image URLs from message content (markdown format: ![alt](url))
+      const imageUrlPattern = /!\[.*?\]\((https?:\/\/[^\)]+)\)/g;
+      const imageMatches = [...message.content.matchAll(imageUrlPattern)];
+      const imageUrls = imageMatches.map(match => match[1]);
+      
+      console.log(`[IMAGE-GEN] Found ${imageUrls.length} images in message`);
+      
+      // Prepare prompt by replacing template variables
+      let finalPrompt = promptTemplate
+        .replace(/\{messageContent\}/g, message.content.replace(imageUrlPattern, '').trim())
+        .replace(/\{genre\}/g, story.genre || '')
+        .replace(/\{title\}/g, story.title || '');
+      
+      console.log(`[IMAGE-GEN] Final prompt: ${finalPrompt.substring(0, 100)}...`);
+      
+      // Download and encode reference image if exists
+      let referenceImageBase64: string | null = null;
+      if (imageUrls.length > 0) {
+        const lastImageUrl = imageUrls[imageUrls.length - 1];
+        console.log(`[IMAGE-GEN] Downloading reference image: ${lastImageUrl}`);
+        
+        try {
+          const imageResponse = await fetch(lastImageUrl);
+          if (imageResponse.ok) {
+            const arrayBuffer = await imageResponse.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            referenceImageBase64 = buffer.toString('base64');
+            console.log(`[IMAGE-GEN] Reference image encoded, size: ${referenceImageBase64.length} bytes`);
+          }
+        } catch (error) {
+          console.error(`[IMAGE-GEN] Failed to download reference image:`, error);
+        }
+      }
+      
+      // Only Gemini supports image generation currently
+      if (provider !== "gemini") {
+        return res.status(400).json({ error: "현재 Gemini만 이미지 생성을 지원합니다" });
+      }
+      
+      // Prepare Gemini API request
+      const parts: any[] = [{ text: finalPrompt }];
+      
+      // Add reference image if available
+      if (referenceImageBase64) {
+        parts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: referenceImageBase64
+          }
+        });
+      }
+      
+      console.log(`[IMAGE-GEN] Calling Gemini API with ${parts.length} parts...`);
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts }],
+            generationConfig: {
+              temperature: 1.0,
+              maxOutputTokens: 8192
+            }
+          })
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error(`[IMAGE-GEN] Gemini API error:`, data.error);
+        return res.status(400).json({ error: data.error.message });
+      }
+      
+      if (!response.ok) {
+        console.error(`[IMAGE-GEN] Gemini API HTTP error:`, response.status, data);
+        return res.status(400).json({ error: `Gemini API error: ${response.status}` });
+      }
+      
+      // Extract generated image from response
+      const candidate = data.candidates?.[0];
+      if (!candidate || !candidate.content || !candidate.content.parts) {
+        return res.status(400).json({ error: "AI가 이미지를 생성하지 못했습니다" });
+      }
+      
+      // Find inline data (generated image)
+      let generatedImageData: string | null = null;
+      for (const part of candidate.content.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          generatedImageData = part.inlineData.data;
+          break;
+        }
+      }
+      
+      if (!generatedImageData) {
+        return res.status(400).json({ error: "생성된 이미지 데이터를 찾을 수 없습니다" });
+      }
+      
+      console.log(`[IMAGE-GEN] Image generated, size: ${generatedImageData.length} bytes`);
+      
+      // Upload to Supabase Storage
+      const { supabase } = await import("./supabase");
+      const fileName = `session-${sessionId}-msg-${messageId}-${Date.now()}.jpg`;
+      const filePath = `generated-images/${fileName}`;
+      
+      console.log(`[IMAGE-GEN] Uploading to Supabase Storage: ${filePath}`);
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('generated-images')
+        .upload(filePath, Buffer.from(generatedImageData, 'base64'), {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+      
+      if (uploadError) {
+        console.error(`[IMAGE-GEN] Supabase upload error:`, uploadError);
+        return res.status(500).json({ error: `이미지 업로드 실패: ${uploadError.message}` });
+      }
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('generated-images')
+        .getPublicUrl(filePath);
+      
+      console.log(`[IMAGE-GEN] Image uploaded successfully: ${publicUrl}`);
+      
+      // Update message content with image
+      const updatedContent = message.content + `\n\n![Generated Image](${publicUrl})`;
+      
+      await storage.updateMessage(messageId, { content: updatedContent });
+      
+      console.log(`[IMAGE-GEN] Message updated with image URL`);
+      
+      res.json({
+        success: true,
+        imageUrl: publicUrl,
+        messageId
+      });
+      
+    } catch (error: any) {
+      console.error("[IMAGE-GEN] Failed:", error?.message || error);
+      console.error("[IMAGE-GEN] Stack:", error?.stack);
+      res.status(500).json({ error: error?.message || "이미지 생성에 실패했습니다" });
+    }
+  });
+
   // ==================== HEALTH CHECK ====================
   
   app.get("/api/health", (req, res) => {
