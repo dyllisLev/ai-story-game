@@ -3234,7 +3234,7 @@ export async function registerRoutes(
       // @ts-ignore - Supabase type issue with update
       const { error: updateError } = await supabaseClient
         .from('messages')
-        .update({ content: updatedContent, updated_at: new Date().toISOString() })
+        .update({ content: updatedContent })
         .eq('id', messageId);
       
       if (updateError) {
