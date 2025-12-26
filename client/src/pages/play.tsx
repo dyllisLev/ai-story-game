@@ -1423,6 +1423,7 @@ export default function PlayStory() {
                   placeholder={isGenerating ? "AI가 응답 중..." : "메시지를 입력하세요"} 
                   disabled={isGenerating}
                   className="min-h-[50px] pl-20 pr-12 py-3 rounded-3xl border-muted-foreground/20 focus:ring-primary/20 focus:border-primary resize-none shadow-sm"
+                  tabIndex={3}
                />
                <div className="absolute left-3 bottom-3 flex gap-1.5 items-center">
                   <Button 
@@ -1446,6 +1447,7 @@ export default function PlayStory() {
                      title="장면 입력"
                      aria-label="장면 입력 - 괄호 삽입"
                      data-testid="button-insert-scene"
+                     tabIndex={1}
                   >
                      ()
                   </Button>
@@ -1470,6 +1472,7 @@ export default function PlayStory() {
                      title="대사 입력"
                      aria-label="대사 입력 - 따옴표 삽입"
                      data-testid="button-insert-dialogue"
+                     tabIndex={2}
                   >
                      ""
                   </Button>
@@ -1479,6 +1482,7 @@ export default function PlayStory() {
                   className="absolute right-2 bottom-2 h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-white"
                   onClick={() => handleSendMessage()}
                   disabled={isGenerating}
+                  tabIndex={4}
                >
                   {isGenerating ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
