@@ -362,6 +362,7 @@ export default function PlayStory() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<ConversationProfile[]>([]);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [generatingImageForMessageId, setGeneratingImageForMessageId] = useState<number | null>(null);
   
   // Session title editing
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
@@ -1131,6 +1132,44 @@ export default function PlayStory() {
     }
   };
 
+  const handleGenerateImage = async (messageId: number) => {
+    if (generatingImageForMessageId) return;
+    
+    setGeneratingImageForMessageId(messageId);
+    try {
+      const response = await fetchWithAuth(`/api/ai/generate-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || "이미지 생성에 실패했습니다");
+        return;
+      }
+      
+      const result = await response.json();
+      
+      // Refresh messages to show the generated image
+      const messagesResponse = await fetchWithAuth(`/api/sessions/${sessionId}/messages`);
+      if (messagesResponse.ok) {
+        const messagesData = await messagesResponse.json();
+        setMessages(messagesData.map((msg: Message) => ({
+          ...msg,
+          clientId: msg.clientId || `db-${msg.id}`
+        })));
+      }
+      
+      alert("이미지가 성공적으로 생성되었습니다!");
+    } catch (error) {
+      console.error("Failed to generate image:", error);
+      alert("이미지 생성 중 오류가 발생했습니다");
+    } finally {
+      setGeneratingImageForMessageId(null);
+    }
+  };
+
   // Calculate AI message count
   // Use session's aiMessageCount instead of counting visible messages
   // This ensures the turn count reflects the actual total, not just the visible 10 messages
@@ -1302,8 +1341,19 @@ export default function PlayStory() {
                                   </div>
                                   {!msg.isStreaming && (
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                       <Button variant="ghost" size="icon" className="h-6 w-6" title="이미지 생성">
-                                         <ImageIcon className="w-3 h-3" />
+                                       <Button 
+                                         variant="ghost" 
+                                         size="icon" 
+                                         className="h-6 w-6" 
+                                         title="이미지 생성"
+                                         onClick={() => handleGenerateImage(msg.id)}
+                                         disabled={generatingImageForMessageId === msg.id}
+                                       >
+                                         {generatingImageForMessageId === msg.id ? (
+                                           <Loader2 className="w-3 h-3 animate-spin" />
+                                         ) : (
+                                           <ImageIcon className="w-3 h-3" />
+                                         )}
                                        </Button>
                                     </div>
                                   )}

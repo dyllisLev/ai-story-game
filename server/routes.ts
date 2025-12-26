@@ -3040,26 +3040,38 @@ export async function registerRoutes(
   
   app.post("/api/ai/generate-image", isAuthenticated, async (req, res) => {
     try {
-      const { messageId, sessionId } = req.body;
+      const { messageId } = req.body;
       
-      if (!messageId || !sessionId) {
-        return res.status(400).json({ error: "messageId와 sessionId가 필요합니다" });
+      // Validate messageId is a positive integer
+      if (!messageId || typeof messageId !== 'number' || messageId <= 0 || !Number.isInteger(messageId)) {
+        return res.status(400).json({ error: "유효한 messageId가 필요합니다" });
       }
       
-      console.log(`[IMAGE-GEN] Starting image generation for message ${messageId} in session ${sessionId}`);
+      console.log(`[IMAGE-GEN] Starting image generation for message ${messageId}`);
       
-      // Get message and session
-      const message = await storage.getMessageById(messageId);
+      // SECURITY: Fetch message first, then derive session from it (never trust client-supplied sessionId)
+      const message = await storage.getMessage(messageId);
       if (!message) {
         return res.status(404).json({ error: "메시지를 찾을 수 없습니다" });
       }
       
-      const session = await storage.getSessionById(sessionId);
+      // Verify message is an AI message
+      if (message.role !== "assistant") {
+        return res.status(400).json({ error: "AI 메시지만 이미지를 생성할 수 있습니다" });
+      }
+      
+      // Derive session from message (canonical source of truth)
+      const session = await storage.getSession(message.sessionId);
       if (!session) {
         return res.status(404).json({ error: "세션을 찾을 수 없습니다" });
       }
       
-      const story = await storage.getStoryById(session.storyId);
+      // CRITICAL: Verify session belongs to the authenticated user
+      if (session.userId !== req.session!.userId) {
+        return res.status(403).json({ error: "이 세션에 접근할 권한이 없습니다" });
+      }
+      
+      const story = await storage.getStory(session.storyId);
       if (!story) {
         return res.status(404).json({ error: "스토리를 찾을 수 없습니다" });
       }
@@ -3083,7 +3095,7 @@ export async function registerRoutes(
       
       // Extract image URLs from message content (markdown format: ![alt](url))
       const imageUrlPattern = /!\[.*?\]\((https?:\/\/[^\)]+)\)/g;
-      const imageMatches = [...message.content.matchAll(imageUrlPattern)];
+      const imageMatches = Array.from(message.content.matchAll(imageUrlPattern));
       const imageUrls = imageMatches.map(match => match[1]);
       
       console.log(`[IMAGE-GEN] Found ${imageUrls.length} images in message`);
@@ -3120,7 +3132,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "현재 Gemini만 이미지 생성을 지원합니다" });
       }
       
-      // Prepare Gemini API request
+      // Prepare Gemini API request with image generation config
       const parts: any[] = [{ text: finalPrompt }];
       
       // Add reference image if available
@@ -3135,6 +3147,7 @@ export async function registerRoutes(
       
       console.log(`[IMAGE-GEN] Calling Gemini API with ${parts.length} parts...`);
       
+      // Use Gemini's image generation API with proper config
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
@@ -3144,7 +3157,11 @@ export async function registerRoutes(
             contents: [{ role: "user", parts }],
             generationConfig: {
               temperature: 1.0,
-              maxOutputTokens: 8192
+              maxOutputTokens: 8192,
+              responseModalities: ["IMAGE", "TEXT"],
+              imageConfig: {
+                imageSize: "2K"
+              }
             }
           })
         }
@@ -3209,10 +3226,20 @@ export async function registerRoutes(
       
       console.log(`[IMAGE-GEN] Image uploaded successfully: ${publicUrl}`);
       
-      // Update message content with image
+      // Update message content with image using Supabase directly
       const updatedContent = message.content + `\n\n![Generated Image](${publicUrl})`;
       
-      await storage.updateMessage(messageId, { content: updatedContent });
+      const { supabase: supabaseClient } = await import("./supabase");
+      // @ts-ignore - Supabase type issue with update
+      const { error: updateError } = await supabaseClient
+        .from('messages')
+        .update({ content: updatedContent, updated_at: new Date().toISOString() })
+        .eq('id', messageId);
+      
+      if (updateError) {
+        console.error(`[IMAGE-GEN] Failed to update message:`, updateError);
+        return res.status(500).json({ error: `메시지 업데이트 실패: ${updateError.message}` });
+      }
       
       console.log(`[IMAGE-GEN] Message updated with image URL`);
       
