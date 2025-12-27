@@ -162,7 +162,6 @@ interface Session {
   sessionModel?: string | null;
   sessionProvider?: string | null;
   fontSize?: number | null;
-  showImages?: number | null;
   aiMessageCount?: number;
   lastSummaryTurn?: number;
   createdAt: string | null;
@@ -358,6 +357,10 @@ export default function PlayStory() {
   const [sessionProvider, setSessionProvider] = useState("");
   const [sessionModel, setSessionModel] = useState("");
   const [fontSize, setFontSize] = useState(13);
+  const [showImages, setShowImages] = useState(() => {
+    const saved = localStorage.getItem('showImages');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [aiMessageCount, setAiMessageCount] = useState(0);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -797,6 +800,24 @@ export default function PlayStory() {
           <td className="px-3 py-2 border border-border" style={{ fontSize: 'inherit' }} {...props}>
             {children}
           </td>
+        );
+      },
+      img({ src, alt, ...props }: any) {
+        if (!showImages) {
+          return (
+            <div className="my-4 p-4 bg-muted/30 border border-border rounded-lg flex items-center justify-center gap-2 text-muted-foreground text-sm">
+              <ImageIcon className="w-4 h-4" />
+              <span>이미지 숨김</span>
+            </div>
+          );
+        }
+        return (
+          <img 
+            src={src} 
+            alt={alt} 
+            className="my-4 max-w-full h-auto rounded-lg border border-border" 
+            {...props} 
+          />
         );
       },
     };
@@ -1646,6 +1667,27 @@ export default function PlayStory() {
                           data-testid="button-increase-font"
                         >
                           <span className="text-lg font-bold">+</span>
+                        </Button>
+                     </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2 w-[75%]">
+                     <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-muted-foreground">이미지 보기</label>
+                        <Button
+                          variant={showImages ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => {
+                            const newValue = !showImages;
+                            setShowImages(newValue);
+                            localStorage.setItem('showImages', String(newValue));
+                          }}
+                          data-testid="button-toggle-images"
+                        >
+                          {showImages ? "ON" : "OFF"}
                         </Button>
                      </div>
                   </div>
