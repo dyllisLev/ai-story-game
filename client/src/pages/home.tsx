@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, Play, Edit, Settings as SettingsIcon, Loader2, Trash2, User } from "lucide-react";
+import { Plus, Play, Edit, Settings as SettingsIcon, Loader2, Trash2, User, RefreshCw } from "lucide-react";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +24,12 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const logoutMutation = useLogout();
+  
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -113,6 +119,43 @@ export default function Home() {
     await logoutMutation.mutateAsync();
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadStories();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      setPullDistance(0);
+      setIsPulling(false);
+    }, 500);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (mainRef.current && mainRef.current.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!mainRef.current || mainRef.current.scrollTop > 0 || isRefreshing) return;
+
+    const touchY = e.touches[0].clientY;
+    const distance = touchY - touchStartY.current;
+
+    if (distance > 0) {
+      setIsPulling(true);
+      setPullDistance(Math.min(distance * 0.5, 80));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 60 && !isRefreshing) {
+      handleRefresh();
+    } else {
+      setIsPulling(false);
+      setPullDistance(0);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
@@ -160,8 +203,31 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 max-w-5xl">
-        <div className="mb-8">
+      <main 
+        ref={mainRef}
+        className="container mx-auto px-6 py-8 max-w-5xl relative"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {(isPulling || isRefreshing) && (
+          <div 
+            className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all duration-200"
+            style={{ 
+              height: `${pullDistance}px`,
+              opacity: pullDistance / 60
+            }}
+          >
+            <RefreshCw 
+              className={`w-6 h-6 text-primary ${isRefreshing ? 'animate-spin' : ''}`}
+              style={{ 
+                transform: `rotate(${pullDistance * 3}deg)`
+              }}
+            />
+          </div>
+        )}
+        
+        <div className="mb-8" style={{ marginTop: isPulling || isRefreshing ? `${pullDistance}px` : '0' }}>
           <h2 className="text-2xl font-bold mb-1">나의 스토리</h2>
           <p className="text-muted-foreground text-sm">최근 플레이한 스토리를 이어서 즐겨보세요.</p>
         </div>
