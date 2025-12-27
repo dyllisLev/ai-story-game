@@ -162,6 +162,7 @@ interface Session {
   sessionModel?: string | null;
   sessionProvider?: string | null;
   fontSize?: number | null;
+  showImages?: number | null;
   aiMessageCount?: number;
   lastSummaryTurn?: number;
   createdAt: string | null;
